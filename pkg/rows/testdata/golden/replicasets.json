@@ -1,0 +1,5450 @@
+{
+ "type": "replicasets",
+ "now": 1748779200000,
+ "columns": ["name","namespace","desired","current","ready","age","controlledBy","controllerRef"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "desired": "select",
+  "current": "select",
+  "ready": "select",
+  "age": "numeric",
+  "controlledBy": "select",
+  "controllerRef": false
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1,
+    "availableReplicas": 1
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T22:42:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web",
+      "uid": "uid-owner-1",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 0,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "fullyLabeledReplicas": 1
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T12:20:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    },
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "not-controller",
+      "uid": "uid-owner-4"
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "registry.example.com/team/app:v1"
+       },
+       {
+        "name": "sidecar",
+        "image": "envoy:1.28"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 3,
+    "readyReplicas": 1
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T21:10:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "argoproj.io/v1alpha1",
+      "kind": "Rollout",
+      "name": "canary",
+      "uid": "uid-owner-3",
+      "controller": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "registry.example.com/team/app:v1"
+       },
+       {
+        "name": "sidecar",
+        "image": "envoy:1.28"
+       }
+      ],
+      "serviceAccountName": "Zeta-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T05:07:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "not-controller",
+      "uid": "uid-owner-4"
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ],
+      "serviceAccountName": "Zeta-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 10,
+    "readyReplicas": 10
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T14:13:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    },
+    "ownerReferences": [
+     {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "name": "nightly",
+      "uid": "uid-owner-2",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 5,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-29T21:23:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    },
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web",
+      "uid": "uid-owner-1",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "a",
+        "image": "busybox"
+       },
+       {
+        "name": "b",
+        "image": "alpine:3.19"
+       },
+       {
+        "name": "c",
+        "image": "registry.example.com:5000/x/y:2"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1,
+    "availableReplicas": 1
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T17:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 5,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "a",
+        "image": "busybox"
+       },
+       {
+        "name": "b",
+        "image": "alpine:3.19"
+       },
+       {
+        "name": "c",
+        "image": "registry.example.com:5000/x/y:2"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 5
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T06:17:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "name": "nightly",
+      "uid": "uid-owner-2",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 3,
+    "readyReplicas": 3,
+    "availableReplicas": 3
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "default",
+    "creationTimestamp": "2025-06-01T11:47:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T09:11:00Z"
+   }
+  },
+  {
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "no-replicas",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "owner-second-is-controller",
+    "namespace": "default",
+    "uid": "uid-edge-10",
+    "creationTimestamp": "2025-06-01T10:31:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "cm",
+      "uid": "u-a"
+     },
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web-2",
+      "uid": "u-b",
+      "controller": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "owner-two-controllers",
+    "namespace": "default",
+    "uid": "uid-edge-11",
+    "creationTimestamp": "2025-06-01T10:30:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "StatefulSet",
+      "name": "db",
+      "uid": "u-c",
+      "controller": true
+     },
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "other",
+      "uid": "u-d",
+      "controller": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "owner-unicode",
+    "namespace": "default",
+    "uid": "uid-edge-12",
+    "creationTimestamp": "2025-06-01T10:29:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "example.com/v1",
+      "kind": "Café",
+      "name": "éclair",
+      "uid": "u-e",
+      "controller": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-13",
+    "creationTimestamp": "2025-06-01T10:28:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-16",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 3,
+    "readyReplicas": 2,
+    "availableReplicas": 2,
+    "fullyLabeledReplicas": 3
+   },
+   "metadata": {
+    "name": "full-status",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 0,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "scaled-to-zero",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": []
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "no-containers",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "a",
+        "image": "a:1"
+       },
+       {
+        "name": "b",
+        "image": "b:2"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "i1",
+        "image": "i:1"
+       },
+       {
+        "name": "i2",
+        "image": "j:2"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "init-containers",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "serviceAccount": "legacy-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "deprecated-service-account",
+    "namespace": "default",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "serviceAccountName": "new-sa",
+      "serviceAccount": "old-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "both-service-accounts",
+    "namespace": "default",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "1": "one",
+      "a": "1",
+      "b": "2"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "multi-selector",
+    "namespace": "default",
+    "uid": "uid-edge-8",
+    "creationTimestamp": "2025-06-01T10:33:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "owner-not-controller",
+    "namespace": "default",
+    "uid": "uid-edge-9",
+    "creationTimestamp": "2025-06-01T10:32:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "cm",
+      "uid": "u-a",
+      "controller": false
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ],
+      "serviceAccountName": "Zeta-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 10,
+    "readyReplicas": 10
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T07:14:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web",
+      "uid": "uid-owner-1",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1,
+    "availableReplicas": 1
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T12:11:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web",
+      "uid": "uid-owner-1",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 0,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "a",
+        "image": "busybox"
+       },
+       {
+        "name": "b",
+        "image": "alpine:3.19"
+       },
+       {
+        "name": "c",
+        "image": "registry.example.com:5000/x/y:2"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T05:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 2,
+    "readyReplicas": 2
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "not-controller",
+      "uid": "uid-owner-4"
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 10
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T23:07:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web",
+      "uid": "uid-owner-1",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 2,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "a",
+        "image": "busybox"
+       },
+       {
+        "name": "b",
+        "image": "alpine:3.19"
+       },
+       {
+        "name": "c",
+        "image": "registry.example.com:5000/x/y:2"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ],
+      "serviceAccountName": "Zeta-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 2,
+    "readyReplicas": 1
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T13:24:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    },
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web",
+      "uid": "uid-owner-1",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "registry.example.com/team/app:v1"
+       },
+       {
+        "name": "sidecar",
+        "image": "envoy:1.28"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T06:32:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 2,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-06-01T08:16:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "not-controller",
+      "uid": "uid-owner-4"
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "Zeta-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T04:54:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 10,
+    "readyReplicas": 1,
+    "fullyLabeledReplicas": 10
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T10:16:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "serviceAccountName": "Zeta-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 10
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-29T18:44:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 10
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T16:26:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web",
+      "uid": "uid-owner-1",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 3,
+    "readyReplicas": 3,
+    "availableReplicas": 3,
+    "fullyLabeledReplicas": 3
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T23:10:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "name": "nightly",
+      "uid": "uid-owner-2",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 2,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "registry.example.com/team/app:v1"
+       },
+       {
+        "name": "sidecar",
+        "image": "envoy:1.28"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T17:53:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "argoproj.io/v1alpha1",
+      "kind": "Rollout",
+      "name": "canary",
+      "uid": "uid-owner-3",
+      "controller": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "registry.example.com/team/app:v1"
+       },
+       {
+        "name": "sidecar",
+        "image": "envoy:1.28"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 1
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T15:44:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "argoproj.io/v1alpha1",
+      "kind": "Rollout",
+      "name": "canary",
+      "uid": "uid-owner-3",
+      "controller": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-14",
+    "creationTimestamp": "2025-06-01T10:27:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T14:40:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "not-controller",
+      "uid": "uid-owner-4"
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 2,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "registry.example.com/team/app:v1"
+       },
+       {
+        "name": "sidecar",
+        "image": "envoy:1.28"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0,
+    "fullyLabeledReplicas": 0
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-29T20:07:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    },
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "not-controller",
+      "uid": "uid-owner-4"
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "registry.example.com/team/app:v1"
+       },
+       {
+        "name": "sidecar",
+        "image": "envoy:1.28"
+       }
+      ],
+      "serviceAccountName": "Zeta-sa"
+     }
+    }
+   },
+   "status": {
+    "replicas": 3,
+    "readyReplicas": 1,
+    "availableReplicas": 1
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T17:37:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "argoproj.io/v1alpha1",
+      "kind": "Rollout",
+      "name": "canary",
+      "uid": "uid-owner-3",
+      "controller": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T15:30:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "migrate",
+        "image": "registry.example.com/team/migrate:v3"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T20:12:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "name": "not-controller",
+      "uid": "uid-owner-4"
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "c",
+        "image": "quay.io/org/tool@sha256:0123abcd"
+       }
+      ],
+      "serviceAccountName": "default"
+     }
+    }
+   },
+   "status": {
+    "replicas": 10,
+    "readyReplicas": 10
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T01:19:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    },
+    "ownerReferences": [
+     {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "name": "nightly",
+      "uid": "uid-owner-2",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "app",
+        "image": "nginx:1.25"
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 0
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-15",
+    "creationTimestamp": "2025-06-01T10:26:00Z"
+   }
+  },
+  {
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "a",
+        "image": "busybox"
+       },
+       {
+        "name": "b",
+        "image": "alpine:3.19"
+       },
+       {
+        "name": "c",
+        "image": "registry.example.com:5000/x/y:2"
+       }
+      ],
+      "initContainers": [
+       {
+        "name": "init",
+        "image": "busybox:1.36"
+       }
+      ],
+      "serviceAccountName": "builder"
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1,
+    "availableReplicas": 1
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T18:10:00Z",
+    "ownerReferences": [
+     {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "web",
+      "uid": "uid-owner-1",
+      "controller": true,
+      "blockOwnerDeletion": true
+     }
+    ]
+   }
+  }
+ ],
+ "noSort": ["uid-edge-16"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "desired": 1,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-31T22:42:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "Prod",
+   "desired": 0,
+   "current": 1,
+   "ready": 0,
+   "age": "2025-05-31T12:20:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "Prod",
+   "desired": 3,
+   "current": 3,
+   "ready": 1,
+   "age": "2025-05-31T21:10:00Z",
+   "controlledBy": "Rollout",
+   "controllerRef": "{\"kind\":\"Rollout\",\"name\":\"canary\",\"uid\":\"uid-owner-3\",\"apiVersion\":\"argoproj.io/v1alpha1\"}"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "Prod",
+   "desired": 10,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-31T05:07:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "Prod",
+   "desired": 0,
+   "current": 10,
+   "ready": 10,
+   "age": "2025-05-30T14:13:00Z",
+   "controlledBy": "CronJob",
+   "controllerRef": "{\"kind\":\"CronJob\",\"name\":\"nightly\",\"uid\":\"uid-owner-2\",\"apiVersion\":\"batch/v1\"}"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "Prod",
+   "desired": 5,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-29T21:23:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "Prod",
+   "desired": 0,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-31T17:37:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "desired": 5,
+   "current": 5,
+   "ready": 0,
+   "age": "2025-05-30T06:17:00Z",
+   "controlledBy": "CronJob",
+   "controllerRef": "{\"kind\":\"CronJob\",\"name\":\"nightly\",\"uid\":\"uid-owner-2\",\"apiVersion\":\"batch/v1\"}"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "default",
+   "desired": 3,
+   "current": 3,
+   "ready": 3,
+   "age": "2025-06-01T11:47:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "default",
+   "desired": 1,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-31T09:11:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-1": {
+   "name": "no-replicas",
+   "namespace": "default",
+   "desired": 0,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:40:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-10": {
+   "name": "owner-second-is-controller",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:31:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web-2\",\"uid\":\"u-b\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-edge-11": {
+   "name": "owner-two-controllers",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:30:00Z",
+   "controlledBy": "StatefulSet",
+   "controllerRef": "{\"kind\":\"StatefulSet\",\"name\":\"db\",\"uid\":\"u-c\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-edge-12": {
+   "name": "owner-unicode",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:29:00Z",
+   "controlledBy": "Café",
+   "controllerRef": "{\"kind\":\"Café\",\"name\":\"éclair\",\"uid\":\"u-e\",\"apiVersion\":\"example.com/v1\"}"
+  },
+  "uid-edge-13": {
+   "name": "annotated",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:28:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-16": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": null,
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-2": {
+   "name": "full-status",
+   "namespace": "default",
+   "desired": 3,
+   "current": 3,
+   "ready": 2,
+   "age": "2025-06-01T10:39:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-3": {
+   "name": "scaled-to-zero",
+   "namespace": "default",
+   "desired": 0,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:38:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-4": {
+   "name": "no-containers",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:37:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-5": {
+   "name": "init-containers",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:36:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-6": {
+   "name": "deprecated-service-account",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:35:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-7": {
+   "name": "both-service-accounts",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:34:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-8": {
+   "name": "multi-selector",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:33:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-9": {
+   "name": "owner-not-controller",
+   "namespace": "default",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:32:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "kube-system",
+   "desired": 10,
+   "current": 10,
+   "ready": 10,
+   "age": "2025-06-01T07:14:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "kube-system",
+   "desired": 0,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-31T12:11:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "kube-system",
+   "desired": 0,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-31T05:35:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "kube-system",
+   "desired": 0,
+   "current": 2,
+   "ready": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "kube-system",
+   "desired": 10,
+   "current": 10,
+   "ready": 0,
+   "age": "2025-05-29T23:07:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "prod",
+   "desired": 2,
+   "current": 2,
+   "ready": 1,
+   "age": "2025-05-30T13:24:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "prod",
+   "desired": 0,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-06-01T06:32:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "team-a",
+   "desired": 2,
+   "current": 1,
+   "ready": 0,
+   "age": "2025-06-01T08:16:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "team-a",
+   "desired": 0,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-31T04:54:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "team-a",
+   "desired": 10,
+   "current": 10,
+   "ready": 1,
+   "age": "2025-05-31T10:16:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "team-a",
+   "desired": 10,
+   "current": 10,
+   "ready": 0,
+   "age": "2025-05-29T18:44:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "team-a",
+   "desired": 10,
+   "current": 10,
+   "ready": 0,
+   "age": "2025-05-30T16:26:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "team-a",
+   "desired": 3,
+   "current": 3,
+   "ready": 3,
+   "age": "2025-05-30T23:10:00Z",
+   "controlledBy": "CronJob",
+   "controllerRef": "{\"kind\":\"CronJob\",\"name\":\"nightly\",\"uid\":\"uid-owner-2\",\"apiVersion\":\"batch/v1\"}"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "team-a",
+   "desired": 2,
+   "current": 1,
+   "ready": 0,
+   "age": "2025-05-30T17:53:00Z",
+   "controlledBy": "Rollout",
+   "controllerRef": "{\"kind\":\"Rollout\",\"name\":\"canary\",\"uid\":\"uid-owner-3\",\"apiVersion\":\"argoproj.io/v1alpha1\"}"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "team-a",
+   "desired": 3,
+   "current": 1,
+   "ready": 0,
+   "age": "2025-05-31T15:44:00Z",
+   "controlledBy": "Rollout",
+   "controllerRef": "{\"kind\":\"Rollout\",\"name\":\"canary\",\"uid\":\"uid-owner-3\",\"apiVersion\":\"argoproj.io/v1alpha1\"}"
+  },
+  "uid-edge-14": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:27:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "team-b",
+   "desired": 10,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-31T14:40:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "team-b",
+   "desired": 2,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-29T20:07:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "team-b",
+   "desired": 3,
+   "current": 3,
+   "ready": 1,
+   "age": "2025-05-30T17:37:00Z",
+   "controlledBy": "Rollout",
+   "controllerRef": "{\"kind\":\"Rollout\",\"name\":\"canary\",\"uid\":\"uid-owner-3\",\"apiVersion\":\"argoproj.io/v1alpha1\"}"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "team-b",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-05-31T15:30:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "team-b",
+   "desired": 1,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-30T20:12:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "team-b",
+   "desired": 10,
+   "current": 10,
+   "ready": 10,
+   "age": "2025-05-31T01:19:00Z",
+   "controlledBy": "CronJob",
+   "controllerRef": "{\"kind\":\"CronJob\",\"name\":\"nightly\",\"uid\":\"uid-owner-2\",\"apiVersion\":\"batch/v1\"}"
+  },
+  "uid-edge-15": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": "2025-06-01T10:26:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "étude",
+   "desired": 1,
+   "current": 1,
+   "ready": 1,
+   "age": "2025-05-31T18:10:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T22:42:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "Prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T12:20:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "Prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T21:10:00Z",
+   "controlledBy": "Rollout",
+   "controllerRef": "{\"kind\":\"Rollout\",\"name\":\"canary\",\"uid\":\"uid-owner-3\",\"apiVersion\":\"argoproj.io/v1alpha1\"}"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "Prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T05:07:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "Prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T14:13:00Z",
+   "controlledBy": "CronJob",
+   "controllerRef": "{\"kind\":\"CronJob\",\"name\":\"nightly\",\"uid\":\"uid-owner-2\",\"apiVersion\":\"batch/v1\"}"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "Prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-29T21:23:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "Prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T17:37:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T06:17:00Z",
+   "controlledBy": "CronJob",
+   "controllerRef": "{\"kind\":\"CronJob\",\"name\":\"nightly\",\"uid\":\"uid-owner-2\",\"apiVersion\":\"batch/v1\"}"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T11:47:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T09:11:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-1": {
+   "name": "no-replicas",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:40:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-10": {
+   "name": "owner-second-is-controller",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:31:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web-2\",\"uid\":\"u-b\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-edge-11": {
+   "name": "owner-two-controllers",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:30:00Z",
+   "controlledBy": "StatefulSet",
+   "controllerRef": "{\"kind\":\"StatefulSet\",\"name\":\"db\",\"uid\":\"u-c\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-edge-12": {
+   "name": "owner-unicode",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:29:00Z",
+   "controlledBy": "Café",
+   "controllerRef": "{\"kind\":\"Café\",\"name\":\"éclair\",\"uid\":\"u-e\",\"apiVersion\":\"example.com/v1\"}"
+  },
+  "uid-edge-13": {
+   "name": "annotated",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:28:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-16": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-2": {
+   "name": "full-status",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:39:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-3": {
+   "name": "scaled-to-zero",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:38:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-4": {
+   "name": "no-containers",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:37:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-5": {
+   "name": "init-containers",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:36:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-6": {
+   "name": "deprecated-service-account",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:35:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-7": {
+   "name": "both-service-accounts",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:34:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-8": {
+   "name": "multi-selector",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:33:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-edge-9": {
+   "name": "owner-not-controller",
+   "namespace": "default",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:32:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "kube-system",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T07:14:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "kube-system",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T12:11:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "kube-system",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T05:35:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "kube-system",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "kube-system",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-29T23:07:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T13:24:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T06:32:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T10:00:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T08:16:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T04:54:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T10:16:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-29T18:44:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T16:26:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T23:10:00Z",
+   "controlledBy": "CronJob",
+   "controllerRef": "{\"kind\":\"CronJob\",\"name\":\"nightly\",\"uid\":\"uid-owner-2\",\"apiVersion\":\"batch/v1\"}"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T17:53:00Z",
+   "controlledBy": "Rollout",
+   "controllerRef": "{\"kind\":\"Rollout\",\"name\":\"canary\",\"uid\":\"uid-owner-3\",\"apiVersion\":\"argoproj.io/v1alpha1\"}"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T15:44:00Z",
+   "controlledBy": "Rollout",
+   "controllerRef": "{\"kind\":\"Rollout\",\"name\":\"canary\",\"uid\":\"uid-owner-3\",\"apiVersion\":\"argoproj.io/v1alpha1\"}"
+  },
+  "uid-edge-14": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:27:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "team-b",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T14:40:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "team-b",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-29T20:07:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "team-b",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T17:37:00Z",
+   "controlledBy": "Rollout",
+   "controllerRef": "{\"kind\":\"Rollout\",\"name\":\"canary\",\"uid\":\"uid-owner-3\",\"apiVersion\":\"argoproj.io/v1alpha1\"}"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "team-b",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T15:30:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "team-b",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-30T20:12:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "team-b",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T01:19:00Z",
+   "controlledBy": "CronJob",
+   "controllerRef": "{\"kind\":\"CronJob\",\"name\":\"nightly\",\"uid\":\"uid-owner-2\",\"apiVersion\":\"batch/v1\"}"
+  },
+  "uid-edge-15": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-06-01T10:26:00Z",
+   "controlledBy": "",
+   "controllerRef": ""
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "étude",
+   "desired": "",
+   "current": "",
+   "ready": "",
+   "age": "2025-05-31T18:10:00Z",
+   "controlledBy": "Deployment",
+   "controllerRef": "{\"kind\":\"Deployment\",\"name\":\"web\",\"uid\":\"uid-owner-1\",\"apiVersion\":\"apps/v1\"}"
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 1,
+   "ready": 1,
+   "age": 13.3,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 1,
+   "ready": 0,
+   "age": 23.666666666666668,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 3,
+   "ready": 1,
+   "age": 14.833333333333334,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "desired": 10,
+   "current": 1,
+   "ready": 1,
+   "age": 30.883333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 10,
+   "ready": 10,
+   "age": 45.78333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "desired": 5,
+   "current": 1,
+   "ready": 1,
+   "age": 62.61666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 1,
+   "ready": 1,
+   "age": 18.383333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "desired": 5,
+   "current": 5,
+   "ready": 0,
+   "age": 53.71666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 3,
+   "ready": 3,
+   "age": 0.21666666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 1,
+   "ready": 1,
+   "age": 26.816666666666666,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 0,
+   "ready": 0,
+   "age": 1.3333333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-10": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.4833333333333334,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-11": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.5,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-12": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.5166666666666666,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-13": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.5333333333333334,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-16": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": null,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 3,
+   "ready": 2,
+   "age": 1.35,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 0,
+   "ready": 0,
+   "age": 1.3666666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.3833333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.4,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.4166666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.4333333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.45,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-9": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.4666666666666666,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "desired": 10,
+   "current": 10,
+   "ready": 10,
+   "age": 4.766666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 1,
+   "ready": 1,
+   "age": 23.816666666666666,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 0,
+   "ready": 0,
+   "age": 30.416666666666668,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 2,
+   "ready": 2,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "desired": 10,
+   "current": 10,
+   "ready": 0,
+   "age": 60.88333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "desired": 2,
+   "current": 2,
+   "ready": 1,
+   "age": 46.6,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 1,
+   "ready": 1,
+   "age": 5.466666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 0,
+   "ready": 0,
+   "age": 50,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "desired": 2,
+   "current": 1,
+   "ready": 0,
+   "age": 3.7333333333333334,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "desired": 0,
+   "current": 0,
+   "ready": 0,
+   "age": 31.1,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "desired": 10,
+   "current": 10,
+   "ready": 1,
+   "age": 25.733333333333334,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "desired": 10,
+   "current": 10,
+   "ready": 0,
+   "age": 65.26666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "desired": 10,
+   "current": 10,
+   "ready": 0,
+   "age": 43.56666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 3,
+   "ready": 3,
+   "age": 36.833333333333336,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "desired": 2,
+   "current": 1,
+   "ready": 0,
+   "age": 42.11666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 1,
+   "ready": 0,
+   "age": 20.266666666666666,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-14": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.55,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "desired": 10,
+   "current": 1,
+   "ready": 1,
+   "age": 21.333333333333332,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "desired": 2,
+   "current": 0,
+   "ready": 0,
+   "age": 63.88333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "desired": 3,
+   "current": 3,
+   "ready": 1,
+   "age": 42.38333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 20.5,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 1,
+   "ready": 1,
+   "age": 39.8,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "desired": 10,
+   "current": 10,
+   "ready": 10,
+   "age": 34.68333333333333,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-edge-15": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 0,
+   "ready": 0,
+   "age": 1.5666666666666667,
+   "controlledBy": null,
+   "controllerRef": null
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "desired": 1,
+   "current": 1,
+   "ready": 1,
+   "age": 17.833333333333332,
+   "controlledBy": null,
+   "controllerRef": null
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-edge-13","uid-0003","uid-0005","uid-0006","uid-edge-7","uid-0020","uid-0021","uid-0013","uid-edge-6","uid-0029","uid-0019","uid-0018","uid-0017","uid-edge-2","uid-edge-5","uid-0009","uid-0010","uid-0012","uid-0011","uid-edge-8","uid-0031","uid-edge-4","uid-edge-1","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0026","uid-0027","uid-edge-14","uid-edge-15","uid-edge-3","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-3","uid-edge-14","uid-edge-15","uid-0027","uid-0026","uid-edge-12","uid-edge-11","uid-edge-10","uid-edge-9","uid-edge-1","uid-edge-4","uid-0031","uid-edge-8","uid-0011","uid-0012","uid-0010","uid-0009","uid-edge-5","uid-edge-2","uid-0017","uid-0018","uid-0019","uid-0029","uid-edge-6","uid-0013","uid-0021","uid-0020","uid-edge-7","uid-0006","uid-0005","uid-0003","uid-edge-13","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0000","uid-0009","uid-0025","uid-0007","uid-0013","uid-0018","uid-0024","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-0022","uid-0006","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0016","uid-0011","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-14","uid-0004","uid-0031","uid-0020","uid-0014","uid-0028","uid-0029","uid-0027","uid-0021","uid-edge-15","uid-0015","uid-0001","uid-0023","uid-0017","uid-0008","uid-0002","uid-0010"],
+   "desc": ["uid-0010","uid-edge-15","uid-0015","uid-0001","uid-0023","uid-0017","uid-0008","uid-0002","uid-edge-14","uid-0004","uid-0031","uid-0020","uid-0014","uid-0028","uid-0029","uid-0027","uid-0021","uid-0016","uid-0011","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-0022","uid-0006","uid-0000","uid-0009","uid-0025","uid-0007","uid-0013","uid-0018","uid-0024"]
+  },
+  "desired": {
+   "asc": ["uid-edge-1","uid-edge-3","uid-0016","uid-0025","uid-0007","uid-0005","uid-0019","uid-0014","uid-0018","uid-0026","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-0000","uid-0010","uid-0015","uid-0022","uid-0017","uid-0004","uid-0029","uid-0011","uid-0002","uid-0012","uid-edge-2","uid-0009","uid-0031","uid-0028","uid-0008","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0006","uid-0024","uid-0003","uid-0001","uid-0020","uid-0013","uid-0023","uid-0027","uid-0030","uid-0021"],
+   "desc": ["uid-0003","uid-0001","uid-0020","uid-0013","uid-0023","uid-0027","uid-0030","uid-0021","uid-0006","uid-0024","uid-0012","uid-edge-2","uid-0009","uid-0031","uid-0028","uid-0008","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0029","uid-0011","uid-0002","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-0000","uid-0010","uid-0015","uid-0022","uid-0017","uid-edge-1","uid-edge-3","uid-0016","uid-0025","uid-0007","uid-0005","uid-0019","uid-0014","uid-0018","uid-0026"]
+  },
+  "current": {
+   "asc": ["uid-edge-1","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-0015","uid-0019","uid-0014","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002","uid-0004","uid-0016","uid-0000","uid-0010","uid-0025","uid-0031","uid-0001","uid-0007","uid-0005","uid-0022","uid-0013","uid-0017","uid-0029","uid-0024","uid-0011","uid-0026","uid-0012","uid-edge-2","uid-0009","uid-0028","uid-0008","uid-0006","uid-0003","uid-0020","uid-0023","uid-0027","uid-0018","uid-0030","uid-0021"],
+   "desc": ["uid-0003","uid-0020","uid-0023","uid-0027","uid-0018","uid-0030","uid-0021","uid-0006","uid-0012","uid-edge-2","uid-0009","uid-0028","uid-0008","uid-0011","uid-0026","uid-0004","uid-0016","uid-0000","uid-0010","uid-0025","uid-0031","uid-0001","uid-0007","uid-0005","uid-0022","uid-0013","uid-0017","uid-0029","uid-0024","uid-edge-1","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-0015","uid-0019","uid-0014","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002"]
+  },
+  "ready": {
+   "asc": ["uid-edge-1","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-0004","uid-0031","uid-0015","uid-0007","uid-0019","uid-0014","uid-0029","uid-0027","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0006","uid-0030","uid-0002","uid-0021","uid-0016","uid-0000","uid-0009","uid-0010","uid-0025","uid-0001","uid-0005","uid-0020","uid-0022","uid-0013","uid-0017","uid-0008","uid-0011","uid-0024","uid-edge-2","uid-0026","uid-0012","uid-0028","uid-0003","uid-0023","uid-0018"],
+   "desc": ["uid-0003","uid-0023","uid-0018","uid-0012","uid-0028","uid-edge-2","uid-0026","uid-0016","uid-0000","uid-0009","uid-0010","uid-0025","uid-0001","uid-0005","uid-0020","uid-0022","uid-0013","uid-0017","uid-0008","uid-0011","uid-0024","uid-edge-1","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-0004","uid-0031","uid-0015","uid-0007","uid-0019","uid-0014","uid-0029","uid-0027","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0006","uid-0030","uid-0002","uid-0021"]
+  },
+  "age": {
+   "asc": ["uid-0021","uid-0002","uid-0024","uid-0030","uid-0006","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0018","uid-0027","uid-0008","uid-0029","uid-0017","uid-0028","uid-0023","uid-0014","uid-0013","uid-0019","uid-0022","uid-0020","uid-0005","uid-0007","uid-0001","uid-0015","uid-0031","uid-0025","uid-0010","uid-0009","uid-0000","uid-0016","uid-0003","uid-0004","uid-edge-15","uid-edge-14","uid-edge-13","uid-edge-12","uid-edge-11","uid-edge-10","uid-edge-9","uid-edge-8","uid-edge-7","uid-edge-6","uid-edge-5","uid-edge-4","uid-edge-3","uid-edge-2","uid-edge-1","uid-0012"],
+   "desc": ["uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-0004","uid-0003","uid-0016","uid-0000","uid-0009","uid-0010","uid-0025","uid-0031","uid-0015","uid-0001","uid-0007","uid-0005","uid-0020","uid-0022","uid-0019","uid-0013","uid-0014","uid-0023","uid-0028","uid-0017","uid-0029","uid-0008","uid-0027","uid-0018","uid-0011","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0006","uid-0030","uid-0024","uid-0002","uid-0021"]
+  },
+  "controlledBy": {
+   "asc": ["uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-13","uid-edge-14","uid-edge-15","uid-0004","uid-0016","uid-0025","uid-0015","uid-0001","uid-0007","uid-0020","uid-0022","uid-0019","uid-0013","uid-0014","uid-0017","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002","uid-0021","uid-edge-12","uid-0023","uid-0028","uid-0018","uid-0006","uid-edge-10","uid-0003","uid-0000","uid-0010","uid-0005","uid-0027","uid-0011","uid-0030","uid-0024","uid-0009","uid-0031","uid-0029","uid-0008","uid-edge-11"],
+   "desc": ["uid-edge-11","uid-0009","uid-0031","uid-0029","uid-0008","uid-edge-10","uid-0003","uid-0000","uid-0010","uid-0005","uid-0027","uid-0011","uid-0030","uid-0024","uid-0023","uid-0028","uid-0018","uid-0006","uid-edge-12","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-13","uid-edge-14","uid-edge-15","uid-0004","uid-0016","uid-0025","uid-0015","uid-0001","uid-0007","uid-0020","uid-0022","uid-0019","uid-0013","uid-0014","uid-0017","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002","uid-0021"]
+  },
+  "controllerRef": {
+   "asc": ["uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-13","uid-edge-14","uid-edge-15","uid-0004","uid-0016","uid-0025","uid-0015","uid-0001","uid-0007","uid-0020","uid-0022","uid-0019","uid-0013","uid-0014","uid-0017","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002","uid-0021","uid-edge-12","uid-0023","uid-0028","uid-0018","uid-0006","uid-0003","uid-0000","uid-0010","uid-0005","uid-0027","uid-0011","uid-0030","uid-0024","uid-edge-10","uid-0009","uid-0031","uid-0029","uid-0008","uid-edge-11"],
+   "desc": ["uid-edge-11","uid-0009","uid-0031","uid-0029","uid-0008","uid-edge-10","uid-0003","uid-0000","uid-0010","uid-0005","uid-0027","uid-0011","uid-0030","uid-0024","uid-0023","uid-0028","uid-0018","uid-0006","uid-edge-12","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-13","uid-edge-14","uid-edge-15","uid-0004","uid-0016","uid-0025","uid-0015","uid-0001","uid-0007","uid-0020","uid-0022","uid-0019","uid-0013","uid-0014","uid-0017","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002","uid-0021"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0006","uid-0003","uid-0005","uid-0004"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0018","uid-0006","uid-0003","uid-0005","uid-0019","uid-0016","uid-0004","uid-0017"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0012","uid-0011"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0007","uid-0005","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0022","uid-0020","uid-0021"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0022","uid-0021"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0006","uid-0003","uid-0005","uid-0004"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0009","uid-0008","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000","uid-edge-13"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-edge-13","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0006","uid-0005"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000","uid-edge-3"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0009","uid-0003","uid-0016","uid-tie-00","uid-0001","uid-0023"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0006","uid-edge-7","uid-0003","uid-0005"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0016","uid-0001","uid-0002"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0016","uid-0014","uid-0001","uid-0002","uid-0015"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0016","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000","uid-edge-13"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0006","uid-0003","uid-0005","uid-0004","uid-0001","uid-0002"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-14","uid-edge-15"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0007","uid-0018","uid-0024","uid-0011","uid-0014","uid-0002","uid-0023"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0007","uid-0018","uid-0024","uid-0011","uid-0014","uid-0002","uid-0023"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-13"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-13"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-14"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0024","uid-0025","uid-0022","uid-tie-12","uid-0021","uid-0027"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0024","uid-0025","uid-0022","uid-tie-12","uid-0021","uid-0027"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0006","uid-0005","uid-tie-09","uid-tie-10","uid-0004"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0006","uid-0003","uid-0005"]
+  },
+  {
+   "query": "image:nginx",
+   "matches": ["uid-0018","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0005","uid-0026","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-edge-14","uid-0001","uid-edge-15"]
+  },
+  {
+   "query": "images:envoy",
+   "matches": ["uid-0009","uid-0013","uid-0016","uid-0029","uid-0031","uid-0002","uid-0008"]
+  },
+  {
+   "query": "image:busybox",
+   "matches": ["uid-0000","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-0005","uid-0019","uid-0011","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0014","uid-0010"]
+  },
+  {
+   "query": "image:/^registry\\.example\\.com\\//",
+   "matches": ["uid-0009","uid-0013","uid-0016","uid-0029","uid-0031","uid-0002","uid-0008"]
+  },
+  {
+   "query": "container:sidecar",
+   "matches": ["uid-0009","uid-0013","uid-0016","uid-0029","uid-0031","uid-0002","uid-0008"]
+  },
+  {
+   "query": "containers:app",
+   "matches": ["uid-0009","uid-0013","uid-0018","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0005","uid-0026","uid-0016","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-edge-15"]
+  },
+  {
+   "query": "container:init",
+   "matches": ["uid-0000","uid-0024","uid-0006","uid-0012","uid-0022","uid-0005","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0014","uid-0010"]
+  },
+  {
+   "query": "serviceaccount:builder",
+   "matches": ["uid-0000","uid-0009","uid-0022","uid-0005","uid-0019","uid-0004","uid-0029","uid-0001","uid-0017","uid-0010"]
+  },
+  {
+   "query": "sa:/^Zeta/i",
+   "matches": ["uid-0013","uid-0018","uid-0003","uid-0011","uid-0014","uid-0021","uid-0008"]
+  },
+  {
+   "query": "serviceaccount:legacy-sa",
+   "matches": ["uid-edge-6"]
+  },
+  {
+   "query": "selector:app=web",
+   "matches": ["uid-0007","uid-0018","uid-0024","uid-0025","uid-0006","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-0005","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0020","uid-0021","uid-0031","uid-edge-14","uid-0001","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "query": "sel:/tier=/",
+   "matches": ["uid-0007","uid-0024","uid-0025","uid-0006","uid-0005","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0001","uid-0023"]
+  },
+  {
+   "query": "selector:10=ten",
+   "matches": ["uid-0009","uid-0013","uid-0003","uid-0011","uid-0028","uid-0029","uid-0008","uid-0015"]
+  },
+  {
+   "query": "selector:\"1=one a=1\"",
+   "matches": ["uid-edge-8"]
+  },
+  {
+   "query": "controlledby:deployment",
+   "matches": ["uid-0000","uid-0024","uid-edge-10","uid-0003","uid-0005","uid-0030","uid-0011","uid-0027","uid-0010"]
+  },
+  {
+   "query": "controller:Rollout",
+   "matches": ["uid-0009","uid-0029","uid-0031","uid-0008"]
+  },
+  {
+   "query": "owner:/^Cron/",
+   "matches": ["uid-0018","uid-0006","uid-0028","uid-0023"]
+  },
+  {
+   "query": "controlledby:ConfigMap",
+   "matches": []
+  },
+  {
+   "query": "controllername:web",
+   "matches": ["uid-0000","uid-0024","uid-edge-10","uid-0003","uid-0005","uid-0030","uid-0011","uid-0027","uid-0010"]
+  },
+  {
+   "query": "ownername:/^c/",
+   "matches": ["uid-0009","uid-0029","uid-0031","uid-0008"]
+  },
+  {
+   "query": "controllername:éclair",
+   "matches": ["uid-edge-12"]
+  },
+  {
+   "query": "replicas:3",
+   "matches": ["uid-0009","uid-0012","uid-edge-2","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0028","uid-0031","uid-0008"]
+  },
+  {
+   "query": "desired:0",
+   "matches": ["uid-0007","uid-0013","uid-0018","uid-0025","uid-edge-1","uid-edge-3","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0016","uid-0014","uid-0020","uid-0021","uid-0027","uid-0001","uid-0023"]
+  },
+  {
+   "query": "current:1",
+   "matches": ["uid-0000","uid-0007","uid-0013","uid-0018","uid-0024","uid-0025","uid-0022","uid-0003","uid-0005","uid-0030","uid-0016","uid-0004","uid-0020","uid-0021","uid-0027","uid-0029","uid-0031","uid-0001","uid-0017","uid-0023","uid-0010"]
+  },
+  {
+   "query": "currentreplicas:3",
+   "matches": ["uid-0009","uid-0012","uid-edge-2","uid-0028","uid-0008"]
+  },
+  {
+   "query": "ready:0",
+   "matches": ["uid-0007","uid-0018","uid-0006","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0019","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0021","uid-0027","uid-0029","uid-0031","uid-edge-14","uid-0002","uid-0015","uid-0023","uid-edge-15"]
+  },
+  {
+   "query": "readyreplicas:2",
+   "matches": ["uid-edge-2","uid-0026"]
+  },
+  {
+   "query": "available:2",
+   "matches": ["uid-edge-2"]
+  },
+  {
+   "query": "availablereplicas:0",
+   "matches": ["uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0006","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0015","uid-0017","uid-0023","uid-edge-15"]
+  },
+  {
+   "query": "fulllabeled:3",
+   "matches": ["uid-edge-2","uid-0028"]
+  },
+  {
+   "query": "labeled:0",
+   "matches": ["uid-0000","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "query": "image:busybox OR container:init",
+   "matches": ["uid-0000","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-0005","uid-0019","uid-0011","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0014","uid-0010"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-edge-13","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-edge-13","uid-0016","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0009","uid-0013","uid-0018","uid-0006","uid-edge-1","uid-edge-13","uid-edge-16","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0003","uid-0005","uid-0019","uid-0016","uid-tie-00","uid-tie-01","uid-0004","uid-0020","uid-0031","uid-edge-14","uid-0017","uid-0023","uid-edge-15"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0006","uid-edge-7","uid-0003","uid-0005","uid-0004"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0024","uid-0025","uid-0022","uid-tie-12","uid-0021","uid-0027"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0013","uid-0018","uid-0024","uid-0006","uid-0022","uid-0019","uid-0026","uid-0030","uid-0011","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0002","uid-0008","uid-0017","uid-0023"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0025","uid-0022","uid-0003","uid-0005","uid-0016","uid-0004","uid-0020","uid-0031","uid-0001","uid-0015","uid-0010"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0024","uid-0012","uid-0030","uid-0021","uid-0002"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0012","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0016","uid-0004","uid-edge-14","uid-edge-15"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15","uid-0010"]
+  },
+  {
+   "name": "controlledBy select Deployment",
+   "filters": {
+    "controlledBy": {
+     "type": "select",
+     "values": ["Deployment"]
+    }
+   },
+   "matches": ["uid-0000","uid-0024","uid-edge-10","uid-0003","uid-0005","uid-0030","uid-0011","uid-0027","uid-0010"]
+  },
+  {
+   "name": "controlledBy select Deployment|Rollout|",
+   "filters": {
+    "controlledBy": {
+     "type": "select",
+     "values": ["Deployment","Rollout",""]
+    }
+   },
+   "matches": ["uid-0000","uid-0007","uid-0009","uid-0013","uid-0024","uid-0025","uid-0012","uid-0022","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0005","uid-0019","uid-0026","uid-0030","uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-edge-15","uid-0010"]
+  },
+  {
+   "name": "controlledBy select ConfigMap",
+   "filters": {
+    "controlledBy": {
+     "type": "select",
+     "values": ["ConfigMap"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "desired select 3",
+   "filters": {
+    "desired": {
+     "type": "select",
+     "values": ["3"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "namespace select prod",
+   "filters": {
+    "namespace": {
+     "type": "select",
+     "values": ["prod"]
+    }
+   },
+   "matches": ["uid-0011","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0004","uid-0014","uid-0020","uid-0021","uid-0027","uid-0028","uid-0029","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0008","uid-0015","uid-0017","uid-0023","uid-edge-15"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0022","uid-edge-1","uid-edge-13","uid-edge-16","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0003","uid-0005","uid-0019","uid-0016","uid-tie-00","uid-tie-01","uid-0004","uid-0020","uid-0021","uid-0031","uid-edge-14","uid-0001","uid-0002","uid-0017","uid-0023","uid-edge-15"]
+  },
+  {
+   "name": "desired numeric",
+   "filters": {
+    "desired": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 3
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0009","uid-0013","uid-0024","uid-0006","uid-0012","uid-edge-2","uid-0003","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0020","uid-0021","uid-0027","uid-0028","uid-0031","uid-0001","uid-0008","uid-0023"]
+  },
+  {
+   "name": "ready numeric",
+   "filters": {
+    "ready": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0007","uid-0006","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-16","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0019","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0021","uid-0027","uid-0029","uid-0031","uid-edge-14","uid-0002","uid-0015","uid-edge-15"]
+  },
+  {
+   "name": "controlledBy regex",
+   "filters": {
+    "controlledBy": {
+     "type": "regex",
+     "conditions": ["^Dep","Roll"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0009","uid-0024","uid-edge-10","uid-0003","uid-0005","uid-0030","uid-0011","uid-0027","uid-0029","uid-0031","uid-0008","uid-0010"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0009","uid-0013","uid-0018","uid-0024","uid-0025","uid-0006","uid-0022","uid-0005","uid-0019","uid-0016","uid-tie-00","uid-tie-01","uid-0020","uid-0021","uid-0031","uid-0001","uid-0002","uid-0017","uid-0023"]
+  }
+ ],
+ "uniqueValues": {
+  "desired": null,
+  "current": null,
+  "ready": null,
+  "controlledBy": {
+   "values": ["Café","CronJob","Deployment","Rollout","StatefulSet"],
+   "counts": {
+    "Deployment": 9,
+    "Rollout": 4,
+    "CronJob": 4,
+    "StatefulSet": 1,
+    "Café": 1
+   }
+  }
+ }
+}

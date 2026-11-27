@@ -9,6 +9,7 @@ import (
 
 // recordingEmitter captures emitted events for assertions.
 type recordingEmitter struct {
+	mu    sync.Mutex
 	calls []emitCall
 }
 
@@ -18,6 +19,8 @@ type emitCall struct {
 }
 
 func (r *recordingEmitter) Emit(name string, data ...interface{}) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.calls = append(r.calls, emitCall{name: name, data: data})
 }
 

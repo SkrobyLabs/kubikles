@@ -5,6 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"kubikles/pkg/k8s"
 )
 
 // ListRequestStats contains statistics about list requests
@@ -42,6 +44,13 @@ type ListRequestManager struct {
 	// See: https://github.com/golang/go/issues/34944
 	cancellationEnabled atomic.Bool
 
+	// Outcomes of recently finished lists, keyed by request ID. Lets the
+	// frontend learn a list's resourceVersion (to anchor a watch) and whether
+	// its items were streamed as pages instead of returned.
+	outcomeMu    sync.Mutex
+	outcomes     map[string]storedListOutcome
+	outcomeOrder []string
+
 	// Stats counters
 	total     atomic.Int64
 	pending   atomic.Int64
@@ -57,6 +66,7 @@ const DefaultListRequestTimeout = 60 * time.Second
 func NewListRequestManager() *ListRequestManager {
 	m := &ListRequestManager{
 		requests: make(map[string]*requestEntry),
+		outcomes: make(map[string]storedListOutcome),
 	}
 	m.cancellationEnabled.Store(true) // Enabled by default
 	return m
@@ -147,4 +157,42 @@ func (m *ListRequestManager) GetStats() ListRequestStats {
 		Completed: m.completed.Load(),
 		Canceled:  m.canceled.Load(),
 	}
+}
+
+// Outcomes are only read right after their list completes, so a short TTL and
+// a small cap are enough; the cap bounds memory when a caller never reads them.
+const (
+	listOutcomeTTL  = 60 * time.Second
+	maxListOutcomes = 256
+)
+
+type storedListOutcome struct {
+	outcome k8s.ListOutcome
+	context string
+	expires time.Time
+}
+
+// RecordOutcome stores the outcome of a finished list under its request ID.
+func (m *ListRequestManager) RecordOutcome(requestId, contextName string, outcome k8s.ListOutcome) {
+	m.outcomeMu.Lock()
+	defer m.outcomeMu.Unlock()
+	if _, exists := m.outcomes[requestId]; !exists {
+		m.outcomeOrder = append(m.outcomeOrder, requestId)
+	}
+	m.outcomes[requestId] = storedListOutcome{outcome, contextName, time.Now().Add(listOutcomeTTL)}
+	for len(m.outcomeOrder) > maxListOutcomes {
+		delete(m.outcomes, m.outcomeOrder[0])
+		m.outcomeOrder = m.outcomeOrder[1:]
+	}
+}
+
+// Outcome returns the stored outcome for a request ID, if it is still fresh.
+func (m *ListRequestManager) Outcome(requestId string) (k8s.ListOutcome, string, bool) {
+	m.outcomeMu.Lock()
+	defer m.outcomeMu.Unlock()
+	stored, ok := m.outcomes[requestId]
+	if !ok || time.Now().After(stored.expires) {
+		return k8s.ListOutcome{}, "", false
+	}
+	return stored.outcome, stored.context, true
 }

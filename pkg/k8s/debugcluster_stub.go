@@ -29,3 +29,13 @@ func GetDebugClusterConfig() DebugClusterConfig { return DebugClusterConfig{} }
 
 // RegenerateDebugCluster is a no-op stub for production builds.
 func RegenerateDebugCluster(_ DebugClusterConfig) error { return nil }
+
+// debugNodeMetrics and debugPodMetrics: production builds have no debug cluster, so the metrics
+// calls never reach them; they answer like a cluster without metrics.
+func (c *Client) debugNodeMetrics() (*NodeMetricsResult, error) {
+	return &NodeMetricsResult{Available: false, Error: "metrics not available on debug cluster"}, nil
+}
+
+func (c *Client) debugPodMetrics() (*PodMetricsResult, error) {
+	return &PodMetricsResult{Available: false, Error: "metrics not available on debug cluster"}, nil
+}

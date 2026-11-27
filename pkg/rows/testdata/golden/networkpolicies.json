@@ -1,0 +1,3499 @@
+{
+ "type": "networkpolicies",
+ "now": 1748779200000,
+ "columns": ["name","namespace","podSelector","policyTypes","age"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "podSelector": "select",
+  "policyTypes": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T20:01:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T01:00:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "a": "1",
+      "b": "2",
+      "c": "3",
+      "d": "4"
+     }
+    },
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T20:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T18:09:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "Zed": "z",
+      "app": "w"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T08:56:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "Zed": "z",
+      "app": "w"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-29T22:45:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T02:22:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "a": "1",
+      "b": "2",
+      "c": "3",
+      "d": "4"
+     }
+    },
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T08:24:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "Zed": "z",
+      "app": "w"
+     }
+    },
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T00:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-29T18:22:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchExpressions": [
+      {
+       "key": "app",
+       "operator": "Exists"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "expressions-only",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "a"
+     }
+    },
+    "egress": [
+     {},
+     {},
+     {}
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "egress-three",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "a": "1",
+      "b": "2"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "exactly-two",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "a": "1",
+      "b": "2",
+      "c": "3"
+     }
+    },
+    "ingress": [
+     {}
+    ]
+   },
+   "metadata": {
+    "name": "exactly-three",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "1": "one",
+      "2": "two",
+      "3": "three",
+      "x": "y"
+     }
+    }
+   },
+   "metadata": {
+    "name": "numeric-labels",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "a"
+     }
+    },
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {},
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-9",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T22:31:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "a": "1",
+      "b": "2",
+      "c": "3",
+      "d": "4"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T15:32:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {},
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T08:08:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {},
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T03:49:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T19:48:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T17:28:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {}
+    ]
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-29T23:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "a": "1",
+      "b": "2",
+      "c": "3",
+      "d": "4"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T00:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "egress": [
+     {}
+    ]
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T10:27:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ],
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T17:49:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "Zed": "z",
+      "app": "w"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T06:51:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-06-01T11:21:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "a"
+     }
+    },
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T13:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "env": "prod",
+      "tier": "x"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ],
+    "policyTypes": ["Egress"]
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T14:42:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {},
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-06-01T07:44:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T10:10:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {
+      "to": [
+       {
+        "ipBlock": {
+         "cidr": "10.0.0.0/8"
+        }
+       }
+      ]
+     }
+    ],
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T15:24:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "a"
+     }
+    },
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-8",
+    "creationTimestamp": "2025-06-01T10:33:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "egress": [
+     {}
+    ]
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "étude",
+    "creationTimestamp": "2025-06-01T05:39:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "Zed": "z",
+      "app": "w"
+     }
+    },
+    "ingress": [
+     {}
+    ],
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress"]
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T07:59:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "Zed": "z",
+      "app": "w"
+     }
+    },
+    "egress": [
+     {}
+    ]
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T03:27:00Z"
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "Zed": "z",
+      "app": "w"
+     }
+    },
+    "egress": [
+     {}
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "étude",
+    "creationTimestamp": "2025-06-01T09:41:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "podSelector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "Zed": "z",
+      "app": "w"
+     }
+    },
+    "ingress": [
+     {
+      "from": [
+       {
+        "podSelector": {}
+       }
+      ]
+     },
+     {}
+    ],
+    "policyTypes": ["Ingress","Egress"]
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-29T23:07:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  }
+ ],
+ "noSort": ["uid-edge-9"],
+ "cells": {
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "Prod",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Egress",
+   "age": "2025-05-30T20:01:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "Prod",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T01:00:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "Prod",
+   "podSelector": "a=1, b=2, +2",
+   "policyTypes": "Egress",
+   "age": "2025-05-30T20:38:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "Prod",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-30T18:09:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "Prod",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-31T08:56:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "Prod",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-29T22:45:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "Prod",
+   "podSelector": "app=web",
+   "policyTypes": "Egress",
+   "age": "2025-06-01T02:22:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "podSelector": "a=1, b=2, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-31T08:24:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "default",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T00:35:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "default",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Egress",
+   "age": "2025-05-29T18:22:00Z"
+  },
+  "uid-edge-1": {
+   "name": "expressions-only",
+   "namespace": "default",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "egress-three",
+   "namespace": "default",
+   "podSelector": "app=a",
+   "policyTypes": "Egress",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "exactly-two",
+   "namespace": "default",
+   "podSelector": "a=1, b=2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "exactly-three",
+   "namespace": "default",
+   "podSelector": "a=1, b=2, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "numeric-labels",
+   "namespace": "default",
+   "podSelector": "1=one, 2=two, +2",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "annotated",
+   "namespace": "default",
+   "podSelector": "app=a",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-9": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": null
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "kube-system",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-29T22:31:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "kube-system",
+   "podSelector": "a=1, b=2, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-31T15:32:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "kube-system",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T08:08:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "kube-system",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T03:49:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "kube-system",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Egress",
+   "age": "2025-05-29T19:48:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "prod",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-31T17:28:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "prod",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Ingress",
+   "age": "2025-05-29T23:40:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "prod",
+   "podSelector": "a=1, b=2, +2",
+   "policyTypes": "Egress",
+   "age": "2025-06-01T00:35:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "prod",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:27:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "team-a",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T17:49:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "team-a",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Egress",
+   "age": "2025-05-31T06:51:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "team-a",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-06-01T11:21:00Z"
+  },
+  "uid-edge-7": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "podSelector": "app=a",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "team-b",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-30T13:36:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "team-b",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Egress",
+   "age": "2025-05-31T14:42:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-b",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T07:44:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "team-b",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T10:10:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "team-b",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T15:24:00Z"
+  },
+  "uid-edge-8": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "podSelector": "app=a",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "étude",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T05:39:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "étude",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T07:59:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "étude",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T03:27:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "étude",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-06-01T09:41:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "étude",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-29T23:07:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "Prod",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Egress",
+   "age": "2025-05-30T20:01:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "Prod",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T01:00:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "Prod",
+   "podSelector": "a=1, b=2, +2",
+   "policyTypes": "Egress",
+   "age": "2025-05-30T20:38:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "Prod",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-30T18:09:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "Prod",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-31T08:56:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "Prod",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-29T22:45:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "Prod",
+   "podSelector": "app=web",
+   "policyTypes": "Egress",
+   "age": "2025-06-01T02:22:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "podSelector": "a=1, b=2, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-31T08:24:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "default",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T00:35:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "default",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Egress",
+   "age": "2025-05-29T18:22:00Z"
+  },
+  "uid-edge-1": {
+   "name": "expressions-only",
+   "namespace": "default",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "egress-three",
+   "namespace": "default",
+   "podSelector": "app=a",
+   "policyTypes": "Egress",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "exactly-two",
+   "namespace": "default",
+   "podSelector": "a=1, b=2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "exactly-three",
+   "namespace": "default",
+   "podSelector": "a=1, b=2, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "numeric-labels",
+   "namespace": "default",
+   "podSelector": "1=one, 2=two, +2",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "annotated",
+   "namespace": "default",
+   "podSelector": "app=a",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-9": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": ""
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "kube-system",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-29T22:31:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "kube-system",
+   "podSelector": "a=1, b=2, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-31T15:32:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "kube-system",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T08:08:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "kube-system",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T03:49:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "kube-system",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Egress",
+   "age": "2025-05-29T19:48:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "prod",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-31T17:28:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "prod",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Ingress",
+   "age": "2025-05-29T23:40:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "prod",
+   "podSelector": "a=1, b=2, +2",
+   "policyTypes": "Egress",
+   "age": "2025-06-01T00:35:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "prod",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:27:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "team-a",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T17:49:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "team-a",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Egress",
+   "age": "2025-05-31T06:51:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "team-a",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-06-01T11:21:00Z"
+  },
+  "uid-edge-7": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "podSelector": "app=a",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "team-b",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-30T13:36:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "team-b",
+   "podSelector": "app=web, env=prod, +1",
+   "policyTypes": "Egress",
+   "age": "2025-05-31T14:42:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-b",
+   "podSelector": "All Pods",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T07:44:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "team-b",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T10:10:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "team-b",
+   "podSelector": "app=web, tier=frontend",
+   "policyTypes": "Ingress",
+   "age": "2025-05-30T15:24:00Z"
+  },
+  "uid-edge-8": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "podSelector": "app=a",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "étude",
+   "podSelector": "app=web",
+   "policyTypes": "Ingress",
+   "age": "2025-06-01T05:39:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "étude",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T07:59:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "étude",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress",
+   "age": "2025-05-31T03:27:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "étude",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-06-01T09:41:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "étude",
+   "podSelector": "9=nine, 10=ten, +2",
+   "policyTypes": "Ingress, Egress",
+   "age": "2025-05-29T23:07:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 39.983333333333334
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 11
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 39.36666666666667
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 41.85
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 27.066666666666666
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 61.25
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 9.633333333333333
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 27.6
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 35.416666666666664
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 65.63333333333334
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.3833333333333333
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.4
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.4166666666666667
+  },
+  "uid-edge-9": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": null
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 61.483333333333334
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 20.466666666666665
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 27.866666666666667
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 32.18333333333333
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 64.2
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 18.533333333333335
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 60.333333333333336
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 11.416666666666666
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.55
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 50
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 42.18333333333333
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 29.15
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 0.65
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.4333333333333333
+  },
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 46.4
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 21.3
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 4.266666666666667
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 25.833333333333332
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 44.6
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 1.45
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 6.35
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 28.016666666666666
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 32.55
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 2.316666666666667
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "podSelector": null,
+   "policyTypes": null,
+   "age": 60.88333333333333
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-edge-6","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-edge-2","uid-0029","uid-0019","uid-0018","uid-0017","uid-edge-4","uid-edge-3","uid-edge-1","uid-0009","uid-0010","uid-0012","uid-0011","uid-0031","uid-edge-5","uid-0026","uid-0027","uid-edge-7","uid-edge-8","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-7","uid-edge-8","uid-0027","uid-0026","uid-edge-5","uid-0031","uid-0011","uid-0012","uid-0010","uid-0009","uid-edge-1","uid-edge-3","uid-edge-4","uid-0017","uid-0018","uid-0019","uid-0029","uid-edge-2","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-edge-6","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0030","uid-0002","uid-0022","uid-0007","uid-0001","uid-0017","uid-0026","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-0006","uid-0018","uid-0029","uid-0009","uid-0021","uid-0024","uid-0008","uid-0027","uid-0031","uid-0019","uid-0003","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0016","uid-edge-7","uid-0015","uid-0011","uid-edge-8","uid-0013","uid-0004","uid-0014","uid-0025","uid-0000","uid-0023","uid-0010","uid-0012","uid-0020","uid-0028"],
+   "desc": ["uid-0023","uid-0010","uid-0012","uid-0020","uid-0028","uid-edge-8","uid-0013","uid-0004","uid-0014","uid-0025","uid-0000","uid-0016","uid-edge-7","uid-0015","uid-0011","uid-0031","uid-0019","uid-0003","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0009","uid-0021","uid-0024","uid-0008","uid-0027","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-0006","uid-0018","uid-0029","uid-0030","uid-0002","uid-0022","uid-0007","uid-0001","uid-0017","uid-0026"]
+  },
+  "podSelector": {
+   "asc": ["uid-edge-5","uid-0023","uid-0022","uid-0012","uid-0015","uid-0020","uid-0018","uid-0028","uid-0026","uid-edge-1","uid-0013","uid-0021","uid-0024","uid-edge-3","uid-edge-4","uid-0019","uid-0009","uid-0006","uid-0007","uid-edge-2","uid-edge-6","uid-edge-7","uid-edge-8","uid-0016","uid-0031","uid-0010","uid-0030","uid-0002","uid-0003","uid-0017","uid-0011","uid-0000","uid-0004","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0008","uid-0029","uid-0014","uid-0001","uid-0025","uid-0005","uid-0027"],
+   "desc": ["uid-0014","uid-0001","uid-0025","uid-0005","uid-0027","uid-0004","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0008","uid-0029","uid-0016","uid-0031","uid-0010","uid-0030","uid-0002","uid-0003","uid-0017","uid-0011","uid-0000","uid-edge-2","uid-edge-6","uid-edge-7","uid-edge-8","uid-0019","uid-0009","uid-0006","uid-0007","uid-edge-4","uid-edge-3","uid-edge-1","uid-0013","uid-0021","uid-0024","uid-0023","uid-0022","uid-0012","uid-0015","uid-0020","uid-0018","uid-0028","uid-0026","uid-edge-5"]
+  },
+  "policyTypes": {
+   "asc": ["uid-edge-2","uid-0030","uid-0019","uid-0004","uid-0015","uid-0007","uid-0001","uid-0027","uid-0029","uid-edge-1","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-0031","uid-0013","uid-0010","uid-0002","uid-0014","uid-0021","uid-0012","uid-0024","uid-0020","uid-0018","uid-0011","uid-0025","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0008","uid-0016","uid-edge-3","uid-0023","uid-0003","uid-0009","uid-0022","uid-0006","uid-0017","uid-0000","uid-0028","uid-0026"],
+   "desc": ["uid-0016","uid-edge-3","uid-0023","uid-0003","uid-0009","uid-0022","uid-0006","uid-0017","uid-0000","uid-0028","uid-0026","uid-edge-1","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-0031","uid-0013","uid-0010","uid-0002","uid-0014","uid-0021","uid-0012","uid-0024","uid-0020","uid-0018","uid-0011","uid-0025","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0008","uid-edge-2","uid-0030","uid-0019","uid-0004","uid-0015","uid-0007","uid-0001","uid-0027","uid-0029"]
+  },
+  "age": {
+   "asc": ["uid-0029","uid-0027","uid-0008","uid-0026","uid-0028","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0000","uid-0025","uid-0011","uid-0017","uid-0001","uid-0007","uid-0018","uid-0020","uid-0024","uid-0015","uid-0012","uid-0021","uid-0006","uid-0022","uid-0014","uid-0004","uid-0009","uid-0003","uid-0019","uid-0002","uid-0030","uid-0010","uid-0013","uid-0023","uid-0031","uid-edge-8","uid-edge-7","uid-edge-6","uid-edge-5","uid-edge-4","uid-edge-3","uid-edge-2","uid-edge-1","uid-0016"],
+   "desc": ["uid-0016","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-0031","uid-0023","uid-0013","uid-0010","uid-0030","uid-0002","uid-0019","uid-0003","uid-0009","uid-0004","uid-0014","uid-0022","uid-0006","uid-0021","uid-0012","uid-0015","uid-0024","uid-0020","uid-0018","uid-0007","uid-0001","uid-0017","uid-0011","uid-0025","uid-0000","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0028","uid-0026","uid-0008","uid-0027","uid-0029"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0001","uid-0002","uid-0000"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0001","uid-0002","uid-0000"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0006","uid-0003","uid-0005","uid-0004"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0017","uid-0006","uid-0018","uid-0003","uid-0005","uid-0019","uid-0016","uid-0004"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-edge-1","uid-edge-3","uid-edge-4","uid-0015","uid-0014"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0008","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0008","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0007","uid-0005","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0022","uid-0021","uid-0020"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0022","uid-0021"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0001","uid-0002","uid-0000"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0006","uid-0003","uid-0005","uid-0004"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0008","uid-0009","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-edge-6","uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0001","uid-0002","uid-edge-6","uid-0000"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0016","uid-0000"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0001","uid-0002","uid-0000"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0006","uid-0005"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0001","uid-0009","uid-0003","uid-tie-00","uid-0016","uid-0023"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0006","uid-0003","uid-0005"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0001","uid-0002","uid-0016","uid-0000"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0001","uid-0002","uid-edge-1","uid-edge-3","uid-edge-4","uid-0015","uid-0016","uid-0000","uid-0014"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0001","uid-0002","uid-0016","uid-0000"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-edge-6","uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0001","uid-0002","uid-0006","uid-0003","uid-0005","uid-0000","uid-0004"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0001","uid-0002","uid-0000"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-edge-7","uid-edge-8"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0001","uid-0002","uid-0017","uid-0026","uid-0006","uid-0029","uid-0008","uid-0010","uid-0012","uid-0023","uid-0028"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0001","uid-0002","uid-0017","uid-0026","uid-0006","uid-0029","uid-0008","uid-0010","uid-0012","uid-0023","uid-0028"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-6"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-6"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-7"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0022","uid-0021","uid-0024","uid-0027","uid-tie-12","uid-0025"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0022","uid-0021","uid-0024","uid-0027","uid-tie-12","uid-0025"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0001","uid-0002","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0006","uid-0005","uid-tie-09","uid-tie-10","uid-0004"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0006","uid-0003","uid-0005"]
+  },
+  {
+   "query": "podselector:all",
+   "matches": ["uid-edge-1","uid-edge-9","uid-0021","uid-0024","uid-0013"]
+  },
+  {
+   "query": "selector:app=web",
+   "matches": ["uid-0001","uid-0002","uid-0017","uid-0030","uid-0029","uid-0008","uid-0027","uid-0003","uid-0005","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0016","uid-0000","uid-0004","uid-0014","uid-0025","uid-0010"]
+  },
+  {
+   "query": "pods:/tier=/",
+   "matches": ["uid-0001","uid-0029","uid-0008","uid-0027","uid-0005","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0004","uid-0014","uid-0025"]
+  },
+  {
+   "query": "policytype:ingress",
+   "matches": ["uid-0002","uid-0017","uid-0022","uid-0026","uid-0006","uid-0018","uid-edge-1","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0008","uid-0009","uid-0021","uid-0024","uid-0003","uid-0005","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0016","uid-edge-7","uid-0000","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "query": "policytypes:\"Ingress Egress\"",
+   "matches": ["uid-0017","uid-0022","uid-0026","uid-0006","uid-edge-3","uid-0009","uid-0003","uid-0016","uid-0000","uid-0023","uid-0028"]
+  },
+  {
+   "query": "type:egress",
+   "matches": ["uid-0001","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0029","uid-edge-2","uid-edge-3","uid-0009","uid-0027","uid-0003","uid-0019","uid-0015","uid-0016","uid-0000","uid-0004","uid-0023","uid-0028"]
+  },
+  {
+   "query": "types:/^Ingress Egress$/",
+   "matches": ["uid-0017","uid-0022","uid-0026","uid-0006","uid-edge-3","uid-0009","uid-0003","uid-0016","uid-0000","uid-0023","uid-0028"]
+  },
+  {
+   "query": "ingress:true",
+   "matches": ["uid-0001","uid-0002","uid-0017","uid-0022","uid-0026","uid-0029","uid-edge-3","uid-edge-4","uid-0008","uid-0009","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0015","uid-0016","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-0010","uid-0012","uid-0028"]
+  },
+  {
+   "query": "hasingress:false",
+   "matches": ["uid-0007","uid-0030","uid-0006","uid-0018","uid-edge-1","uid-edge-2","uid-edge-5","uid-edge-6","uid-edge-9","uid-0021","uid-0031","uid-0011","uid-edge-7","uid-edge-8","uid-0020","uid-0023"]
+  },
+  {
+   "query": "egress:true",
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0029","uid-edge-2","uid-edge-3","uid-0008","uid-0021","uid-0024","uid-0003","uid-0005","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0016","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-0010","uid-0012","uid-0020","uid-0023"]
+  },
+  {
+   "query": "hasegress:true",
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0029","uid-edge-2","uid-edge-3","uid-0008","uid-0021","uid-0024","uid-0003","uid-0005","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0016","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-0010","uid-0012","uid-0020","uid-0023"]
+  },
+  {
+   "query": "ingresscount:2",
+   "matches": ["uid-0001","uid-0017","uid-0022","uid-0026","uid-0009","uid-0005","uid-0019","uid-0015","uid-0000","uid-0013","uid-0014","uid-0025","uid-0010","uid-0028"]
+  },
+  {
+   "query": "ingressrules:0",
+   "matches": ["uid-0007","uid-0030","uid-0006","uid-0018","uid-edge-1","uid-edge-2","uid-edge-5","uid-edge-6","uid-edge-9","uid-0021","uid-0031","uid-0011","uid-edge-7","uid-edge-8","uid-0020","uid-0023"]
+  },
+  {
+   "query": "egresscount:3",
+   "matches": ["uid-edge-2"]
+  },
+  {
+   "query": "egressrules:1",
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0029","uid-edge-3","uid-0008","uid-0021","uid-0024","uid-0003","uid-0005","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0016","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-0010","uid-0012","uid-0020","uid-0023"]
+  },
+  {
+   "query": "selector:10=ten",
+   "matches": ["uid-0022","uid-0026","uid-0018","uid-0015","uid-0012","uid-0020","uid-0023","uid-0028"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-edge-6","uid-0000"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-edge-6","uid-0016","uid-0000"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0017","uid-0006","uid-0018","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0009","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-0016","uid-edge-7","uid-0004","uid-0013","uid-edge-8","uid-0020","uid-0023"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0008","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0008","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0008","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0000"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0006","uid-0003","uid-0005","uid-0004"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0022","uid-0021","uid-0024","uid-0027","uid-tie-12","uid-0025"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0008","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0001","uid-0007","uid-0017","uid-0022","uid-0026","uid-0006","uid-0018","uid-0029","uid-0008","uid-0021","uid-0024","uid-0027","uid-0005","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0000","uid-0014","uid-0025","uid-0012","uid-0020","uid-0028"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0002","uid-0022","uid-0030","uid-0006","uid-0009","uid-0021","uid-0003","uid-0019","uid-0015","uid-0004","uid-0013","uid-0014","uid-0010","uid-0012","uid-0023"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0026","uid-0029","uid-0008","uid-0027","uid-0005","uid-0016","uid-0028"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-0008","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0002","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-0019","uid-0031","uid-0016","uid-edge-7","uid-0013","uid-edge-8","uid-0010","uid-0023"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0018","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-0008","uid-0009","uid-0021","uid-0024","uid-0027","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "name": "podSelector select All Pods",
+   "filters": {
+    "podSelector": {
+     "type": "select",
+     "values": ["All Pods"]
+    }
+   },
+   "matches": ["uid-edge-1","uid-edge-9","uid-0021","uid-0024","uid-0013"]
+  },
+  {
+   "name": "podSelector select app=web",
+   "filters": {
+    "podSelector": {
+     "type": "select",
+     "values": ["app=web"]
+    }
+   },
+   "matches": ["uid-0002","uid-0017","uid-0030","uid-0003","uid-0031","uid-0011","uid-0016","uid-0000","uid-0010"]
+  },
+  {
+   "name": "policyTypes select Ingress",
+   "filters": {
+    "policyTypes": {
+     "type": "select",
+     "values": ["Ingress"]
+    }
+   },
+   "matches": ["uid-0002","uid-0018","uid-edge-1","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0008","uid-0021","uid-0024","uid-0005","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-edge-7","uid-0013","uid-0014","uid-0025","uid-edge-8","uid-0010","uid-0012","uid-0020"]
+  },
+  {
+   "name": "policyTypes select Ingress, Egress|Egress",
+   "filters": {
+    "policyTypes": {
+     "type": "select",
+     "values": ["Ingress, Egress","Egress"]
+    }
+   },
+   "matches": ["uid-0001","uid-0007","uid-0017","uid-0022","uid-0026","uid-0030","uid-0006","uid-0029","uid-edge-2","uid-edge-3","uid-0009","uid-0027","uid-0003","uid-0019","uid-0015","uid-0016","uid-0000","uid-0004","uid-0023","uid-0028"]
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0011","uid-0015","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0014","uid-0025","uid-edge-8"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0017","uid-0022","uid-0006","uid-0018","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0009","uid-0021","uid-0024","uid-0003","uid-0005","uid-0019","uid-0031","uid-tie-00","uid-tie-01","uid-0016","uid-edge-7","uid-0000","uid-0004","uid-0013","uid-0025","uid-edge-8","uid-0020","uid-0023"]
+  },
+  {
+   "name": "podSelector regex",
+   "filters": {
+    "podSelector": {
+     "type": "regex",
+     "conditions": ["\\+\\d$"]
+    }
+   },
+   "matches": ["uid-0007","uid-0022","uid-0026","uid-0006","uid-0018","uid-0029","uid-edge-4","uid-edge-5","uid-0008","uid-0009","uid-0019","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0015","uid-0004","uid-0012","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0017","uid-0022","uid-0006","uid-0018","uid-0009","uid-0021","uid-0024","uid-0003","uid-0005","uid-0019","uid-tie-00","uid-tie-01","uid-0000","uid-0004","uid-0025","uid-0020"]
+  }
+ ],
+ "uniqueValues": {
+  "podSelector": {
+   "values": ["1=one, 2=two, +2","9=nine, 10=ten, +2","a=1, b=2","a=1, b=2, +1","a=1, b=2, +2","All Pods","app=a","app=web","app=web, env=prod, +1","app=web, tier=frontend"],
+   "counts": {
+    "app=web, tier=frontend": 5,
+    "app=web": 9,
+    "a=1, b=2, +2": 4,
+    "9=nine, 10=ten, +2": 8,
+    "app=web, env=prod, +1": 16,
+    "All Pods": 5,
+    "app=a": 4,
+    "a=1, b=2": 1,
+    "a=1, b=2, +1": 1,
+    "1=one, 2=two, +2": 1
+   }
+  },
+  "policyTypes": {
+   "values": ["Egress","Ingress","Ingress, Egress"],
+   "counts": {
+    "Egress": 9,
+    "Ingress": 34,
+    "Ingress, Egress": 11
+   }
+  }
+ }
+}

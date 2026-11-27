@@ -1,0 +1,7598 @@
+{
+ "type": "ingresses",
+ "now": 1748779200000,
+ "columns": ["name","namespace","status","class","hosts","address","age","paths","tls","tlsCount","defaultBackend","defaultBackendTarget","rules"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "status": "select",
+  "class": "select",
+  "hosts": "select",
+  "address": "select",
+  "age": "numeric",
+  "paths": "select",
+  "tls": "select",
+  "tlsCount": false,
+  "defaultBackend": "select",
+  "defaultBackendTarget": false,
+  "rules": "select"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T22:29:00Z",
+    "annotations": {
+     "kubernetes.io/ingress.class": "nginx"
+    }
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "café.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "hosts": ["app.example.com"],
+      "secretName": "tls-a"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T08:47:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "fallback",
+      "port": {
+       "number": 8080
+      }
+     }
+    },
+    "rules": [
+     {
+      "host": "Zeta.example.com"
+     },
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     },
+     {
+      "host": "api.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      },
+      {
+       "hostname": "b.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T09:16:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "ingressClassName": "Alb",
+    "rules": [
+     {
+      "host": "café.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T11:42:00Z"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "Alb"
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T17:30:00Z"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "Alb",
+    "rules": [
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     },
+     {
+      "host": "*.wild.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T05:57:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "rules": [
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     },
+     {
+      "host": "api.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        }
+       ]
+      }
+     },
+     {
+      "host": "api.example.com"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T11:58:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {},
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "empty",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "svc",
+      "port": {}
+     }
+    }
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "portless-backend",
+    "namespace": "default",
+    "uid": "uid-edge-10",
+    "creationTimestamp": "2025-06-01T10:31:00Z"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "c.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "class-name-wins",
+    "namespace": "default",
+    "uid": "uid-edge-11",
+    "creationTimestamp": "2025-06-01T10:30:00Z",
+    "annotations": {
+     "kubernetes.io/ingress.class": "other"
+    }
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "d.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "class-annotation",
+    "namespace": "default",
+    "uid": "uid-edge-12",
+    "creationTimestamp": "2025-06-01T10:29:00Z",
+    "annotations": {
+     "kubernetes.io/ingress.class": "legacy"
+    }
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "e.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "hosts": ["a"],
+      "secretName": "s"
+     },
+     {
+      "hosts": ["b"],
+      "secretName": "t"
+     },
+     {
+      "secretName": "u"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "three-tls",
+    "namespace": "default",
+    "uid": "uid-edge-13",
+    "creationTimestamp": "2025-06-01T10:28:00Z"
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "f.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-14",
+    "creationTimestamp": "2025-06-01T10:27:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "h.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-17",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "host-less-rule",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "a.example.com"
+     },
+     {
+      "host": "b.example.com"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "rules-without-http",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "a.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/a"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/b"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/c"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/d"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "path-overflow",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "a.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/a"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/b"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/c"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "path-exact-three",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "rules": []
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "1.1.1.1"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "active-no-rules",
+    "namespace": "default",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "lb-empty-entry",
+    "namespace": "default",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "x.example.com"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {},
+      {
+       "hostname": "late.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "lb-second-entry",
+    "namespace": "default",
+    "uid": "uid-edge-8",
+    "creationTimestamp": "2025-06-01T10:33:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "resource": {
+      "apiGroup": "k8s.example.com",
+      "kind": "StorageBucket",
+      "name": "static"
+     }
+    }
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "resource-backend",
+    "namespace": "default",
+    "uid": "uid-edge-9",
+    "creationTimestamp": "2025-06-01T10:32:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "fallback",
+      "port": {
+       "number": 8080
+      }
+     }
+    },
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "host": "app.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     },
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T23:21:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "café.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      },
+      {
+       "hostname": "b.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T18:04:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "fallback",
+      "port": {
+       "number": 8080
+      }
+     }
+    },
+    "ingressClassName": "nginx",
+    "tls": [
+     {
+      "hosts": ["app.example.com"],
+      "secretName": "tls-a"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T02:19:00Z",
+    "annotations": {
+     "kubernetes.io/ingress.class": "nginx"
+    }
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "api.example.com"
+     },
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T18:08:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T23:44:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "café.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "hosts": ["app.example.com"],
+      "secretName": "tls-a"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T00:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "fallback",
+      "port": {
+       "number": 8080
+      }
+     }
+    },
+    "ingressClassName": "nginx",
+    "tls": [
+     {
+      "hosts": ["app.example.com"],
+      "secretName": "tls-a"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T17:02:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        }
+       ]
+      }
+     },
+     {
+      "host": "café.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T05:49:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "café.example.com"
+     },
+     {
+      "host": "Zeta.example.com"
+     },
+     {
+      "host": "café.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T00:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "fallback",
+      "port": {
+       "number": 8080
+      }
+     }
+    },
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "Zeta.example.com"
+     },
+     {
+      "host": "app.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        }
+       ]
+      }
+     },
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "hosts": ["app.example.com"],
+      "secretName": "tls-a"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T17:47:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "nginx",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "host": "app.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T18:16:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "ingressClassName": "Alb",
+    "rules": [
+     {},
+     {
+      "host": "app.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-29T22:14:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    },
+    "annotations": {
+     "kubernetes.io/ingress.class": "gce"
+    }
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "host": "*.wild.example.com"
+     },
+     {
+      "host": "café.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      },
+      {
+       "hostname": "b.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T12:41:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "g.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-15",
+    "creationTimestamp": "2025-06-01T10:26:00Z"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     },
+     {
+      "host": "api.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T15:48:00Z"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "Alb",
+    "rules": [
+     {},
+     {
+      "host": "app.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     },
+     {
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T07:43:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "fallback",
+      "port": {
+       "number": 8080
+      }
+     }
+    },
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "host": "api.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "hosts": ["app.example.com"],
+      "secretName": "tls-a"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-29T22:53:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "ingressClassName": "Alb",
+    "rules": [
+     {
+      "host": "Zeta.example.com"
+     },
+     {
+      "host": "app.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-06-01T03:09:00Z",
+    "annotations": {
+     "kubernetes.io/ingress.class": "nginx"
+    }
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "ingressClassName": "Alb",
+    "rules": [
+     {
+      "host": "Zeta.example.com"
+     },
+     {},
+     {
+      "host": "app.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      },
+      {
+       "hostname": "b.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T05:57:00Z",
+    "annotations": {
+     "kubernetes.io/ingress.class": "gce"
+    }
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "ingressClassName": "nginx",
+    "rules": [
+     {}
+    ],
+    "tls": [
+     {
+      "hosts": ["app.example.com"],
+      "secretName": "tls-a"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      },
+      {
+       "hostname": "b.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T09:45:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "g.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {}
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-16",
+    "creationTimestamp": "2025-06-01T10:25:00Z"
+   }
+  },
+  {
+   "spec": {
+    "rules": [
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/api"
+        }
+       ]
+      }
+     },
+     {
+      "host": "*.wild.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T22:51:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix"
+        }
+       ]
+      }
+     },
+     {
+      "host": "app.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        }
+       ]
+      }
+     },
+     {
+      "host": "*.wild.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/"
+        }
+       ]
+      }
+     }
+    ],
+    "tls": [
+     {
+      "hosts": ["app.example.com"],
+      "secretName": "tls-a"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      },
+      {
+       "hostname": "b.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T20:48:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-29T18:20:00Z"
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "named-port",
+      "port": {
+       "name": "http"
+      }
+     }
+    },
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "host": "Zeta.example.com"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {}
+     ]
+    }
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "étude",
+    "creationTimestamp": "2025-06-01T06:29:00Z"
+   }
+  },
+  {
+   "spec": {
+    "ingressClassName": "traefik",
+    "tls": [
+     {
+      "secretName": "a"
+     },
+     {
+      "secretName": "b"
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "34.1.2.3"
+      },
+      {
+       "hostname": "b.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T17:14:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    },
+    "annotations": {
+     "kubernetes.io/ingress.class": "gce"
+    }
+   }
+  },
+  {
+   "spec": {
+    "defaultBackend": {
+     "service": {
+      "name": "fallback",
+      "port": {
+       "number": 8080
+      }
+     }
+    },
+    "ingressClassName": "traefik",
+    "rules": [
+     {
+      "host": "Zeta.example.com",
+      "http": {
+       "paths": [
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/v1/users"
+        },
+        {
+         "backend": {
+          "service": {
+           "name": "web",
+           "port": {
+            "number": 80
+           }
+          }
+         },
+         "pathType": "Prefix",
+         "path": "/static"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "hostname": "elb.example.com"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T13:42:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-17"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "Zeta.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-31T22:29:00Z",
+   "paths": "/, /, /v1/users",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "Prod",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "café.example.com",
+   "address": "-",
+   "age": "2025-05-31T08:47:00Z",
+   "paths": "/, /",
+   "tls": "Yes",
+   "tlsCount": 1,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "Prod",
+   "status": "Active",
+   "class": "-",
+   "hosts": "Zeta.example.com, Zeta.example.com, api.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-30T09:16:00Z",
+   "paths": "/, /",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": 3
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "default",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "café.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-30T11:42:00Z",
+   "paths": "/v1/users",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 1
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "default",
+   "status": "No Rules",
+   "class": "Alb",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-05-30T17:30:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 0
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "default",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "Zeta.example.com, *.wild.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-31T05:57:00Z",
+   "paths": "/api, /, /v1/users",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "Zeta.example.com, api.example.com, api.example.com",
+   "address": "-",
+   "age": "2025-05-31T11:58:00Z",
+   "paths": "/api, /static, /api...",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 3
+  },
+  "uid-edge-1": {
+   "name": "empty",
+   "namespace": "default",
+   "status": "No Rules",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:40:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 0
+  },
+  "uid-edge-10": {
+   "name": "portless-backend",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:31:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "svc",
+   "defaultBackendTarget": "svc:undefined",
+   "rules": 0
+  },
+  "uid-edge-11": {
+   "name": "class-name-wins",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "nginx",
+   "hosts": "c.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:30:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-12": {
+   "name": "class-annotation",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "legacy",
+   "hosts": "d.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:29:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-13": {
+   "name": "three-tls",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "e.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:28:00Z",
+   "paths": "/",
+   "tls": "Yes",
+   "tlsCount": 3,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-14": {
+   "name": "annotated",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "f.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:27:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-17": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "h.example.com",
+   "address": "-",
+   "age": null,
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-2": {
+   "name": "host-less-rule",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:39:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-3": {
+   "name": "rules-without-http",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "a.example.com, b.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:38:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-edge-4": {
+   "name": "path-overflow",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "a.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:37:00Z",
+   "paths": "/a, /b, /c...",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-5": {
+   "name": "path-exact-three",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "a.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:36:00Z",
+   "paths": "/a, /b, /c",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-6": {
+   "name": "active-no-rules",
+   "namespace": "default",
+   "status": "Active",
+   "class": "-",
+   "hosts": "*",
+   "address": "1.1.1.1",
+   "age": "2025-06-01T10:35:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 0
+  },
+  "uid-edge-7": {
+   "name": "lb-empty-entry",
+   "namespace": "default",
+   "status": "No Rules",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:34:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 0
+  },
+  "uid-edge-8": {
+   "name": "lb-second-entry",
+   "namespace": "default",
+   "status": "Active",
+   "class": "-",
+   "hosts": "x.example.com",
+   "address": "late.example.com",
+   "age": "2025-06-01T10:33:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-edge-9": {
+   "name": "resource-backend",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:32:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "-",
+   "rules": 0
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "kube-system",
+   "status": "Pending",
+   "class": "traefik",
+   "hosts": "app.example.com, Zeta.example.com",
+   "address": "-",
+   "age": "2025-05-29T23:21:00Z",
+   "paths": "/api, /api, /v1/users...",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": 2
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "kube-system",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "café.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-29T18:04:00Z",
+   "paths": "/v1/users, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "kube-system",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*",
+   "address": "34.1.2.3",
+   "age": "2025-05-30T02:19:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": 1,
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": 0
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "prod",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "api.example.com, Zeta.example.com",
+   "address": "-",
+   "age": "2025-05-31T18:08:00Z",
+   "paths": "/static",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "-",
+   "hosts": "*",
+   "address": "elb.example.com",
+   "age": "2025-05-30T23:44:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 0
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "café.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-30T00:40:00Z",
+   "paths": "/, /api",
+   "tls": "Yes",
+   "tlsCount": 1,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "prod",
+   "status": "Pending",
+   "class": "nginx",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-05-30T17:02:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": 1,
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": 0
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "Zeta.example.com, café.example.com",
+   "address": "elb.example.com",
+   "age": "2025-06-01T05:49:00Z",
+   "paths": "/api, /static, /static...",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 2
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "prod",
+   "status": "Pending",
+   "class": "nginx",
+   "hosts": "café.example.com, Zeta.example.com, café.example.com",
+   "address": "-",
+   "age": "2025-06-01T00:34:00Z",
+   "paths": "/, /v1/users, /",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 3
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "prod",
+   "status": "Pending",
+   "class": "nginx",
+   "hosts": "Zeta.example.com, app.example.com, Zeta.example.com",
+   "address": "-",
+   "age": "2025-05-30T17:47:00Z",
+   "paths": "/static, /static, /api",
+   "tls": "Yes",
+   "tlsCount": 1,
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": 3
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "team-a",
+   "status": "Pending",
+   "class": "traefik",
+   "hosts": "app.example.com",
+   "address": "-",
+   "age": "2025-05-30T18:16:00Z",
+   "paths": "/, /api, /static",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "team-a",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "app.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-29T22:14:00Z",
+   "paths": "/static",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 2
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "team-a",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "*.wild.example.com, café.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-31T12:41:00Z",
+   "paths": "/v1/users, /api, /static",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-edge-15": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "g.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:26:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "api.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-31T15:48:00Z",
+   "paths": "/, /api, /static...",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 3
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "app.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-31T07:43:00Z",
+   "paths": "/static, /api, /...",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 3
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "api.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-29T22:53:00Z",
+   "paths": "/, /v1/users, /",
+   "tls": "Yes",
+   "tlsCount": 1,
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": 1
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "team-b",
+   "status": "Pending",
+   "class": "Alb",
+   "hosts": "Zeta.example.com, app.example.com",
+   "address": "-",
+   "age": "2025-06-01T03:09:00Z",
+   "paths": "/static, /api, /v1/users",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 2
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "Zeta.example.com, app.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-31T05:57:00Z",
+   "paths": "/, /static, /",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 3
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-30T09:45:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": 1,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 1
+  },
+  "uid-edge-16": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "g.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:25:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 1
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "étude",
+   "status": "Active",
+   "class": "-",
+   "hosts": "Zeta.example.com, *.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T22:51:00Z",
+   "paths": "/api, /v1/users, /",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 2
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "étude",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "Zeta.example.com, app.example.com, *.wild.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-30T20:48:00Z",
+   "paths": "/, /v1/users, /...",
+   "tls": "Yes",
+   "tlsCount": 1,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 3
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "étude",
+   "status": "No Rules",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-05-29T18:20:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 0
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "étude",
+   "status": "Pending",
+   "class": "traefik",
+   "hosts": "Zeta.example.com",
+   "address": "-",
+   "age": "2025-06-01T06:29:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": 1
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "étude",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "*",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-30T17:14:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": 2,
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": 0
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "étude",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "Zeta.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-31T13:42:00Z",
+   "paths": "/v1/users, /static",
+   "tls": "No",
+   "tlsCount": 0,
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": 1
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "Zeta.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-31T22:29:00Z",
+   "paths": "/, /, /v1/users",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "Prod",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "café.example.com",
+   "address": "-",
+   "age": "2025-05-31T08:47:00Z",
+   "paths": "/, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "Prod",
+   "status": "Active",
+   "class": "-",
+   "hosts": "Zeta.example.com, Zeta.example.com, api.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-30T09:16:00Z",
+   "paths": "/, /",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": ""
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "default",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "café.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-30T11:42:00Z",
+   "paths": "/v1/users",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "default",
+   "status": "No Rules",
+   "class": "Alb",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-05-30T17:30:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "default",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "Zeta.example.com, *.wild.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-31T05:57:00Z",
+   "paths": "/api, /, /v1/users",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "Zeta.example.com, api.example.com, api.example.com",
+   "address": "-",
+   "age": "2025-05-31T11:58:00Z",
+   "paths": "/api, /static, /api...",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-edge-1": {
+   "name": "empty",
+   "namespace": "default",
+   "status": "No Rules",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:40:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-10": {
+   "name": "portless-backend",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:31:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "svc",
+   "defaultBackendTarget": "svc:undefined",
+   "rules": ""
+  },
+  "uid-edge-11": {
+   "name": "class-name-wins",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "nginx",
+   "hosts": "c.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:30:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-12": {
+   "name": "class-annotation",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "legacy",
+   "hosts": "d.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:29:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-13": {
+   "name": "three-tls",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "e.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:28:00Z",
+   "paths": "/",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-14": {
+   "name": "annotated",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "f.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:27:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-17": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "h.example.com",
+   "address": "-",
+   "age": "",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-2": {
+   "name": "host-less-rule",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:39:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-3": {
+   "name": "rules-without-http",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "a.example.com, b.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:38:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-4": {
+   "name": "path-overflow",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "a.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:37:00Z",
+   "paths": "/a, /b, /c...",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-5": {
+   "name": "path-exact-three",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "a.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:36:00Z",
+   "paths": "/a, /b, /c",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-6": {
+   "name": "active-no-rules",
+   "namespace": "default",
+   "status": "Active",
+   "class": "-",
+   "hosts": "*",
+   "address": "1.1.1.1",
+   "age": "2025-06-01T10:35:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-7": {
+   "name": "lb-empty-entry",
+   "namespace": "default",
+   "status": "No Rules",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:34:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-8": {
+   "name": "lb-second-entry",
+   "namespace": "default",
+   "status": "Active",
+   "class": "-",
+   "hosts": "x.example.com",
+   "address": "late.example.com",
+   "age": "2025-06-01T10:33:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-9": {
+   "name": "resource-backend",
+   "namespace": "default",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-06-01T10:32:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "-",
+   "rules": ""
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "kube-system",
+   "status": "Pending",
+   "class": "traefik",
+   "hosts": "app.example.com, Zeta.example.com",
+   "address": "-",
+   "age": "2025-05-29T23:21:00Z",
+   "paths": "/api, /api, /v1/users...",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": ""
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "kube-system",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "café.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-29T18:04:00Z",
+   "paths": "/v1/users, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "kube-system",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*",
+   "address": "34.1.2.3",
+   "age": "2025-05-30T02:19:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": ""
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "prod",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "api.example.com, Zeta.example.com",
+   "address": "-",
+   "age": "2025-05-31T18:08:00Z",
+   "paths": "/static",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "-",
+   "hosts": "*",
+   "address": "elb.example.com",
+   "age": "2025-05-30T23:44:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "café.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-30T00:40:00Z",
+   "paths": "/, /api",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "prod",
+   "status": "Pending",
+   "class": "nginx",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-05-30T17:02:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": ""
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "Zeta.example.com, café.example.com",
+   "address": "elb.example.com",
+   "age": "2025-06-01T05:49:00Z",
+   "paths": "/api, /static, /static...",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "prod",
+   "status": "Pending",
+   "class": "nginx",
+   "hosts": "café.example.com, Zeta.example.com, café.example.com",
+   "address": "-",
+   "age": "2025-06-01T00:34:00Z",
+   "paths": "/, /v1/users, /",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "prod",
+   "status": "Pending",
+   "class": "nginx",
+   "hosts": "Zeta.example.com, app.example.com, Zeta.example.com",
+   "address": "-",
+   "age": "2025-05-30T17:47:00Z",
+   "paths": "/static, /static, /api",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T10:00:00Z",
+   "paths": "/api, /, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "team-a",
+   "status": "Pending",
+   "class": "traefik",
+   "hosts": "app.example.com",
+   "address": "-",
+   "age": "2025-05-30T18:16:00Z",
+   "paths": "/, /api, /static",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "team-a",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "app.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-29T22:14:00Z",
+   "paths": "/static",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "team-a",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "*.wild.example.com, café.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-31T12:41:00Z",
+   "paths": "/v1/users, /api, /static",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-edge-15": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "g.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:26:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "api.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-31T15:48:00Z",
+   "paths": "/, /api, /static...",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "app.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-31T07:43:00Z",
+   "paths": "/static, /api, /...",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "api.example.com",
+   "address": "34.1.2.3",
+   "age": "2025-05-29T22:53:00Z",
+   "paths": "/, /v1/users, /",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": ""
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "team-b",
+   "status": "Pending",
+   "class": "Alb",
+   "hosts": "Zeta.example.com, app.example.com",
+   "address": "-",
+   "age": "2025-06-01T03:09:00Z",
+   "paths": "/static, /api, /v1/users",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "Alb",
+   "hosts": "Zeta.example.com, app.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-31T05:57:00Z",
+   "paths": "/, /static, /",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "team-b",
+   "status": "Active",
+   "class": "nginx",
+   "hosts": "*",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-30T09:45:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-edge-16": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "status": "Pending",
+   "class": "-",
+   "hosts": "g.example.com",
+   "address": "-",
+   "age": "2025-06-01T10:25:00Z",
+   "paths": "/",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "étude",
+   "status": "Active",
+   "class": "-",
+   "hosts": "Zeta.example.com, *.wild.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-30T22:51:00Z",
+   "paths": "/api, /v1/users, /",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "étude",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "Zeta.example.com, app.example.com, *.wild.example.com",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-30T20:48:00Z",
+   "paths": "/, /v1/users, /...",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "étude",
+   "status": "No Rules",
+   "class": "-",
+   "hosts": "*",
+   "address": "-",
+   "age": "2025-05-29T18:20:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "étude",
+   "status": "Pending",
+   "class": "traefik",
+   "hosts": "Zeta.example.com",
+   "address": "-",
+   "age": "2025-06-01T06:29:00Z",
+   "paths": "-",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "named-port",
+   "defaultBackendTarget": "named-port:http",
+   "rules": ""
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "étude",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "*",
+   "address": "34.1.2.3, b.example.com",
+   "age": "2025-05-30T17:14:00Z",
+   "paths": "-",
+   "tls": "Yes",
+   "tlsCount": "",
+   "defaultBackend": "",
+   "defaultBackendTarget": "",
+   "rules": ""
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "étude",
+   "status": "Active",
+   "class": "traefik",
+   "hosts": "Zeta.example.com",
+   "address": "elb.example.com",
+   "age": "2025-05-31T13:42:00Z",
+   "paths": "/v1/users, /static",
+   "tls": "No",
+   "tlsCount": "",
+   "defaultBackend": "fallback",
+   "defaultBackendTarget": "fallback:8080",
+   "rules": ""
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 13.516666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 27.216666666666665,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 1,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50.733333333333334,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 3
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 48.3,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 42.5,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 30.05,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 24.033333333333335,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 3
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.3333333333333333,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-edge-10": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.4833333333333334,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-edge-11": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.5,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-12": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.5166666666666666,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-13": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.5333333333333334,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 3,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-14": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.55,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-17": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": null,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.35,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.3666666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.3833333333333333,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.4,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.4166666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.4333333333333333,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.45,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-9": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.4666666666666666,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 60.65,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 65.93333333333334,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 57.68333333333333,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 1,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 17.866666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 36.266666666666666,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 59.333333333333336,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 1,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 42.96666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 1,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 6.183333333333334,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 11.433333333333334,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 3
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 42.21666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 1,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 3
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 41.733333333333334,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 61.766666666666666,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 23.316666666666666,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-edge-15": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.5666666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 20.2,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 3
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 28.283333333333335,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 3
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 61.11666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 1,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 8.85,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 30.05,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 3
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 50.25,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 1,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-edge-16": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 1.5833333333333333,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 37.15,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 2
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 39.2,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 1,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 3
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 65.66666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 5.516666666666667,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 42.766666666666666,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 2,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 0
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "class": null,
+   "hosts": null,
+   "address": null,
+   "age": 22.3,
+   "paths": null,
+   "tls": null,
+   "tlsCount": 0,
+   "defaultBackend": null,
+   "defaultBackendTarget": null,
+   "rules": 1
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-edge-6","uid-0000","uid-edge-14","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-edge-12","uid-edge-11","uid-0013","uid-0029","uid-edge-1","uid-0019","uid-0018","uid-0017","uid-edge-2","uid-0009","uid-0010","uid-0012","uid-0011","uid-edge-7","uid-edge-8","uid-0031","uid-edge-5","uid-edge-4","uid-edge-10","uid-edge-9","uid-0026","uid-edge-3","uid-0027","uid-edge-15","uid-edge-16","uid-edge-13","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-13","uid-edge-15","uid-edge-16","uid-0027","uid-edge-3","uid-0026","uid-edge-9","uid-edge-10","uid-edge-4","uid-edge-5","uid-0031","uid-edge-8","uid-edge-7","uid-0011","uid-0012","uid-0010","uid-0009","uid-edge-2","uid-0017","uid-0018","uid-0019","uid-edge-1","uid-0029","uid-0013","uid-edge-11","uid-edge-12","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-edge-14","uid-0000","uid-edge-6","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0000","uid-0003","uid-0024","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-0027","uid-0019","uid-0014","uid-0005","uid-0031","uid-0011","uid-0028","uid-0023","uid-0025","uid-0008","uid-0017","uid-0026","uid-0022","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0020","uid-edge-15","uid-0018","uid-0007","uid-0016","uid-edge-16","uid-0010","uid-0001","uid-0004","uid-0013","uid-0029","uid-0009","uid-0015","uid-0030","uid-0002","uid-0006","uid-0021","uid-0012"],
+   "desc": ["uid-0015","uid-0030","uid-0002","uid-0006","uid-0021","uid-0012","uid-edge-16","uid-0010","uid-0001","uid-0004","uid-0013","uid-0029","uid-0009","uid-edge-15","uid-0018","uid-0007","uid-0016","uid-0023","uid-0025","uid-0008","uid-0017","uid-0026","uid-0022","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0020","uid-0031","uid-0011","uid-0028","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-0027","uid-0019","uid-0014","uid-0005","uid-0000","uid-0003","uid-0024"]
+  },
+  "status": {
+   "asc": ["uid-edge-6","uid-edge-8","uid-0023","uid-0000","uid-0001","uid-0030","uid-0018","uid-0004","uid-0013","uid-0019","uid-0017","uid-0002","uid-0006","uid-0021","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0029","uid-0024","uid-0031","uid-0020","uid-0009","uid-0016","uid-0028","uid-edge-1","uid-edge-7","uid-0014","uid-0012","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0010","uid-0025","uid-0008","uid-0027","uid-0003","uid-0007","uid-0026","uid-0022","uid-0011"],
+   "desc": ["uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0010","uid-0025","uid-0008","uid-0027","uid-0003","uid-0007","uid-0026","uid-0022","uid-0011","uid-edge-1","uid-edge-7","uid-0014","uid-0012","uid-edge-6","uid-edge-8","uid-0023","uid-0000","uid-0001","uid-0030","uid-0018","uid-0004","uid-0013","uid-0019","uid-0017","uid-0002","uid-0006","uid-0021","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0029","uid-0024","uid-0031","uid-0020","uid-0009","uid-0016","uid-0028"]
+  },
+  "class": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0008","uid-0027","uid-0003","uid-0017","uid-0002","uid-0024","uid-0012","uid-0010","uid-0004","uid-0013","uid-0019","uid-0014","uid-0005","uid-0016","uid-edge-12","uid-edge-11","uid-0025","uid-0000","uid-0026","uid-0022","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0029","uid-0031","uid-0020","uid-0028","uid-0015","uid-0023","uid-0001","uid-0030","uid-0018","uid-0006","uid-0007","uid-0021","uid-0011","uid-0009"],
+   "desc": ["uid-0015","uid-0023","uid-0001","uid-0030","uid-0018","uid-0006","uid-0007","uid-0021","uid-0011","uid-0009","uid-edge-11","uid-0025","uid-0000","uid-0026","uid-0022","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0029","uid-0031","uid-0020","uid-0028","uid-edge-12","uid-0010","uid-0004","uid-0013","uid-0019","uid-0014","uid-0005","uid-0016","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0008","uid-0027","uid-0003","uid-0017","uid-0002","uid-0024","uid-0012"]
+  },
+  "hosts": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-0017","uid-0014","uid-0021","uid-0022","uid-0029","uid-0031","uid-0012","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0018","uid-0015","uid-0000","uid-0030","uid-0019","uid-0002","uid-0024","uid-0027","uid-0010","uid-0013","uid-0006","uid-0026","uid-0023","uid-edge-4","uid-edge-5","uid-edge-3","uid-0001","uid-0009","uid-0008","uid-0004","uid-0007","uid-0016","uid-0011","uid-edge-11","uid-0003","uid-0005","uid-0020","uid-0028","uid-0025","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-edge-8"],
+   "desc": ["uid-edge-8","uid-edge-15","uid-edge-16","uid-edge-14","uid-edge-13","uid-edge-12","uid-0025","uid-0003","uid-0005","uid-0020","uid-0028","uid-edge-11","uid-0011","uid-0004","uid-0007","uid-0016","uid-0008","uid-0001","uid-0009","uid-edge-3","uid-edge-4","uid-edge-5","uid-0023","uid-0026","uid-0006","uid-0010","uid-0013","uid-0027","uid-0024","uid-0019","uid-0002","uid-0015","uid-0000","uid-0030","uid-0018","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-1","uid-edge-2","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-0017","uid-0014","uid-0021","uid-0022","uid-0029","uid-0031","uid-0012"]
+  },
+  "address": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0010","uid-0025","uid-0008","uid-0027","uid-0003","uid-0007","uid-0026","uid-0014","uid-0022","uid-0011","uid-0012","uid-edge-6","uid-0000","uid-0019","uid-0005","uid-0031","uid-0020","uid-0009","uid-0018","uid-0013","uid-0006","uid-0021","uid-0029","uid-0024","uid-0028","uid-0023","uid-0001","uid-0030","uid-0004","uid-0017","uid-0002","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0016","uid-edge-8"],
+   "desc": ["uid-edge-8","uid-0023","uid-0001","uid-0030","uid-0004","uid-0017","uid-0002","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0016","uid-0018","uid-0013","uid-0006","uid-0021","uid-0029","uid-0024","uid-0028","uid-0000","uid-0019","uid-0005","uid-0031","uid-0020","uid-0009","uid-edge-6","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0010","uid-0025","uid-0008","uid-0027","uid-0003","uid-0007","uid-0026","uid-0014","uid-0022","uid-0011","uid-0012"]
+  },
+  "age": {
+   "asc": ["uid-0028","uid-0012","uid-0016","uid-0009","uid-0011","uid-0020","uid-0031","uid-0024","uid-0029","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0022","uid-0021","uid-0014","uid-0026","uid-0007","uid-0006","uid-0002","uid-0017","uid-0013","uid-0019","uid-0004","uid-0003","uid-0027","uid-0018","uid-0030","uid-0001","uid-0008","uid-0000","uid-0025","uid-0010","uid-0023","uid-0015","uid-edge-16","uid-edge-15","uid-edge-14","uid-edge-13","uid-edge-12","uid-edge-11","uid-edge-10","uid-edge-9","uid-edge-8","uid-edge-7","uid-edge-6","uid-edge-5","uid-edge-4","uid-edge-3","uid-edge-2","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0023","uid-0010","uid-0025","uid-0000","uid-0008","uid-0001","uid-0030","uid-0018","uid-0027","uid-0003","uid-0004","uid-0013","uid-0019","uid-0017","uid-0002","uid-0006","uid-0007","uid-0026","uid-0014","uid-0021","uid-0022","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0029","uid-0024","uid-0031","uid-0020","uid-0011","uid-0009","uid-0016","uid-0012","uid-0028"]
+  },
+  "paths": {
+   "asc": ["uid-edge-1","uid-edge-3","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-0015","uid-0017","uid-0014","uid-0021","uid-0022","uid-0029","uid-0031","uid-0012","uid-edge-2","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0003","uid-0024","uid-0000","uid-0020","uid-0007","uid-0001","uid-0013","uid-0025","uid-0009","uid-0006","uid-edge-5","uid-edge-4","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0019","uid-0011","uid-0027","uid-0023","uid-0002","uid-0008","uid-0016","uid-0004","uid-0010","uid-0026","uid-0005","uid-0028","uid-0018","uid-0030"],
+   "desc": ["uid-0030","uid-0018","uid-0028","uid-0005","uid-0026","uid-0010","uid-0004","uid-0008","uid-0016","uid-0002","uid-0023","uid-0027","uid-0011","uid-0019","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-4","uid-edge-5","uid-0006","uid-0025","uid-0009","uid-0013","uid-0001","uid-0007","uid-0020","uid-0000","uid-0003","uid-0024","uid-edge-2","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-edge-1","uid-edge-3","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-0015","uid-0017","uid-0014","uid-0021","uid-0022","uid-0029","uid-0031","uid-0012"]
+  },
+  "tls": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0023","uid-0025","uid-0000","uid-0001","uid-0030","uid-0027","uid-0013","uid-0019","uid-0002","uid-0007","uid-0014","uid-0024","uid-0016","uid-0012","uid-edge-13","uid-0010","uid-0008","uid-0018","uid-0003","uid-0004","uid-0017","uid-0006","uid-0026","uid-0021","uid-0022","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0029","uid-0031","uid-0020","uid-0011","uid-0009","uid-0028"],
+   "desc": ["uid-edge-13","uid-0010","uid-0008","uid-0018","uid-0003","uid-0004","uid-0017","uid-0006","uid-0026","uid-0021","uid-0022","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0029","uid-0031","uid-0020","uid-0011","uid-0009","uid-0028","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0023","uid-0025","uid-0000","uid-0001","uid-0030","uid-0027","uid-0013","uid-0019","uid-0002","uid-0007","uid-0014","uid-0024","uid-0016","uid-0012"]
+  },
+  "tlsCount": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0023","uid-0025","uid-0000","uid-0001","uid-0030","uid-0027","uid-0013","uid-0019","uid-0002","uid-0007","uid-0014","uid-0024","uid-0016","uid-0012","uid-0003","uid-0006","uid-0026","uid-0022","uid-0029","uid-0031","uid-0020","uid-0009","uid-0010","uid-0008","uid-0018","uid-0004","uid-0017","uid-0021","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0028","uid-edge-13"],
+   "desc": ["uid-edge-13","uid-0010","uid-0008","uid-0018","uid-0004","uid-0017","uid-0021","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0028","uid-0003","uid-0006","uid-0026","uid-0022","uid-0029","uid-0031","uid-0020","uid-0009","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0023","uid-0025","uid-0000","uid-0001","uid-0030","uid-0027","uid-0013","uid-0019","uid-0002","uid-0007","uid-0014","uid-0024","uid-0016","uid-0012"]
+  },
+  "defaultBackend": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0025","uid-0000","uid-0008","uid-0001","uid-0018","uid-0003","uid-0004","uid-0019","uid-0002","uid-0007","uid-0014","uid-0021","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0020","uid-0012","uid-0028","uid-0030","uid-0026","uid-0022","uid-0024","uid-0031","uid-0011","uid-0009","uid-0015","uid-0023","uid-0010","uid-0027","uid-0013","uid-0017","uid-0006","uid-0005","uid-0029","uid-0016","uid-edge-10"],
+   "desc": ["uid-edge-10","uid-0015","uid-0023","uid-0010","uid-0027","uid-0013","uid-0017","uid-0006","uid-0005","uid-0029","uid-0016","uid-0030","uid-0026","uid-0022","uid-0024","uid-0031","uid-0011","uid-0009","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0025","uid-0000","uid-0008","uid-0001","uid-0018","uid-0003","uid-0004","uid-0019","uid-0002","uid-0007","uid-0014","uid-0021","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0020","uid-0012","uid-0028"]
+  },
+  "defaultBackendTarget": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0025","uid-0000","uid-0008","uid-0001","uid-0018","uid-0003","uid-0004","uid-0019","uid-0002","uid-0007","uid-0014","uid-0021","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0020","uid-0012","uid-0028","uid-edge-9","uid-0030","uid-0026","uid-0022","uid-0024","uid-0031","uid-0011","uid-0009","uid-0015","uid-0023","uid-0010","uid-0027","uid-0013","uid-0017","uid-0006","uid-0005","uid-0029","uid-0016","uid-edge-10"],
+   "desc": ["uid-edge-10","uid-0015","uid-0023","uid-0010","uid-0027","uid-0013","uid-0017","uid-0006","uid-0005","uid-0029","uid-0016","uid-0030","uid-0026","uid-0022","uid-0024","uid-0031","uid-0011","uid-0009","uid-edge-9","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0025","uid-0000","uid-0008","uid-0001","uid-0018","uid-0003","uid-0004","uid-0019","uid-0002","uid-0007","uid-0014","uid-0021","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0020","uid-0012","uid-0028"]
+  },
+  "rules": {
+   "asc": ["uid-edge-1","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-0017","uid-0014","uid-0021","uid-0022","uid-0031","uid-0012","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-8","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0000","uid-0030","uid-0003","uid-0005","uid-0029","uid-0020","uid-0009","uid-0028","uid-edge-3","uid-0023","uid-0010","uid-0008","uid-0018","uid-0019","uid-0002","uid-0007","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0016","uid-0025","uid-0001","uid-0027","uid-0004","uid-0013","uid-0006","uid-0026","uid-0024"],
+   "desc": ["uid-0025","uid-0001","uid-0027","uid-0004","uid-0013","uid-0006","uid-0026","uid-0024","uid-edge-3","uid-0023","uid-0010","uid-0008","uid-0018","uid-0019","uid-0002","uid-0007","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0016","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-8","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-15","uid-edge-16","uid-0015","uid-0000","uid-0030","uid-0003","uid-0005","uid-0029","uid-0020","uid-0009","uid-0028","uid-edge-1","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-0017","uid-0014","uid-0021","uid-0022","uid-0031","uid-0012"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0005","uid-0004","uid-0006"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0003","uid-0005","uid-0019","uid-0017","uid-0016","uid-0018","uid-0004","uid-0006"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-edge-5","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0005","uid-tie-09","uid-0007"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0020","uid-0022","uid-0021"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0022","uid-0021"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0005","uid-0004","uid-0006"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0008","uid-0007","uid-0009","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000","uid-edge-14","uid-edge-6"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-edge-14","uid-edge-6","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0005","uid-0006"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0003","uid-0023","uid-tie-00","uid-0016","uid-0001","uid-0009"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0016","uid-0001","uid-0002"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0014","uid-edge-5","uid-0016","uid-0001","uid-0002","uid-0015"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0016","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000","uid-edge-14","uid-edge-6"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0003","uid-0005","uid-0001","uid-0004","uid-0002","uid-0006"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-15","uid-edge-16"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0019","uid-0027","uid-0011","uid-0017","uid-0023","uid-0026","uid-0016","uid-0018","uid-0004","uid-0029","uid-0021"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0019","uid-0027","uid-0011","uid-0017","uid-0023","uid-0026","uid-0016","uid-0018","uid-0004","uid-0029","uid-0021"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-14"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-14"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-15"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0024","uid-0027","uid-0022","uid-0025","uid-tie-12","uid-0021"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0024","uid-0027","uid-0022","uid-0025","uid-tie-12","uid-0021"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0005","uid-tie-09","uid-tie-10","uid-0004","uid-0006"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:empty",
+   "matches": ["uid-edge-1","uid-edge-7"]
+  },
+  {
+   "query": "label:tier=x",
+   "matches": ["uid-0019","uid-0027","uid-0011","uid-0017","uid-0023","uid-0026","uid-0016","uid-0018","uid-0004","uid-0029","uid-0021"]
+  },
+  {
+   "query": "annotation:kubernetes.io/ingress.class=nginx",
+   "matches": ["uid-0000","uid-0031","uid-0010"]
+  },
+  {
+   "query": "a:ingress.class",
+   "matches": ["uid-0000","uid-edge-11","uid-edge-12","uid-0031","uid-0016","uid-0010","uid-0013","uid-0021"]
+  },
+  {
+   "query": "host:app.example.com",
+   "matches": []
+  },
+  {
+   "query": "class:nginx",
+   "matches": []
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "rules:2",
+   "matches": []
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-edge-14","uid-edge-6","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-edge-14","uid-edge-6","uid-0016","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0003","uid-0005","uid-0019","uid-edge-10","uid-edge-11","uid-edge-14","uid-edge-17","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0031","uid-0017","uid-0020","uid-0023","uid-tie-00","uid-tie-01","uid-0016","uid-0018","uid-edge-15","uid-0004","uid-0009","uid-0013","uid-edge-16","uid-0006"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0003","uid-0005","uid-0004","uid-0006"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0022","uid-0025","uid-tie-12","uid-0021"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-0011","uid-0028","uid-0031","uid-0017","uid-0020","uid-0022","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0004","uid-0009","uid-0013","uid-0029","uid-0002","uid-0006","uid-0012","uid-0021"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0027","uid-0008","uid-0023","uid-0025","uid-0018","uid-0001","uid-0004","uid-0010","uid-0015","uid-0030"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0011","uid-0028","uid-0016","uid-0009","uid-0012"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0023","uid-0025","uid-edge-15","uid-0010","uid-edge-16","uid-0015"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "name": "status select Active",
+   "filters": {
+    "status": {
+     "type": "select",
+     "values": ["Active"]
+    }
+   },
+   "matches": ["uid-0000","uid-0024","uid-0005","uid-0019","uid-edge-6","uid-edge-8","uid-0028","uid-0031","uid-0017","uid-0020","uid-0023","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0016","uid-0018","uid-0001","uid-0004","uid-0009","uid-0013","uid-0029","uid-0002","uid-0006","uid-0021","uid-0030"]
+  },
+  {
+   "name": "status select Pending|No Rules",
+   "filters": {
+    "status": {
+     "type": "select",
+     "values": ["Pending","No Rules"]
+    }
+   },
+   "matches": ["uid-0003","uid-0014","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-7","uid-edge-9","uid-0011","uid-0008","uid-0022","uid-0025","uid-0026","uid-0007","uid-edge-15","uid-0010","uid-edge-16","uid-0012","uid-0015"]
+  },
+  {
+   "name": "class select nginx",
+   "filters": {
+    "class": {
+     "type": "select",
+     "values": ["nginx"]
+    }
+   },
+   "matches": ["uid-0000","uid-edge-11","uid-0028","uid-0031","uid-0020","uid-0022","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0029"]
+  },
+  {
+   "name": "class select -|traefik",
+   "filters": {
+    "class": {
+     "type": "select",
+     "values": ["-","traefik"]
+    }
+   },
+   "matches": ["uid-0003","uid-0024","uid-0027","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0008","uid-0017","uid-0023","uid-0007","uid-0018","uid-edge-15","uid-0001","uid-0009","uid-edge-16","uid-0002","uid-0006","uid-0012","uid-0015","uid-0021","uid-0030"]
+  },
+  {
+   "name": "hosts select *",
+   "filters": {
+    "hosts": {
+     "type": "select",
+     "values": ["*"]
+    }
+   },
+   "matches": ["uid-0014","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-6","uid-edge-7","uid-edge-9","uid-0031","uid-0017","uid-0022","uid-0029","uid-0012","uid-0021"]
+  },
+  {
+   "name": "hosts select app.example.com",
+   "filters": {
+    "hosts": {
+     "type": "select",
+     "values": ["app.example.com"]
+    }
+   },
+   "matches": ["uid-0007","uid-0016","uid-0004"]
+  },
+  {
+   "name": "address select 34.1.2.3",
+   "filters": {
+    "address": {
+     "type": "select",
+     "values": ["34.1.2.3"]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0019","uid-0031","uid-0020","uid-0009"]
+  },
+  {
+   "name": "address select -",
+   "filters": {
+    "address": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": ["uid-0003","uid-0014","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-7","uid-edge-9","uid-0011","uid-0008","uid-0022","uid-0025","uid-0026","uid-0007","uid-edge-15","uid-0010","uid-edge-16","uid-0012","uid-0015"]
+  },
+  {
+   "name": "paths select -",
+   "filters": {
+    "paths": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": ["uid-0014","uid-edge-1","uid-edge-10","uid-edge-3","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0031","uid-0017","uid-0022","uid-0029","uid-0012","uid-0015","uid-0021"]
+  },
+  {
+   "name": "paths select /|/api",
+   "filters": {
+    "paths": {
+     "type": "select",
+     "values": ["/","/api"]
+    }
+   },
+   "matches": ["uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-15","uid-edge-16"]
+  },
+  {
+   "name": "tls select Yes",
+   "filters": {
+    "tls": {
+     "type": "select",
+     "values": ["Yes"]
+    }
+   },
+   "matches": ["uid-0003","uid-0005","uid-edge-13","uid-0011","uid-0028","uid-0031","uid-0008","uid-0017","uid-0020","uid-0022","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0018","uid-0004","uid-0009","uid-0010","uid-0029","uid-0006","uid-0021"]
+  },
+  {
+   "name": "tls select No",
+   "filters": {
+    "tls": {
+     "type": "select",
+     "values": ["No"]
+    }
+   },
+   "matches": ["uid-0000","uid-0024","uid-0014","uid-0019","uid-0027","uid-edge-1","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0023","uid-0025","uid-0007","uid-0016","uid-edge-15","uid-0001","uid-0013","uid-edge-16","uid-0002","uid-0012","uid-0015","uid-0030"]
+  },
+  {
+   "name": "defaultBackend select fallback",
+   "filters": {
+    "defaultBackend": {
+     "type": "select",
+     "values": ["fallback"]
+    }
+   },
+   "matches": ["uid-0024","uid-0011","uid-0031","uid-0022","uid-0026","uid-0009","uid-0030"]
+  },
+  {
+   "name": "defaultBackend select empty",
+   "filters": {
+    "defaultBackend": {
+     "type": "select",
+     "values": [""]
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0014","uid-0019","uid-edge-1","uid-edge-11","uid-edge-12","uid-edge-13","uid-edge-14","uid-edge-17","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0028","uid-0008","uid-0020","uid-0025","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-edge-16","uid-0002","uid-0012","uid-0021"]
+  },
+  {
+   "name": "rules select 1",
+   "filters": {
+    "rules": {
+     "type": "select",
+     "values": ["1"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0007","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0010","uid-0013","uid-0029","uid-edge-16"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0019","uid-edge-10","uid-edge-11","uid-edge-12","uid-edge-14","uid-edge-17","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-9","uid-0031","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-tie-00","uid-tie-01","uid-0016","uid-0018","uid-edge-15","uid-0001","uid-0004","uid-0009","uid-0013","uid-edge-16","uid-0002","uid-0006","uid-0021"]
+  },
+  {
+   "name": "hosts regex",
+   "filters": {
+    "hosts": {
+     "type": "regex",
+     "conditions": ["example\\.com, "]
+    }
+   },
+   "matches": ["uid-0024","uid-0019","uid-0027","uid-edge-3","uid-0011","uid-0008","uid-0023","uid-0025","uid-0026","uid-0018","uid-0010","uid-0013","uid-0002","uid-0006"]
+  },
+  {
+   "name": "address regex",
+   "filters": {
+    "address": {
+     "type": "regex",
+     "conditions": ["^34\\."]
+    }
+   },
+   "matches": ["uid-0000","uid-0024","uid-0005","uid-0019","uid-0028","uid-0031","uid-0020","uid-0018","uid-0009","uid-0013","uid-0029","uid-0006","uid-0021"]
+  },
+  {
+   "name": "paths regex",
+   "filters": {
+    "paths": {
+     "type": "regex",
+     "conditions": ["\\.\\.\\.$"]
+    }
+   },
+   "matches": ["uid-0027","uid-edge-4","uid-0011","uid-0023","uid-0001","uid-0004","uid-0006"]
+  },
+  {
+   "name": "rules numeric",
+   "filters": {
+    "rules": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0024","uid-0019","uid-0027","uid-edge-3","uid-0011","uid-0008","uid-0023","uid-0025","uid-0026","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0016","uid-0018","uid-0001","uid-0004","uid-0010","uid-0013","uid-0002","uid-0006"]
+  },
+  {
+   "name": "status and class",
+   "filters": {
+    "status": {
+     "type": "select",
+     "values": ["Active"]
+    },
+    "class": {
+     "type": "select",
+     "values": ["nginx"]
+    }
+   },
+   "matches": ["uid-0000","uid-0028","uid-0031","uid-0020","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0029"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0003","uid-0024","uid-0005","uid-0019","uid-0031","uid-0017","uid-0020","uid-0022","uid-0023","uid-0025","uid-tie-00","uid-tie-01","uid-0016","uid-0018","uid-0001","uid-0004","uid-0009","uid-0013","uid-0002","uid-0006","uid-0021"]
+  }
+ ],
+ "uniqueValues": {
+  "status": {
+   "values": ["Active","No Rules","Pending"],
+   "counts": {
+    "Active": 35,
+    "Pending": 23,
+    "No Rules": 4
+   }
+  },
+  "class": {
+   "values": ["-","Alb","legacy","nginx","traefik"],
+   "counts": {
+    "nginx": 22,
+    "-": 22,
+    "Alb": 7,
+    "legacy": 1,
+    "traefik": 10
+   }
+  },
+  "hosts": {
+   "values": ["*","*.wild.example.com","*.wild.example.com, café.example.com","a.example.com","a.example.com, b.example.com","api.example.com","api.example.com, Zeta.example.com","app.example.com","app.example.com, Zeta.example.com","c.example.com","café.example.com","café.example.com, Zeta.example.com, café.example.com","d.example.com","e.example.com","f.example.com","g.example.com","h.example.com","x.example.com","Zeta.example.com","Zeta.example.com, *.wild.example.com","Zeta.example.com, api.example.com, api.example.com","Zeta.example.com, app.example.com","Zeta.example.com, app.example.com, *.wild.example.com","Zeta.example.com, app.example.com, Zeta.example.com","Zeta.example.com, café.example.com","Zeta.example.com, Zeta.example.com, api.example.com"],
+   "counts": {
+    "Zeta.example.com": 3,
+    "café.example.com": 4,
+    "Zeta.example.com, Zeta.example.com, api.example.com": 1,
+    "*": 13,
+    "Zeta.example.com, *.wild.example.com": 2,
+    "Zeta.example.com, api.example.com, api.example.com": 1,
+    "c.example.com": 1,
+    "d.example.com": 1,
+    "e.example.com": 1,
+    "f.example.com": 1,
+    "h.example.com": 1,
+    "a.example.com, b.example.com": 1,
+    "a.example.com": 2,
+    "x.example.com": 1,
+    "app.example.com, Zeta.example.com": 1,
+    "api.example.com, Zeta.example.com": 1,
+    "Zeta.example.com, café.example.com": 1,
+    "café.example.com, Zeta.example.com, café.example.com": 1,
+    "Zeta.example.com, app.example.com, Zeta.example.com": 1,
+    "*.wild.example.com": 13,
+    "app.example.com": 3,
+    "*.wild.example.com, café.example.com": 1,
+    "g.example.com": 2,
+    "api.example.com": 2,
+    "Zeta.example.com, app.example.com": 2,
+    "Zeta.example.com, app.example.com, *.wild.example.com": 1
+   }
+  },
+  "address": {
+   "values": ["-","1.1.1.1","34.1.2.3","34.1.2.3, b.example.com","elb.example.com","late.example.com"],
+   "counts": {
+    "34.1.2.3": 6,
+    "-": 27,
+    "34.1.2.3, b.example.com": 7,
+    "1.1.1.1": 1,
+    "late.example.com": 1,
+    "elb.example.com": 20
+   }
+  },
+  "paths": {
+   "values": ["-","/","/, /","/, /, /v1/users","/, /api","/, /api, /static","/, /api, /static...","/, /static, /","/, /v1/users, /","/, /v1/users, /...","/a, /b, /c","/a, /b, /c...","/api, /, /","/api, /, /v1/users","/api, /api, /v1/users...","/api, /static, /api...","/api, /static, /static...","/api, /v1/users, /","/static","/static, /api, /...","/static, /api, /v1/users","/static, /static, /api","/v1/users","/v1/users, /","/v1/users, /api, /static","/v1/users, /static"],
+   "counts": {
+    "/, /, /v1/users": 1,
+    "/, /": 2,
+    "/v1/users": 1,
+    "-": 15,
+    "/api, /, /v1/users": 1,
+    "/api, /static, /api...": 1,
+    "/": 8,
+    "/a, /b, /c...": 1,
+    "/a, /b, /c": 1,
+    "/api, /api, /v1/users...": 1,
+    "/v1/users, /": 1,
+    "/static": 2,
+    "/, /api": 1,
+    "/api, /static, /static...": 1,
+    "/, /v1/users, /": 2,
+    "/static, /static, /api": 1,
+    "/api, /, /": 13,
+    "/, /api, /static": 1,
+    "/v1/users, /api, /static": 1,
+    "/, /api, /static...": 1,
+    "/static, /api, /...": 1,
+    "/static, /api, /v1/users": 1,
+    "/, /static, /": 1,
+    "/api, /v1/users, /": 1,
+    "/, /v1/users, /...": 1,
+    "/v1/users, /static": 1
+   }
+  },
+  "tls": {
+   "values": ["No","Yes"],
+   "counts": {
+    "No": 31,
+    "Yes": 31
+   }
+  },
+  "defaultBackend": {
+   "values": ["fallback","named-port","svc"],
+   "counts": {
+    "fallback": 7,
+    "named-port": 10,
+    "svc": 1
+   }
+  },
+  "rules": null
+ }
+}

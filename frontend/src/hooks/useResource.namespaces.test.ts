@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // A dependency-aware hook runner: execute the production hook and its real effects,
 // retaining state/refs between renders and running cleanup when dependencies change.
@@ -51,7 +51,7 @@ vi.mock('wailsjs/runtime/runtime', () => ({ EventsOn: (name: string, fn: any) =>
     return () => mocks.events.get(name)!.delete(fn);
 } }));
 vi.mock('../utils/Logger', () => ({ default: { debug: vi.fn() } }));
-import { createNamespacedResourceHook } from './useResource';
+import { createNamespacedResourceHook, PAGE_PUBLISH_INTERVAL_MS } from './useResource';
 import { useCustomResources } from './useCustomResources';
 
 const ns = (count: number) => Array.from({ length: count }, (_, i) => `ns-${i}`);
@@ -292,6 +292,8 @@ describe('navigation snapshots', () => {
 });
 
 describe('progressive resource loading', () => {
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
     const emit = (event: any) => mocks.events.get('list-page')?.forEach(listener => listener(event));
     it('renders correlated pages before completion and replays deletions over later pages', async () => {
         let finish!: (value: any[]) => void;
@@ -309,6 +311,9 @@ describe('progressive resource loading', () => {
         expect(view.render().loadingProgress).toEqual({ loaded: 1, total: 0 });
         view.event({ type: 'DELETED', resource: item('ns-1', 'a') });
         emit({ requestId, items: [item('ns-1', 'a'), item('ns-1', 'b')], loaded: 3, total: 3 });
+        // Pages arriving inside the publish interval are held back, then published together.
+        expect(view.render().pods).toEqual([]);
+        vi.advanceTimersByTime(PAGE_PUBLISH_INTERVAL_MS);
         expect(view.render().pods).toEqual([item('ns-1', 'b')]);
         expect(view.render().loading).toBe(true);
         finish([item('ns-1', 'a'), item('ns-1', 'b')]);
@@ -336,6 +341,7 @@ describe('progressive resource loading', () => {
         emit({ requestId: list.mock.calls[0][0], items: [item('ns-1')], loaded: 1, total: 2 });
         expect(view.render().loadingProgress).toEqual({ loaded: 1, total: 0 });
         emit({ requestId: list.mock.calls[1][0], items: [item('ns-2')], loaded: 1, total: 4 });
+        vi.advanceTimersByTime(PAGE_PUBLISH_INTERVAL_MS);
         expect(view.render().loadingProgress).toEqual({ loaded: 2, total: 6 });
         expect(view.render().pods).toHaveLength(2);
     });

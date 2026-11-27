@@ -4,6 +4,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"kubikles/pkg/events"
 )
 
 func TestNewLogCoalescer_DefaultInterval(t *testing.T) {
@@ -37,7 +39,8 @@ func TestLogCoalescer_EmitLine_CreatesBuffer(t *testing.T) {
 	c.EmitLine("stream-1", "test line")
 
 	c.mu.Lock()
-	buf, exists := c.streams["stream-1"]
+	buf0, exists := c.streams["stream-1"]
+	buf := snapshotStream(buf0)
 	c.mu.Unlock()
 
 	if !exists {
@@ -64,7 +67,7 @@ func TestLogCoalescer_EmitLine_BatchesLines(t *testing.T) {
 	c.EmitLine("stream-1", "line 3")
 
 	c.mu.Lock()
-	buf := c.streams["stream-1"]
+	buf := snapshotStream(c.streams["stream-1"])
 	lineCount := len(buf.lines)
 	c.mu.Unlock()
 
@@ -85,9 +88,9 @@ func TestLogCoalescer_MultipleStreams(t *testing.T) {
 	c.EmitLine("stream-2", "line 2b")
 
 	c.mu.Lock()
-	stream1 := c.streams["stream-1"]
-	stream2 := c.streams["stream-2"]
-	stream3 := c.streams["stream-3"]
+	stream1 := snapshotStream(c.streams["stream-1"])
+	stream2 := snapshotStream(c.streams["stream-2"])
+	stream3 := snapshotStream(c.streams["stream-3"])
 	c.mu.Unlock()
 
 	if len(stream1.lines) != 2 {
@@ -113,8 +116,8 @@ func TestLogCoalescer_FlushStream(t *testing.T) {
 	c.FlushStream("stream-1")
 
 	c.mu.Lock()
-	buf1 := c.streams["stream-1"]
-	buf2 := c.streams["stream-2"]
+	buf1 := snapshotStream(c.streams["stream-1"])
+	buf2 := snapshotStream(c.streams["stream-2"])
 	c.mu.Unlock()
 
 	// stream-1 should be flushed (empty lines, pending false)
@@ -168,7 +171,7 @@ func TestLogCoalescer_EmitError(t *testing.T) {
 	c.EmitError("stream-1", "connection lost")
 
 	c.mu.Lock()
-	buf := c.streams["stream-1"]
+	buf := snapshotStream(c.streams["stream-1"])
 	c.mu.Unlock()
 
 	// Buffer should be empty (flushed)
@@ -219,7 +222,7 @@ func TestLogCoalescer_TimerFlushes(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	c.mu.Lock()
-	buf := c.streams["stream-1"]
+	buf := snapshotStream(c.streams["stream-1"])
 	lineCount := len(buf.lines)
 	pending := buf.pending
 	c.mu.Unlock()
@@ -291,7 +294,7 @@ func TestLogCoalescer_ConcurrentSameStream(t *testing.T) {
 	wg.Wait()
 
 	c.mu.Lock()
-	buf := c.streams["shared-stream"]
+	buf := snapshotStream(c.streams["shared-stream"])
 	lineCount := len(buf.lines)
 	c.mu.Unlock()
 
@@ -311,7 +314,7 @@ func TestLogCoalescer_LineOrder(t *testing.T) {
 	c.EmitLine("stream-1", "line-3")
 
 	c.mu.Lock()
-	buf := c.streams["stream-1"]
+	buf := snapshotStream(c.streams["stream-1"])
 	lines := make([]string, len(buf.lines))
 	copy(lines, buf.lines)
 	c.mu.Unlock()
@@ -331,7 +334,7 @@ func TestLogCoalescer_BufferPreallocation(t *testing.T) {
 	c.EmitLine("stream-1", "line")
 
 	c.mu.Lock()
-	buf := c.streams["stream-1"]
+	buf := snapshotStream(c.streams["stream-1"])
 	capacity := cap(buf.lines)
 	c.mu.Unlock()
 
@@ -358,7 +361,7 @@ func TestLogCoalescer_EmitAfterFlush(t *testing.T) {
 	c.EmitLine("stream-1", "line-2")
 
 	c.mu.Lock()
-	buf := c.streams["stream-1"]
+	buf := snapshotStream(c.streams["stream-1"])
 	lineCount := len(buf.lines)
 	c.mu.Unlock()
 
@@ -440,11 +443,94 @@ func TestLogCoalescer_MultipleTimerCycles(t *testing.T) {
 
 	// Buffer should be empty after all cycles
 	c.mu.Lock()
-	buf := c.streams["stream-1"]
+	buf := snapshotStream(c.streams["stream-1"])
 	lineCount := len(buf.lines)
 	c.mu.Unlock()
 
 	if lineCount != 0 {
 		t.Errorf("expected 0 lines after multiple cycles, got %d", lineCount)
 	}
+}
+
+func TestLogCoalescerBackgroundSlowsThenFlushesOnForeground(t *testing.T) {
+	var mu sync.Mutex
+	var lines []string
+	app := &App{}
+	app.emitter = events.EmitterFunc(func(name string, data ...interface{}) {
+		mu.Lock()
+		defer mu.Unlock()
+		switch v := data[0].(type) {
+		case LogStreamEvent:
+			lines = append(lines, v.Line)
+		case LogStreamBatchEvent:
+			lines = append(lines, v.Lines...)
+		}
+	})
+	c := NewLogCoalescer(app, 5*time.Millisecond)
+
+	c.SetBackground(true)
+	c.EmitLine("s1", "a")
+	c.EmitLine("s1", "b")
+	c.EmitLine("s2", "c")
+	time.Sleep(120 * time.Millisecond)
+	mu.Lock()
+	n := len(lines)
+	mu.Unlock()
+	if n != 0 {
+		t.Fatalf("background mode flushed %d lines within 120ms; interval should be about 1s", n)
+	}
+
+	c.SetBackground(false)
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		n = len(lines)
+		mu.Unlock()
+		if n == 3 {
+			return
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	t.Fatalf("expected 3 lines flushed on return to foreground, got %d", n)
+}
+
+func TestLogCoalescer_ConcurrentFlushKeepsOrder(t *testing.T) {
+	app := &App{}
+	var mu sync.Mutex
+	var got []string
+	var first sync.Once
+	app.emitter = events.EmitterFunc(func(name string, data ...interface{}) {
+		// Stall the first emit so a second flush can overtake it if unserialized.
+		first.Do(func() { time.Sleep(80 * time.Millisecond) })
+		mu.Lock()
+		defer mu.Unlock()
+		switch e := data[0].(type) {
+		case LogStreamEvent:
+			got = append(got, e.Line)
+		case LogStreamBatchEvent:
+			got = append(got, e.Lines...)
+		}
+	})
+	c := NewLogCoalescer(app, 5*time.Millisecond)
+	c.EmitLine("s", "a")
+	time.Sleep(30 * time.Millisecond) // timer fired and is stuck in emit
+	c.EmitLine("s", "b")
+	c.FlushStream("s")
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Fatalf("order = %v", got)
+	}
+}
+
+// snapshotStream copies a stream buffer. It must be called with c.mu held so
+// the timer goroutine cannot mutate the fields while the test reads them.
+func snapshotStream(b *logStreamBuffer) *logStreamBuffer {
+	if b == nil {
+		return nil
+	}
+	cp := *b
+	cp.lines = append(make([]string, 0, cap(b.lines)), b.lines...)
+	return &cp
 }

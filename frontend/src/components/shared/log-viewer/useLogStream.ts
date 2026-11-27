@@ -8,8 +8,23 @@ import {
     GetAllPodsLogsBefore, GetAllPodsLogsAfter, StartAllPodsLogStream
 } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
-import { appendUniqueLogEntries, drainLogPages, parseLogLines } from './logUtils';
+import { drainLogPages, parseLogLines } from './logUtils';
+import { LogBuffer } from './logBuffer';
+import { forgetStream, rememberStream, stopLeftoverStreams } from './streamLedger';
+
+const stopStream = (id: string): void => {
+    forgetStream(id);
+    StopLogStream(id);
+};
+
+// Once per page load, before any viewer mounts: stop what a reloaded page left running. The
+// flag keeps a hot module reload during development from sweeping the live page's own streams.
+if (typeof window !== 'undefined' && !(window as any).__kubiklesLogStreamsSwept) {
+    (window as any).__kubiklesLogStreamsSwept = true;
+    stopLeftoverStreams(id => { void StopLogStream(id); });
+}
 import { runWithPollingBudget } from '~/utils/pollingBudget';
+import { type FrameHandle, requestFrameOrTimeout } from '~/utils/frame';
 
 // Special constants for "All" modes
 export const ALL_CONTAINERS = '__ALL__';
@@ -36,8 +51,9 @@ export function useLogStream({
     initialPosition,
     isStale,
     currentContext,
-    resolveFreshLogTarget
-}: { namespace: any; pod: any; container: any; containers: any; siblingPods: any; podContainerMap: any; showPrevious: any; sinceTime: any; viewMode: any; initialPosition: any; isStale: any; currentContext: any; resolveFreshLogTarget?: any }) {
+    resolveFreshLogTarget,
+    isActive = true
+}: { namespace: any; pod: any; container: any; containers: any; siblingPods: any; podContainerMap: any; showPrevious: any; sinceTime: any; viewMode: any; initialPosition: any; isStale: any; currentContext: any; resolveFreshLogTarget?: any; isActive?: boolean }) {
     const isAllContainers = container === ALL_CONTAINERS;
     const isAllPods = pod === ALL_PODS;
 
@@ -58,7 +74,15 @@ export function useLogStream({
                 : (sourceContainer ? [sourceContainer] : [])
         }));
     }, [isAllPods, isAllContainers, siblingPods, podContainerMap, containers, container]);
-    const [logs, setLogs] = useState<any[]>([]); // Array of { timestamp, content, source }
+    // Entries live in a bounded in-place buffer; React only sees immutable snapshots of it.
+    const bufferRef = useRef<LogBuffer | null>(null);
+    if (!bufferRef.current) bufferRef.current = new LogBuffer();
+    const buffer = bufferRef.current;
+    const [snapshot, setSnapshot] = useState(() => buffer.snapshot());
+    const isActiveRef = useRef(isActive);
+    isActiveRef.current = isActive;
+    const pendingPublishRef = useRef(false);
+    const frameRef = useRef<FrameHandle | null>(null);
     // Start with loading=true to prevent streaming race condition on initial mount
     const [loading, setLoading] = useState(true);
     const [loadingAll, setLoadingAll] = useState(false);
@@ -71,7 +95,6 @@ export function useLogStream({
     const [disconnectReason, setDisconnectReason] = useState('');
     // Ref to track disconnected state synchronously (avoids stale closure in effects)
     const streamDisconnectedRef = useRef(false);
-    const [firstItemIndex, setFirstItemIndex] = useState(10000); // For virtuoso prepending
 
     const [fetchError, setFetchError] = useState<string | null>(null); // Error message when fetch fails (logs preserved)
 
@@ -90,21 +113,45 @@ export function useLogStream({
     // Ref to track fetch state synchronously (avoids React batching race conditions)
     const isFetchingRef = useRef(true);
 
-    // Extract first timestamp from current logs
-    const getFirstTimestamp = useCallback(() => {
-        if (!logs.length) return '';
-        const entry = logs.find((e: any) => e.timestamp);
-        return entry?.timestamp || '';
-    }, [logs]);
+    // Publish the buffer to React now, cancelling any frame-coalesced publish.
+    const publishNow = useCallback(() => {
+        frameRef.current?.cancel();
+        frameRef.current = null;
+        pendingPublishRef.current = false;
+        const next = buffer.snapshot();
+        setSnapshot(next);
+        // Lines trimmed from the head can be fetched again, so the top is no longer the real top.
+        if (next.trimmedTotal > 0) setHasMoreBefore(true);
+    }, [buffer]);
 
-    // Extract last timestamp from current logs
-    const getLastTimestamp = useCallback(() => {
-        if (!logs.length) return '';
-        for (let i = logs.length - 1; i >= 0; i--) {
-            if (logs[i].timestamp) return logs[i].timestamp;
-        }
-        return '';
-    }, [logs]);
+    // Streamed appends publish at most once per animation frame, and not at all while the tab is hidden.
+    const schedulePublish = useCallback(() => {
+        if (!isActiveRef.current) { pendingPublishRef.current = true; return; }
+        if (frameRef.current !== null) return;
+        if (typeof requestAnimationFrame !== 'function') { publishNow(); return; }
+        // Frames stall when the window is inactive or occluded, so a timer backs them up.
+        frameRef.current = requestFrameOrTimeout(() => { frameRef.current = null; publishNow(); });
+    }, [publishNow]);
+
+    // Catch up once when the tab becomes visible again.
+    useEffect(() => {
+        if (isActive && pendingPublishRef.current) publishNow();
+    }, [isActive, publishNow]);
+
+    const replaceLogs = useCallback((entries: any[]) => {
+        buffer.replace(entries);
+        publishNow();
+    }, [buffer, publishNow]);
+
+    // Compatibility wrapper for callers that used the old React state setter.
+    const setLogs = useCallback((next: any) => {
+        replaceLogs(typeof next === 'function' ? next(buffer.entries) : next);
+    }, [buffer, replaceLogs]);
+
+    const getEntries = useCallback(() => buffer.entries, [buffer]);
+    const getEntryById = useCallback((id: number) => buffer.entries[id - buffer.firstId], [buffer]);
+    const getFirstTimestamp = useCallback(() => buffer.firstTimestamp(), [buffer]);
+    const getLastTimestamp = useCallback(() => buffer.lastTimestamp, [buffer]);
 
     // Reset chunk loading state
     const resetChunkState = useCallback(() => {
@@ -114,7 +161,6 @@ export function useLogStream({
         lastFetchedAfterTs.current = '';
         setLoadingBefore(false);
         setLoadingAfter(false);
-        setFirstItemIndex(10000);
     }, []);
 
     // Fetch logs (initial or refresh)
@@ -123,7 +169,7 @@ export function useLogStream({
         isFetchingRef.current = true;
 
         if (streamIdRef.current) {
-            StopLogStream(streamIdRef.current);
+            stopStream(streamIdRef.current);
             streamIdRef.current = null;
         }
 
@@ -193,28 +239,24 @@ export function useLogStream({
                 setHasMoreAfter(false);
             }
             const parsed = parseLogLines(logData, 'initial');
-            if (parsed.length === 0 && logs.length > 0 && !refreshedTargetChanged) {
+            if (parsed.length === 0 && buffer.length > 0 && !refreshedTargetChanged) {
                 // Container gone but we have existing logs — keep them and show warning
                 setFetchError('Container no longer available');
             } else {
                 setFetchError(null);
-                setLogs(parsed);
+                replaceLogs(parsed);
             }
         } catch (err: any) {
             // On error, preserve existing logs and show error banner
-            if (logs.length > 0) {
-                setFetchError(`Error fetching logs: ${err}`);
-            } else {
-                setFetchError(`Error fetching logs: ${err}`);
-                setLogs([]);
-            }
+            setFetchError(`Error fetching logs: ${err}`);
+            if (buffer.length === 0) replaceLogs([]);
             setHasMoreBefore(false);
             setHasMoreAfter(false);
         } finally {
             setLoading(false);
             isFetchingRef.current = false;
         }
-    }, [namespace, pod, container, containers, siblingPods, podContainerMap, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, logs.length, sinceTime, viewMode, resolveFreshLogTarget, resetChunkState]);
+    }, [namespace, pod, container, containers, siblingPods, podContainerMap, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, sinceTime, viewMode, resolveFreshLogTarget, resetChunkState, buffer, replaceLogs]);
 
     // Load all logs at once
     const loadAllLogs = useCallback(async () => {
@@ -222,7 +264,7 @@ export function useLogStream({
         isFetchingRef.current = true;
 
         if (streamIdRef.current) {
-            StopLogStream(streamIdRef.current);
+            stopStream(streamIdRef.current);
             streamIdRef.current = null;
         }
 
@@ -246,16 +288,18 @@ export function useLogStream({
             } else {
                 allLogs = await GetAllPodLogs(namespace, pod, container, true, showPrevious);
             }
-            setLogs(parseLogLines(allLogs, 'initial'));
+            replaceLogs(parseLogLines(allLogs, 'initial'));
+            // Explicitly loaded history must survive any later live appends.
+            buffer.raiseCap();
         } catch (err: any) {
-            setLogs([{ timestamp: '', content: `Error fetching all logs: ${err}`, source: 'error' }]);
+            replaceLogs([{ timestamp: '', content: `Error fetching all logs: ${err}`, source: 'error' }]);
             setIsAllLoaded(false);
         } finally {
             setLoading(false);
             setLoadingAll(false);
             isFetchingRef.current = false;
         }
-    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, resetChunkState]);
+    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, resetChunkState, buffer, replaceLogs]);
 
     // Load older logs (when scrolling to top)
     const loadOlderLogs = useCallback(async () => {
@@ -296,20 +340,28 @@ export function useLogStream({
 
             if (result.logs && result.logs.trim()) {
                 const newEntries = parseLogLines(result.logs, 'before');
-                setFirstItemIndex(prev => prev - newEntries.length);
-                setLogs(prev => [...newEntries, ...prev]);
+                buffer.prepend(newEntries);
+                buffer.raiseCap();
+                if (!result.hasMore) buffer.clearTrimmed();
+                publishNow();
                 setHasMoreBefore(result.hasMore);
             } else {
+                // Nothing older exists any more; without this the next streamed publish
+                // would see trimmedTotal > 0 and re-enable the "load older" banner.
+                buffer.clearTrimmed();
+                publishNow();
                 setHasMoreBefore(false);
             }
         } catch (err: any) {
             console.error('Failed to load older logs:', err);
+            buffer.clearTrimmed();
+            publishNow();
             setHasMoreBefore(false);
         } finally {
             loadingBeforeRef.current = false;
             setLoadingBefore(false);
         }
-    }, [hasMoreBefore, getFirstTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious]);
+    }, [hasMoreBefore, getFirstTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, buffer, publishNow]);
 
     // Load newer logs (when scrolling to bottom, not following)
     const loadNewerLogs = useCallback(async () => {
@@ -350,7 +402,9 @@ export function useLogStream({
 
             if (result.logs && result.logs.trim()) {
                 const newEntries = parseLogLines(result.logs, 'after');
-                setLogs(prev => [...prev, ...newEntries]);
+                buffer.raiseCap();
+                buffer.append(newEntries);
+                publishNow();
                 setHasMoreAfter(result.hasMore);
             } else {
                 setHasMoreAfter(false);
@@ -363,7 +417,7 @@ export function useLogStream({
             loadingAfterRef.current = false;
             setLoadingAfter(false);
         }
-    }, [hasMoreAfter, getLastTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious]);
+    }, [hasMoreAfter, getLastTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, buffer, publishNow]);
 
     const pollNewerLogs = useCallback(async () => {
         if (pollingAfterRef.current) return;
@@ -380,7 +434,7 @@ export function useLogStream({
                 }
                 return GetPodLogsAfter(namespace, pod, container, true, showPrevious, pageCursor, CHUNK_SIZE);
             }), cursor);
-            if (drained.entries.length > 0) setLogs(prev => appendUniqueLogEntries(prev, drained.entries));
+            if (drained.entries.length > 0 && buffer.appendUnique(drained.entries).added > 0) schedulePublish();
             if (drained.truncated) setFetchError('Log polling caught up partially; remaining pages will be fetched on the next interval.');
             else setFetchError(null);
         } catch (err: any) {
@@ -388,7 +442,7 @@ export function useLogStream({
         } finally {
             pollingAfterRef.current = false;
         }
-    }, [getLastTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious]);
+    }, [getLastTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, buffer, schedulePublish]);
 
     // Handle pod/container/showPrevious changes
     useEffect(() => {
@@ -417,7 +471,7 @@ export function useLogStream({
             setDisconnectReason('');
             setLoading(true);
             resetChunkState();
-            setLogs([]);
+            replaceLogs([]);
             if (isAllLoaded) {
                 loadAllLogs();
             } else {
@@ -442,20 +496,27 @@ export function useLogStream({
 
         initialLoadDone.current = true;
         fetchLogs();
-    }, [namespace, pod, container, siblingPods, isAllPods, showPrevious, sinceTime, viewMode, isAllLoaded, initialPosition, fetchLogs, loadAllLogs, resetChunkState]);
+    }, [namespace, pod, container, siblingPods, isAllPods, showPrevious, sinceTime, viewMode, isAllLoaded, initialPosition, fetchLogs, loadAllLogs, resetChunkState, replaceLogs]);
 
+    // Sequence of stream starts; see startStreaming.
+    const startSeqRef = useRef(0);
     // Stop stream when tab becomes stale
     useEffect(() => {
+        if (isStale) startSeqRef.current++;
         if (isStale && streamIdRef.current) {
-            StopLogStream(streamIdRef.current);
+            stopStream(streamIdRef.current);
             streamIdRef.current = null;
         }
     }, [isStale]);
 
     // Start/stop log streaming
+    // Starts are asynchronous and can overlap (follow toggled twice, refresh during a start).
+    // Each start takes a sequence number; a start that finishes after a newer one began, or after
+    // a stop, stops the stream it just opened instead of leaving it running unowned.
     const startStreaming = useCallback(async () => {
+        const seq = ++startSeqRef.current;
         if (streamIdRef.current) {
-            StopLogStream(streamIdRef.current);
+            stopStream(streamIdRef.current);
             streamIdRef.current = null;
         }
 
@@ -470,67 +531,50 @@ export function useLogStream({
             } else {
                 streamId = await StartLogStream(namespace, pod, container, true);
             }
+            if (seq !== startSeqRef.current) {
+                if (streamId) stopStream(streamId);
+                return;
+            }
             streamIdRef.current = streamId;
+            if (streamId) rememberStream(streamId);
         } catch (err: any) {
             console.error('Failed to start log stream:', err);
         }
     }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs]);
 
     const stopStreaming = useCallback(() => {
+        startSeqRef.current++;
         if (streamIdRef.current) {
-            StopLogStream(streamIdRef.current);
+            stopStream(streamIdRef.current);
             streamIdRef.current = null;
         }
     }, []);
 
     // Listen for log stream events (single lines and batches from 60fps coalescer)
     useEffect(() => {
-        // Process a single log line, filtering duplicates by timestamp
-        const processLine = (line: any) => {
-            const newEntries = parseLogLines(line, 'stream');
-            if (newEntries.length > 0) {
-                setLogs(prev => {
-                    const lastTs = prev.length > 0 ?
-                        (prev.slice().reverse().find((e: any) => e.timestamp)?.timestamp || '') : '';
-
-                    const filteredEntries = lastTs ?
-                        newEntries.filter((e: any) => !e.timestamp || e.timestamp > lastTs) :
-                        newEntries;
-
-                    return filteredEntries.length > 0 ? [...prev, ...filteredEntries] : prev;
-                });
-            }
+        // Append parsed entries to the bounded buffer (dropping replays by timestamp) and
+        // let the frame-coalesced publisher tell React. Cost is O(batch), not O(buffer).
+        const processEntries = (entries: any[]) => {
+            if (entries.length > 0 && buffer.appendLive(entries).added > 0) schedulePublish();
         };
 
-        // Process multiple log lines in a single state update (from batch event)
+        const processLine = (line: any) => processEntries(parseLogLines(line, 'stream'));
+
         const processBatch = (lines: any) => {
             if (!lines || lines.length === 0) return;
-
-            // Parse all lines first
-            const allNewEntries: any[] = [];
+            const all: any[] = [];
             for (const line of lines) {
                 const entries = parseLogLines(line, 'stream');
-                allNewEntries.push(...entries);
+                for (let i = 0; i < entries.length; i++) all.push(entries[i]);
             }
-
-            if (allNewEntries.length > 0) {
-                setLogs(prev => {
-                    const lastTs = prev.length > 0 ?
-                        (prev.slice().reverse().find((e: any) => e.timestamp)?.timestamp || '') : '';
-
-                    const filteredEntries = lastTs ?
-                        allNewEntries.filter((e: any) => !e.timestamp || e.timestamp > lastTs) :
-                        allNewEntries;
-
-                    return filteredEntries.length > 0 ? [...prev, ...filteredEntries] : prev;
-                });
-            }
+            processEntries(all);
         };
 
         const handleLogEvent = (event: any) => {
             if (!streamIdRef.current || event.streamId !== streamIdRef.current) return;
 
             if (event.done) {
+                forgetStream(streamIdRef.current);
                 streamIdRef.current = null;
                 streamDisconnectedRef.current = true;
                 setStreamDisconnected(true);
@@ -540,6 +584,7 @@ export function useLogStream({
 
             if (event.error) {
                 console.error('Log stream error:', event.error);
+                forgetStream(streamIdRef.current);
                 streamIdRef.current = null;
                 streamDisconnectedRef.current = true;
                 setStreamDisconnected(true);
@@ -566,20 +611,30 @@ export function useLogStream({
             cancelLogStream();
             cancelLogBatch();
         };
-    }, []);
+    }, [buffer, schedulePublish]);
 
     // Cleanup on unmount
     useEffect(() => {
         return () => {
+            frameRef.current?.cancel();
+            frameRef.current = null;
+            startSeqRef.current++;
             if (streamIdRef.current) {
-                StopLogStream(streamIdRef.current);
+                stopStream(streamIdRef.current);
                 streamIdRef.current = null;
             }
         };
     }, []);
 
     return {
-        logs,
+        // Backing array. It is appended to in place: use `logCount` for the published length.
+        logs: snapshot.entries,
+        logCount: snapshot.count,
+        firstItemIndex: snapshot.firstId,
+        trimmedCount: snapshot.trimmedTotal,
+        // Live view of the buffer for actions that must see unpublished lines (download, copy).
+        getEntries,
+        getEntryById,
         setLogs,
         loading,
         loadingAll,
@@ -593,8 +648,6 @@ export function useLogStream({
         clearFetchError: () => setFetchError(null),
         streamDisconnected,
         disconnectReason,
-        firstItemIndex,
-        setFirstItemIndex,
         setHasMoreBefore,
         setHasMoreAfter,
         setIsAllLoaded,

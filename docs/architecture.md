@@ -87,6 +87,22 @@ makes one codebase serve three deployment shapes.
 3. **Actions** — a view calls a backend method (edit, delete, scale, forward…);
    the backend performs the API operation and returns the outcome.
 
+### Windowed views (opt-in, setting `performance.viewStore`)
+
+For resource types that declare a row spec (`pkg/rows`), the list is not shipped
+to the WebView at all. A shared store (`pkg/store`) keeps one list+watch shard per
+context, type and namespace; a per-list view in Go applies search, column filters
+and sort, and the frontend asks only for the window of rows it shows. Control calls
+(open, update, close, selection) use the normal bindings; row windows travel as
+GET requests under `/_kubikles/v1/` (see `pkg/bulk`), and changes arrive as tiny
+`view-updates` notices over the existing event path, after which the client pulls
+only the rows whose sequence number changed. A worker may run the fetch and decode
+off the main thread when an in-app probe shows the WebView supports it. Types
+without a spec, detail panels and graphs keep the legacy flow above, which is also
+the fallback whenever a view cannot open. Other backend readers (metrics, the
+dependency graph, the issue detector, MCP list tools) read from shards that a
+view already opened and never start one; when no shard is warm they list live.
+
 ## Why this shape
 
 Three decisions define the architecture, each in service of *small and fast*:
@@ -100,6 +116,9 @@ Three decisions define the architecture, each in service of *small and fast*:
 - **Watchers are reference-counted.** A resource watcher starts on its first
   subscriber and stops shortly after the last one leaves, so the client only pays
   for what is on screen.
+- **Large lists stay in Go.** With windowed views on, sorting and filtering happen
+  next to the data and the WebView holds only the visible window, so browser memory
+  does not grow with cluster size.
 
 For the rationale behind these and other trade-offs, see [Decisions](decisions.md).
 

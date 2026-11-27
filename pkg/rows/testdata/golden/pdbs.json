@@ -1,0 +1,3504 @@
+{
+ "type": "pdbs",
+ "now": 1748779200000,
+ "columns": ["name","namespace","minAvailable","maxUnavailable","allowed","age"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "minAvailable": "select",
+  "maxUnavailable": "select",
+  "allowed": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 0,
+    "currentHealthy": 2,
+    "desiredHealthy": 0,
+    "expectedPods": 5
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T08:49:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 10,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 3,
+    "desiredHealthy": 0,
+    "expectedPods": 7
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T16:30:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5,
+    "selector": {
+     "matchLabels": {
+      "app": "db",
+      "tier": "data"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 2,
+    "desiredHealthy": 5,
+    "expectedPods": 4
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T03:43:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 5,
+    "expectedPods": 6
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T00:48:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 2,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 1,
+    "desiredHealthy": 1,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "default",
+    "creationTimestamp": "2025-06-01T02:07:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 3,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 1
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "default",
+    "creationTimestamp": "2025-06-01T09:01:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 10,
+    "selector": {
+     "matchLabels": {
+      "app": "db",
+      "tier": "data"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 2,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T09:18:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5,
+    "selector": {
+     "matchLabels": {
+      "app": "db",
+      "tier": "data"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 5
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T12:58:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 2,
+    "desiredHealthy": 2,
+    "expectedPods": 6
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T08:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "db",
+      "tier": "data"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 4,
+    "desiredHealthy": 1,
+    "expectedPods": 1
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "default",
+    "creationTimestamp": "2025-06-01T00:55:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 3,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 0,
+    "desiredHealthy": 0,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-29T20:26:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 10,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 2,
+    "desiredHealthy": 3,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T04:54:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 1,
+    "expectedPods": 6
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T11:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 0
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "min-zero",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-12",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1
+   },
+   "status": {
+    "disruptionsAllowed": 0,
+    "currentHealthy": 0,
+    "desiredHealthy": 0,
+    "expectedPods": 0
+   },
+   "metadata": {
+    "name": "status-zero",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "maxUnavailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "x"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "max-int",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": "50%"
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "min-percent",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "maxUnavailable": "25%",
+    "selector": {
+     "matchLabels": {
+      "a": "1",
+      "b": "2"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "max-percent",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": ""
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "min-empty-string",
+    "namespace": "default",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": "2"
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "min-numeric-string",
+    "namespace": "default",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "no-budget",
+    "namespace": "default",
+    "uid": "uid-edge-8",
+    "creationTimestamp": "2025-06-01T10:33:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 2,
+    "selector": {
+     "matchLabels": {
+      "app": "a"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-9",
+    "creationTimestamp": "2025-06-01T10:32:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 10,
+    "selector": {
+     "matchLabels": {
+      "app": "db",
+      "tier": "data"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 0,
+    "currentHealthy": 4,
+    "desiredHealthy": 3,
+    "expectedPods": 0
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T03:48:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 1,
+    "desiredHealthy": 2,
+    "expectedPods": 1
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T03:11:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 10
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 0,
+    "desiredHealthy": 0,
+    "expectedPods": 0
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T10:32:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 5,
+    "desiredHealthy": 3,
+    "expectedPods": 7
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T05:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1
+   },
+   "status": {
+    "disruptionsAllowed": 0,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 0
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T07:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 1,
+    "desiredHealthy": 1,
+    "expectedPods": 0
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-29T20:23:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "web"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 0,
+    "currentHealthy": 2,
+    "desiredHealthy": 4,
+    "expectedPods": 6
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T21:49:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 3
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 1,
+    "desiredHealthy": 4,
+    "expectedPods": 7
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T04:44:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 3
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 3,
+    "desiredHealthy": 0,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T17:15:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 5,
+    "desiredHealthy": 5,
+    "expectedPods": 2
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 0,
+    "currentHealthy": 4,
+    "desiredHealthy": 5,
+    "expectedPods": 4
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T08:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 5,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 3,
+    "expectedPods": 4
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T14:10:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 0,
+    "currentHealthy": 1,
+    "desiredHealthy": 4,
+    "expectedPods": 6
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T03:08:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 10,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 2,
+    "currentHealthy": 1,
+    "desiredHealthy": 0,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T23:26:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-10",
+    "creationTimestamp": "2025-06-01T10:31:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 10,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 1,
+    "desiredHealthy": 2,
+    "expectedPods": 7
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-29T19:51:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "db",
+      "tier": "data"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 5,
+    "desiredHealthy": 0,
+    "expectedPods": 5
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-06-01T09:15:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app.kubernetes.io/name": "cache"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 5,
+    "desiredHealthy": 0,
+    "expectedPods": 1
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T14:23:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "db",
+      "tier": "data"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 1,
+    "desiredHealthy": 2,
+    "expectedPods": 1
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T19:07:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-11",
+    "creationTimestamp": "2025-06-01T10:30:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "db",
+      "tier": "data"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 1,
+    "currentHealthy": 3,
+    "desiredHealthy": 2,
+    "expectedPods": 3
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T02:57:00Z"
+   }
+  },
+  {
+   "spec": {
+    "minAvailable": 2,
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    }
+   },
+   "status": {
+    "disruptionsAllowed": 3,
+    "currentHealthy": 1,
+    "desiredHealthy": 5,
+    "expectedPods": 0
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-29T20:56:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  }
+ ],
+ "noSort": ["uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-12"],
+ "cells": {
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "Prod",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 0,
+   "age": "2025-05-31T08:49:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "Prod",
+   "minAvailable": 10,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-05-30T16:30:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "Prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-31T03:43:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "Prod",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T00:48:00Z"
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "default",
+   "minAvailable": 2,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-06-01T02:07:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "default",
+   "minAvailable": 3,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-06-01T09:01:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "default",
+   "minAvailable": 10,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-05-31T09:18:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-05-31T12:58:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "default",
+   "minAvailable": 3,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-05-30T08:34:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "default",
+   "minAvailable": 3,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-06-01T00:55:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "default",
+   "minAvailable": 3,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-05-29T20:26:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "default",
+   "minAvailable": 10,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-05-30T04:54:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "default",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-05-30T11:17:00Z"
+  },
+  "uid-edge-1": {
+   "name": "min-zero",
+   "namespace": "default",
+   "minAvailable": 0,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-12": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": null
+  },
+  "uid-edge-2": {
+   "name": "status-zero",
+   "namespace": "default",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 0,
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "max-int",
+   "namespace": "default",
+   "minAvailable": "-",
+   "maxUnavailable": 1,
+   "allowed": 1,
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "min-percent",
+   "namespace": "default",
+   "minAvailable": "50%",
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "max-percent",
+   "namespace": "default",
+   "minAvailable": "-",
+   "maxUnavailable": "25%",
+   "allowed": 1,
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "min-empty-string",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-7": {
+   "name": "min-numeric-string",
+   "namespace": "default",
+   "minAvailable": "2",
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-edge-8": {
+   "name": "no-budget",
+   "namespace": "default",
+   "minAvailable": "-",
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-edge-9": {
+   "name": "annotated",
+   "namespace": "default",
+   "minAvailable": 2,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T10:32:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "kube-system",
+   "minAvailable": 10,
+   "maxUnavailable": "-",
+   "allowed": 0,
+   "age": "2025-05-30T03:48:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "kube-system",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-05-31T03:11:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "kube-system",
+   "minAvailable": 10,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-31T10:32:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "kube-system",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-05-30T05:00:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "prod",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 0,
+   "age": "2025-05-30T07:35:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "prod",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-05-29T20:23:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "prod",
+   "minAvailable": 3,
+   "maxUnavailable": "-",
+   "allowed": 0,
+   "age": "2025-05-31T21:49:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "prod",
+   "minAvailable": 3,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T04:44:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "prod",
+   "minAvailable": 3,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T17:15:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "team-a",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 0,
+   "age": "2025-05-30T08:34:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-a",
+   "minAvailable": 5,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-05-30T14:10:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "team-a",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 0,
+   "age": "2025-05-31T03:08:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "team-a",
+   "minAvailable": 10,
+   "maxUnavailable": "-",
+   "allowed": 2,
+   "age": "2025-05-31T23:26:00Z"
+  },
+  "uid-edge-10": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T10:31:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "team-b",
+   "minAvailable": 10,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-05-29T19:51:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "team-b",
+   "minAvailable": 3,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-06-01T09:15:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "team-b",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-05-31T14:23:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "team-b",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-05-30T19:07:00Z"
+  },
+  "uid-edge-11": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-06-01T10:30:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "étude",
+   "minAvailable": 1,
+   "maxUnavailable": "-",
+   "allowed": 1,
+   "age": "2025-05-30T02:57:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "étude",
+   "minAvailable": 2,
+   "maxUnavailable": "-",
+   "allowed": 3,
+   "age": "2025-05-29T20:56:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "Prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T08:49:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "Prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T16:30:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "Prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T03:43:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "Prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T00:48:00Z"
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T02:07:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T09:01:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T09:18:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T12:58:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T08:34:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T00:55:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-29T20:26:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T04:54:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T11:17:00Z"
+  },
+  "uid-edge-1": {
+   "name": "min-zero",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-12": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": ""
+  },
+  "uid-edge-2": {
+   "name": "status-zero",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "max-int",
+   "namespace": "default",
+   "minAvailable": "-",
+   "maxUnavailable": "",
+   "allowed": "",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "min-percent",
+   "namespace": "default",
+   "minAvailable": "50%",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "max-percent",
+   "namespace": "default",
+   "minAvailable": "-",
+   "maxUnavailable": "25%",
+   "allowed": "",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "min-empty-string",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-7": {
+   "name": "min-numeric-string",
+   "namespace": "default",
+   "minAvailable": "2",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-edge-8": {
+   "name": "no-budget",
+   "namespace": "default",
+   "minAvailable": "-",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-edge-9": {
+   "name": "annotated",
+   "namespace": "default",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:32:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "kube-system",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T03:48:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "kube-system",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T03:11:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "kube-system",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T10:32:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "kube-system",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T05:00:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T07:35:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-29T20:23:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T21:49:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T04:44:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T17:15:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "team-a",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T08:34:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-a",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T14:10:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "team-a",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T03:08:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "team-a",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T23:26:00Z"
+  },
+  "uid-edge-10": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:31:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "team-b",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-29T19:51:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "team-b",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T09:15:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "team-b",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-31T14:23:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "team-b",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T19:07:00Z"
+  },
+  "uid-edge-11": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-06-01T10:30:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "étude",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-30T02:57:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "étude",
+   "minAvailable": "",
+   "maxUnavailable": "-",
+   "allowed": "",
+   "age": "2025-05-29T20:56:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 0,
+   "age": 27.183333333333334
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 10,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 43.5
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 32.28333333333333
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 11.2
+  },
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 2,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 9.883333333333333
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 3,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 2.9833333333333334
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 10,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 26.7
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 23.033333333333335
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 3,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 51.43333333333333
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 3,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 11.083333333333334
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 3,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 63.56666666666667
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 10,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 55.1
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 48.71666666666667
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 0,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-12": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": null
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 0,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": null,
+   "maxUnavailable": 1,
+   "allowed": 1,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": null,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.3833333333333333
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": null,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.4
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": null,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.4166666666666667
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": null,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.4333333333333333
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": null,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.45
+  },
+  "uid-edge-9": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 2,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.4666666666666666
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 10,
+   "maxUnavailable": null,
+   "allowed": 0,
+   "age": 56.2
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 32.81666666666667
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 10,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 25.466666666666665
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 55
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 0,
+   "age": 52.416666666666664
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 63.61666666666667
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 3,
+   "maxUnavailable": null,
+   "allowed": 0,
+   "age": 14.183333333333334
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 3,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 7.266666666666667
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 3,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 42.75
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 50
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 0,
+   "age": 51.43333333333333
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 5,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 45.833333333333336
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 0,
+   "age": 32.86666666666667
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 10,
+   "maxUnavailable": null,
+   "allowed": 2,
+   "age": 12.566666666666666
+  },
+  "uid-edge-10": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.4833333333333334
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 10,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 64.15
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 3,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 2.75
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 21.616666666666667
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 40.88333333333333
+  },
+  "uid-edge-11": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 1.5
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 1,
+   "maxUnavailable": null,
+   "allowed": 1,
+   "age": 57.05
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "minAvailable": 2,
+   "maxUnavailable": null,
+   "allowed": 3,
+   "age": 63.06666666666667
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-edge-9","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-0029","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-edge-1","uid-0031","uid-0026","uid-0027","uid-edge-10","uid-edge-11","uid-edge-2","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-2","uid-edge-10","uid-edge-11","uid-0027","uid-0026","uid-0031","uid-edge-1","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-0029","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-edge-9","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0028","uid-0008","uid-0024","uid-0014","uid-edge-1","uid-edge-2","uid-edge-9","uid-0002","uid-0000","uid-0023","uid-0006","uid-0005","uid-0029","uid-0017","uid-0027","uid-0026","uid-0015","uid-0004","uid-0018","uid-0003","uid-0020","uid-0019","uid-0030","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0001","uid-0012","uid-edge-10","uid-0031","uid-0022","uid-0013","uid-0011","uid-edge-11","uid-0010","uid-0016","uid-0021","uid-0009","uid-0007","uid-0025"],
+   "desc": ["uid-0007","uid-0025","uid-edge-11","uid-0010","uid-0016","uid-0021","uid-0009","uid-edge-10","uid-0031","uid-0022","uid-0013","uid-0011","uid-0020","uid-0019","uid-0030","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0001","uid-0012","uid-0015","uid-0004","uid-0018","uid-0003","uid-edge-1","uid-edge-2","uid-edge-9","uid-0002","uid-0000","uid-0023","uid-0006","uid-0005","uid-0029","uid-0017","uid-0027","uid-0026","uid-0028","uid-0008","uid-0024","uid-0014"]
+  },
+  "minAvailable": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-10","uid-edge-11","uid-0028","uid-0016","uid-0008","uid-0022","uid-0021","uid-0029","uid-0001","uid-0018","uid-0007","uid-0012","uid-edge-9","uid-0000","uid-0025","uid-0010","uid-0002","uid-0020","uid-0023","uid-0019","uid-0030","uid-0017","uid-0026","uid-0006","uid-0024","uid-0004","uid-0013","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0031","uid-0015","uid-0005","uid-0014","uid-0027","uid-0003","uid-0009"],
+   "desc": ["uid-0031","uid-0015","uid-0005","uid-0014","uid-0027","uid-0003","uid-0009","uid-0006","uid-0024","uid-0004","uid-0013","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0010","uid-0002","uid-0020","uid-0023","uid-0019","uid-0030","uid-0017","uid-0026","uid-edge-9","uid-0000","uid-0025","uid-edge-2","uid-edge-10","uid-edge-11","uid-0028","uid-0016","uid-0008","uid-0022","uid-0021","uid-0029","uid-0001","uid-0018","uid-0007","uid-0012","uid-edge-1"]
+  },
+  "maxUnavailable": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-9","uid-edge-10","uid-edge-11","uid-0010","uid-0002","uid-0020","uid-0000","uid-0023","uid-0028","uid-0031","uid-0019","uid-0016","uid-0006","uid-0015","uid-0005","uid-0008","uid-0024","uid-0004","uid-0022","uid-0021","uid-0030","uid-0014","uid-0013","uid-0029","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0017","uid-0011","uid-0001","uid-0018","uid-0027","uid-0003","uid-0007","uid-0025","uid-0026","uid-0012","uid-0009"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-edge-9","uid-edge-10","uid-edge-11","uid-0010","uid-0002","uid-0020","uid-0000","uid-0023","uid-0028","uid-0031","uid-0019","uid-0016","uid-0006","uid-0015","uid-0005","uid-0008","uid-0024","uid-0004","uid-0022","uid-0021","uid-0030","uid-0014","uid-0013","uid-0029","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0017","uid-0011","uid-0001","uid-0018","uid-0027","uid-0003","uid-0007","uid-0025","uid-0026","uid-0012","uid-0009"]
+  },
+  "allowed": {
+   "asc": ["uid-edge-2","uid-0019","uid-0008","uid-0022","uid-0011","uid-0001","uid-0003","uid-edge-1","uid-edge-9","uid-edge-10","uid-edge-11","uid-0020","uid-0028","uid-0005","uid-0004","uid-0021","uid-0013","uid-0029","uid-0007","uid-0026","uid-0012","uid-0002","uid-0023","uid-0031","uid-0015","uid-0024","uid-0030","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0010","uid-0000","uid-0016","uid-0006","uid-0014","uid-0017","uid-0018","uid-0027","uid-0025","uid-0009"],
+   "desc": ["uid-0010","uid-0000","uid-0016","uid-0006","uid-0014","uid-0017","uid-0018","uid-0027","uid-0025","uid-0009","uid-0002","uid-0023","uid-0031","uid-0015","uid-0024","uid-0030","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-1","uid-edge-9","uid-edge-10","uid-edge-11","uid-0020","uid-0028","uid-0005","uid-0004","uid-0021","uid-0013","uid-0029","uid-0007","uid-0026","uid-0012","uid-edge-2","uid-0019","uid-0008","uid-0022","uid-0011","uid-0001","uid-0003"]
+  },
+  "age": {
+   "asc": ["uid-0009","uid-0012","uid-0026","uid-0025","uid-0007","uid-0003","uid-0027","uid-0018","uid-0001","uid-0017","uid-0011","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0029","uid-0013","uid-0014","uid-0030","uid-0021","uid-0022","uid-0004","uid-0024","uid-0008","uid-0005","uid-0015","uid-0006","uid-0016","uid-0019","uid-0031","uid-0028","uid-0023","uid-0000","uid-0020","uid-0002","uid-0010","uid-edge-11","uid-edge-10","uid-edge-9","uid-edge-2","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-edge-9","uid-edge-10","uid-edge-11","uid-0010","uid-0002","uid-0020","uid-0000","uid-0023","uid-0028","uid-0031","uid-0019","uid-0016","uid-0006","uid-0015","uid-0005","uid-0008","uid-0024","uid-0004","uid-0022","uid-0021","uid-0030","uid-0014","uid-0013","uid-0029","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0017","uid-0011","uid-0001","uid-0018","uid-0027","uid-0003","uid-0007","uid-0025","uid-0026","uid-0012","uid-0009"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0005","uid-0006","uid-0003","uid-0004"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0005","uid-0006","uid-0017","uid-0003","uid-0004","uid-0018","uid-0019","uid-0016"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0012","uid-0011"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-edge-3","uid-edge-5","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0005","uid-tie-09","uid-0007"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0020","uid-0022","uid-0021"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0022","uid-0021"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0005","uid-0006","uid-0003","uid-0004"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0008","uid-0009","uid-0010","uid-0007"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000","uid-edge-9"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-0002","uid-edge-9","uid-0001"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0005","uid-0006"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0023","uid-0003","uid-0001","uid-tie-00","uid-0009","uid-0016"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0005","uid-0006","uid-0003"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0002","uid-0001","uid-0016"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0014","uid-0000","uid-0002","uid-edge-3","uid-edge-5","uid-0015","uid-0001","uid-0016"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0002","uid-0001","uid-0016"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000","uid-edge-9"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0002","uid-0005","uid-0006","uid-0003","uid-0004","uid-0001"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-10","uid-edge-11"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0008","uid-0000","uid-0002","uid-0023","uid-0022","uid-0031","uid-0025"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0008","uid-0000","uid-0002","uid-0023","uid-0022","uid-0031","uid-0025"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-9"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-9"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-10"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0024","uid-0027","uid-tie-12","uid-0022","uid-0021","uid-0025"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0024","uid-0027","uid-tie-12","uid-0022","uid-0021","uid-0025"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0025"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0005","uid-0006","uid-0004","uid-tie-09","uid-tie-10"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0005","uid-0006","uid-0003"]
+  },
+  {
+   "query": "minavailable:2",
+   "matches": ["uid-0000","uid-edge-7","uid-edge-9","uid-0025"]
+  },
+  {
+   "query": "min:50%",
+   "matches": ["uid-edge-4"]
+  },
+  {
+   "query": "min:0",
+   "matches": ["uid-0014","uid-0005","uid-0027","uid-edge-1","uid-edge-4","uid-0003","uid-0015","uid-0031","uid-0009"]
+  },
+  {
+   "query": "maxunavailable:1",
+   "matches": ["uid-edge-3"]
+  },
+  {
+   "query": "max:25%",
+   "matches": ["uid-edge-5"]
+  },
+  {
+   "query": "selector:app=web",
+   "matches": ["uid-0028","uid-0000","uid-0017","uid-0029","uid-0018","uid-0019"]
+  },
+  {
+   "query": "podselector:/tier=data/",
+   "matches": ["uid-0024","uid-0005","uid-0006","uid-0023","uid-0003","uid-0010","uid-0021","uid-0007"]
+  },
+  {
+   "query": "selector:10=ten",
+   "matches": ["uid-0014","uid-0002","uid-0026","uid-0004","uid-0012","uid-0011","uid-0025"]
+  },
+  {
+   "query": "currenthealthy:3",
+   "matches": ["uid-0014","uid-0028","uid-0002","uid-0006","uid-0029","uid-edge-1","uid-edge-12","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0001","uid-0030","uid-0013","uid-edge-10","uid-edge-11","uid-0007"]
+  },
+  {
+   "query": "healthy:0",
+   "matches": ["uid-0026","uid-edge-2","uid-0015"]
+  },
+  {
+   "query": "current:2",
+   "matches": ["uid-0008","uid-0024","uid-0005","uid-0017","uid-0027","uid-0019"]
+  },
+  {
+   "query": "desiredhealthy:2",
+   "matches": ["uid-0002","uid-0005","uid-0006","uid-0017","uid-edge-1","uid-edge-12","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0004","uid-0001","uid-edge-10","uid-0009","uid-0021","uid-edge-11","uid-0007"]
+  },
+  {
+   "query": "desired:1",
+   "matches": ["uid-0000","uid-0023","uid-0029","uid-0012"]
+  },
+  {
+   "query": "disruptionsallowed:0",
+   "matches": ["uid-0008","uid-edge-2","uid-0003","uid-0001","uid-0019","uid-0011","uid-0022"]
+  },
+  {
+   "query": "allowed:1",
+   "matches": ["uid-0028","uid-0005","uid-0026","uid-0029","uid-edge-1","uid-edge-12","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0004","uid-0012","uid-0020","uid-0013","uid-edge-10","uid-0021","uid-edge-11","uid-0007"]
+  },
+  {
+   "query": "disruptions:2",
+   "matches": ["uid-0024","uid-0002","uid-0023","uid-0015","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0031"]
+  },
+  {
+   "query": "expectedpods:3",
+   "matches": ["uid-0000","uid-0005","uid-0027","uid-edge-1","uid-edge-12","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0031","uid-edge-10","uid-edge-11","uid-0007"]
+  },
+  {
+   "query": "expected:0",
+   "matches": ["uid-edge-2","uid-0003","uid-0015","uid-0001","uid-0012","uid-0025"]
+  },
+  {
+   "query": "pods:5",
+   "matches": ["uid-0008","uid-0006","uid-0010"]
+  },
+  {
+   "query": "min:/^[0-9]+$/",
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-7","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "query": "selector:\"a=1 b=2\"",
+   "matches": ["uid-edge-5"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-edge-9","uid-0001"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-edge-9","uid-0001","uid-0016"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0005","uid-0006","uid-0017","uid-0023","uid-edge-12","uid-edge-2","uid-edge-5","uid-edge-9","uid-0003","uid-0004","uid-0018","uid-0019","uid-0020","uid-tie-00","uid-tie-01","uid-0013","uid-0031","uid-edge-10","uid-0009","uid-0016","uid-edge-11"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0005","uid-0006","uid-0003","uid-0004"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-tie-12","uid-0022","uid-0021","uid-0025"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0005","uid-0017","uid-0026","uid-0027","uid-0029","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0009","uid-0021","uid-0007","uid-0025"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0008","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0023","uid-0015","uid-0019","uid-0020","uid-0031","uid-0010","uid-0016"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0026","uid-0012","uid-0009","uid-0025"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0028","uid-0000","uid-0002","uid-0023","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0020","uid-edge-10","uid-0010","uid-edge-11"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "name": "minAvailable select -",
+   "filters": {
+    "minAvailable": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": ["uid-edge-3","uid-edge-5","uid-edge-8"]
+  },
+  {
+   "name": "minAvailable select 50%",
+   "filters": {
+    "minAvailable": {
+     "type": "select",
+     "values": ["50%"]
+    }
+   },
+   "matches": ["uid-edge-4"]
+  },
+  {
+   "name": "minAvailable select 2",
+   "filters": {
+    "minAvailable": {
+     "type": "select",
+     "values": ["2"]
+    }
+   },
+   "matches": ["uid-edge-7"]
+  },
+  {
+   "name": "maxUnavailable select -|25%",
+   "filters": {
+    "maxUnavailable": {
+     "type": "select",
+     "values": ["-","25%"]
+    }
+   },
+   "matches": ["uid-0008","uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0018","uid-0001","uid-0012","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "name": "allowed select 1",
+   "filters": {
+    "allowed": {
+     "type": "select",
+     "values": ["1"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "allowed select -",
+   "filters": {
+    "allowed": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0011","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0024","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-edge-12","uid-edge-2","uid-edge-3","uid-edge-5","uid-edge-9","uid-0003","uid-0004","uid-0018","uid-0001","uid-0019","uid-0020","uid-tie-00","uid-tie-01","uid-0013","uid-0022","uid-0031","uid-edge-10","uid-0009","uid-0016","uid-0021","uid-edge-11","uid-0025"]
+  },
+  {
+   "name": "minAvailable regex",
+   "filters": {
+    "minAvailable": {
+     "type": "regex",
+     "conditions": ["%$"]
+    }
+   },
+   "matches": ["uid-edge-4"]
+  },
+  {
+   "name": "allowed numeric",
+   "filters": {
+    "allowed": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0014","uid-0024","uid-0028","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-0029","uid-edge-1","uid-edge-12","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0004","uid-0015","uid-0018","uid-0012","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0013","uid-0031","uid-edge-10","uid-0009","uid-0010","uid-0016","uid-0021","uid-edge-11","uid-0007","uid-0025"]
+  },
+  {
+   "name": "minAvailable numeric",
+   "filters": {
+    "minAvailable": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0014","uid-0024","uid-0000","uid-0002","uid-0005","uid-0006","uid-0017","uid-0023","uid-0026","uid-0027","uid-edge-9","uid-0003","uid-0004","uid-0015","uid-0019","uid-0020","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0013","uid-0031","uid-0009","uid-0010","uid-0025"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0024","uid-0000","uid-0005","uid-0006","uid-0017","uid-0023","uid-0003","uid-0004","uid-0018","uid-0001","uid-0019","uid-0020","uid-tie-00","uid-tie-01","uid-0013","uid-0022","uid-0031","uid-0009","uid-0016","uid-0021","uid-0025"]
+  }
+ ],
+ "uniqueValues": {
+  "minAvailable": {
+   "values": ["-","2","50%"],
+   "counts": {
+    "2": 1,
+    "-": 3,
+    "50%": 1
+   }
+  },
+  "maxUnavailable": {
+   "values": ["-","25%"],
+   "counts": {
+    "-": 55,
+    "25%": 1
+   }
+  },
+  "allowed": null
+ }
+}

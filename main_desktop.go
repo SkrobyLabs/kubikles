@@ -3,8 +3,10 @@
 package main
 
 import (
+	"context"
 	"runtime"
 
+	"kubikles/pkg/bulk"
 	"kubikles/pkg/compressedassets"
 	"kubikles/pkg/crashlog"
 
@@ -38,20 +40,21 @@ func runDesktopMode() {
 		Height: 768,
 		AssetServer: &assetserver.Options{
 			Assets:     assets,
-			Middleware: compressedassets.WailsMiddleware(assets, "frontend/dist"),
+			Middleware: bulk.Chain(app.newBulkHandler(false, nil), compressedassets.WailsMiddleware(assets, "frontend/dist")),
 		},
 		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 30, A: 1},
 		WindowStartState: options.Maximised,
 		Menu:             appMenu,
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
+		OnStartup: func(ctx context.Context) {
+			app.startup(ctx)
+			startE2EHook(ctx)
+		},
+		OnShutdown: app.shutdown,
 		DragAndDrop: &options.DragAndDrop{
 			EnableFileDrop:     true,
 			DisableWebViewDrop: true,
 		},
-		Bind: []interface{}{
-			app,
-		},
+		Bind: append([]interface{}{app}, e2eBindings()...),
 		Mac: &mac.Options{
 			TitleBar: mac.TitleBarHiddenInset(),
 			About: &mac.AboutInfo{

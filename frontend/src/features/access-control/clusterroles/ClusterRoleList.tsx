@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useClusterRoles } from '~/hooks/resources';
 import { useK8s } from '~/context';
@@ -10,14 +12,23 @@ import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ClusterRoleActionsMenu from './ClusterRoleActionsMenu';
 import { useClusterRoleActions } from './useClusterRoleActions';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { clusterRoleSemantics } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildClusterRoleViewColumns } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
+
+const CLUSTERROLE_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const CLUSTERROLE_VIEW_OPTIONS = { sort: CLUSTERROLE_INITIAL_SORT, columns: defaultViewColumns('clusterroles') };
+const NO_DATA: any[] = [];
 
 export default function ClusterRoleList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { clusterRoles, loading, loadState } = useClusterRoles(currentContext, isVisible) as any;
-    const { handleShowDetails, handleEditYaml } = useClusterRoleActions();
+    const { clusterRoles, loading, loadState, view } = useClusterRoles(currentContext, isVisible, CLUSTERROLE_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml } = useStableCallbacks(useClusterRoleActions());
     const selection = useSelection();
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     // Unified bulk actions (also used for single delete)
     const {
@@ -34,13 +45,13 @@ export default function ClusterRoleList({ isVisible }: { isVisible: boolean }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: clusterRoleSemantics.name.getValue },
         {
             key: 'rules',
             label: 'Rules',
             align: 'center',
             render: (item: any) => (item.rules || []).length,
-            getValue: (item: any) => (item.rules || []).length
+            getValue: clusterRoleSemantics.rules.getValue
         },
         {
             key: 'aggregation',
@@ -53,19 +64,18 @@ export default function ClusterRoleList({ isVisible }: { isVisible: boolean }) {
                     <span className="text-gray-500">-</span>
                 );
             },
-            getValue: (item: any) => (item.aggregationRule?.clusterRoleSelectors || []).length > 0 ? 'Yes' : 'No'
+            getValue: clusterRoleSemantics.aggregation.getValue
         },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: clusterRoleSemantics.age.getValue },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <ClusterRoleActionsMenu
+                <MenuBound
+                    as={ClusterRoleActionsMenu}
+                    menuId={`clusterrole-${item.metadata.uid}`}
                     clusterRole={item}
-                    isOpen={activeMenuId === `clusterrole-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `clusterrole-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onDelete={(clusterRole: any) => openBulkDelete([clusterRole])}
                 />
@@ -74,19 +84,27 @@ export default function ClusterRoleList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete]);
+    ], [handleEditYaml, openBulkDelete]);
+
+    const viewColumns = useMemo(
+        () => buildClusterRoleViewColumns({
+            onEditYaml: handleEditYaml,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [handleEditYaml, openBulkDelete]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="Cluster Roles"
-                columns={columns}
-                data={clusterRoles}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : clusterRoles}
                 isLoading={loading}
                 showNamespaceSelector={false}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={CLUSTERROLE_INITIAL_SORT}
                 resourceType="clusterroles"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

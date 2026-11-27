@@ -203,9 +203,11 @@ func TestManager_SendMessage_OneShotMode(t *testing.T) {
 	provider := NewMockProvider()
 	provider.SetSupportsSession(false)
 
-	var receivedReq Request
+	// The provider runs on another goroutine; hand the request over through a
+	// channel so the test read is ordered after the write.
+	reqCh := make(chan Request, 1)
 	provider.SetSendMessageFunc(func(ctx context.Context, req Request, onChunk func(StreamEvent)) error {
-		receivedReq = req
+		reqCh <- req
 		onChunk(StreamEvent{Type: "text", Content: "response"})
 		onChunk(StreamEvent{Type: "done"})
 		return nil
@@ -220,8 +222,12 @@ func TestManager_SendMessage_OneShotMode(t *testing.T) {
 	sessionID := manager.StartSession("")
 	manager.SendMessage(sessionID, "hello", "system", "model", "ctx", []string{"tool1"}, nil, 0)
 
-	// Wait for response
-	time.Sleep(50 * time.Millisecond)
+	var receivedReq Request
+	select {
+	case receivedReq = <-reqCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("provider was not called")
+	}
 
 	// Check request was made
 	if receivedReq.Message != "hello" {

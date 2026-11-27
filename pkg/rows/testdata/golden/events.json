@@ -1,0 +1,3811 @@
+{
+ "type": "events",
+ "now": 1748779200000,
+ "columns": ["type","namespace","involvedObject","message","count","age","last","reason","source","objectKind"],
+ "filterTypes": {
+  "type": "select",
+  "namespace": "regex",
+  "involvedObject": "select",
+  "message": "select",
+  "count": "select",
+  "age": "numeric",
+  "last": "select",
+  "reason": "select",
+  "source": "select",
+  "objectKind": "select"
+ },
+ "fixtures": [
+  {
+   "metadata": {
+    "name": "cluster.1",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:48:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "n1"
+   },
+   "source": {
+    "component": "kubelet",
+    "host": "n1"
+   },
+   "firstTimestamp": "2025-06-01T10:48:00Z",
+   "lastTimestamp": "2025-06-01T11:58:00Z",
+   "type": "Normal",
+   "count": 3
+  },
+  {
+   "metadata": {
+    "name": "beta.5ccd",
+    "uid": "uid-0003",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T20:31:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "10-item",
+    "namespace": "Prod",
+    "uid": "inv-3"
+   },
+   "reason": "Scheduled",
+   "message": "Readiness probe failed: HTTP 503",
+   "source": {},
+   "firstTimestamp": "2025-05-31T16:43:00Z",
+   "lastTimestamp": "2025-06-01T10:55:00Z",
+   "count": 6,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "10-item.d889",
+    "uid": "uid-0007",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T03:01:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "Alpha",
+    "namespace": "Prod",
+    "uid": "inv-7"
+   },
+   "reason": "Unhealthy",
+   "message": "Readiness probe failed: HTTP 503",
+   "source": {
+    "component": "deployment-controller",
+    "host": "node-2"
+   },
+   "firstTimestamp": "2025-05-31T22:14:00Z",
+   "lastTimestamp": null,
+   "count": 8,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "kube-public.17334",
+    "uid": "uid-0012",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T01:58:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "9-item",
+    "namespace": "Prod",
+    "uid": "inv-12"
+   },
+   "reason": "Unhealthy",
+   "message": "",
+   "source": {},
+   "firstTimestamp": "2025-06-01T04:01:00Z",
+   "lastTimestamp": null,
+   "count": 7,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "zebra.2c779",
+    "uid": "uid-0023",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-29T21:40:00Z"
+   },
+   "involvedObject": {
+    "kind": "ReplicaSet",
+    "name": "beta-10",
+    "namespace": "Prod",
+    "uid": "inv-23"
+   },
+   "reason": "BackOff",
+   "message": "Readiness probe failed: HTTP 503",
+   "source": {},
+   "firstTimestamp": "2025-05-31T06:38:00Z",
+   "lastTimestamp": "2025-06-01T11:20:00Z",
+   "count": 6,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "résumé.34335",
+    "uid": "uid-0027",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-29T17:29:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "eta-v1",
+    "namespace": "Prod",
+    "uid": "inv-27"
+   },
+   "reason": "Killing",
+   "message": "",
+   "source": {
+    "component": "deployment-controller",
+    "host": ""
+   },
+   "firstTimestamp": "2025-05-31T22:17:00Z",
+   "lastTimestamp": "2025-06-01T10:58:00Z",
+   "count": 6,
+   "type": "Warning"
+  },
+  {
+   "metadata": {
+    "name": "日本語.36224",
+    "uid": "uid-0028",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T05:59:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "name.with.dots",
+    "namespace": "Prod",
+    "uid": "inv-28"
+   },
+   "reason": "Started",
+   "message": "Successfully assigned",
+   "source": {
+    "component": "kubelet",
+    "host": ""
+   },
+   "firstTimestamp": "2025-05-30T04:29:00Z",
+   "lastTimestamp": null,
+   "type": "Odd"
+  },
+  {
+   "metadata": {
+    "name": "emoji-😀.38113",
+    "uid": "uid-0029",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T01:04:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "zeta",
+    "namespace": "Prod",
+    "uid": "inv-29"
+   },
+   "reason": "Pulled",
+   "message": "café message",
+   "source": {
+    "component": "kubelet",
+    "host": "node-2"
+   },
+   "firstTimestamp": "2025-05-30T15:11:00Z",
+   "lastTimestamp": "2025-06-01T10:41:00Z",
+   "count": 5,
+   "type": "Normal",
+   "reportingComponent": "kubernetes.io/kubelet"
+  },
+  {
+   "metadata": {
+    "name": "Ａfullwidth.3a002",
+    "uid": "uid-0030",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T01:30:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "résumé",
+    "namespace": "Prod",
+    "uid": "inv-30"
+   },
+   "reason": "BackOff",
+   "message": "Readiness probe failed: HTTP 503",
+   "source": {
+    "component": "kubelet",
+    "host": ""
+   },
+   "firstTimestamp": "2025-05-30T12:24:00Z",
+   "lastTimestamp": null,
+   "count": 10,
+   "type": "Odd"
+  },
+  {
+   "metadata": {
+    "name": "no-first.1",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:50:00Z"
+   },
+   "involvedObject": {},
+   "source": {},
+   "firstTimestamp": null,
+   "lastTimestamp": null,
+   "type": "Normal",
+   "reason": "Edge",
+   "message": "zero timestamps"
+  },
+  {
+   "metadata": {
+    "name": "no-type.1",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:49:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {},
+   "firstTimestamp": "2025-06-01T10:49:00Z",
+   "lastTimestamp": "2025-06-01T10:49:00Z",
+   "reportingComponent": "ctl"
+  },
+  {
+   "metadata": {
+    "name": "no-ts.1",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": null
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "q"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": null,
+   "lastTimestamp": null,
+   "type": "Warning",
+   "count": 1
+  },
+  {
+   "metadata": {
+    "name": "Alpha.1eef",
+    "uid": "uid-0001",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T15:20:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "eta.v1",
+    "namespace": "kube-system",
+    "uid": "inv-1"
+   },
+   "reason": "Pulled",
+   "message": "Readiness probe failed: HTTP 503",
+   "source": {},
+   "firstTimestamp": "2025-05-31T16:49:00Z",
+   "lastTimestamp": "2025-06-01T10:47:00Z",
+   "count": 5,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "beta-10.9aab",
+    "uid": "uid-0005",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T17:39:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "Ａfullwidth",
+    "namespace": "kube-system",
+    "uid": "inv-5"
+   },
+   "reason": "Started",
+   "message": "café message",
+   "source": {},
+   "firstTimestamp": "2025-05-31T16:56:00Z",
+   "lastTimestamp": "2025-06-01T11:03:00Z",
+   "count": 4,
+   "type": "Warning"
+  },
+  {
+   "metadata": {
+    "name": "9-item.f778",
+    "uid": "uid-0008",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T05:47:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "X",
+    "namespace": "kube-system",
+    "uid": "inv-8"
+   },
+   "reason": "Killing",
+   "message": "Back-off restarting failed container",
+   "source": {
+    "component": "deployment-controller",
+    "host": "node-2"
+   },
+   "firstTimestamp": "2025-05-29T18:27:00Z",
+   "lastTimestamp": "2025-06-01T11:43:00Z",
+   "count": 2,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "resume.32446",
+    "uid": "uid-0026",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T09:08:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "item_b",
+    "namespace": "kube-system",
+    "uid": "inv-26"
+   },
+   "reason": "Pulled",
+   "message": "Successfully assigned",
+   "source": {
+    "component": "default-scheduler",
+    "host": "node-2"
+   },
+   "firstTimestamp": "2025-05-30T19:48:00Z",
+   "lastTimestamp": "2025-06-01T10:54:00Z",
+   "count": 1,
+   "type": "Warning"
+  },
+  {
+   "metadata": {
+    "name": "x.1b112",
+    "uid": "uid-0014",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T00:12:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "name.with.dots",
+    "namespace": "prod",
+    "uid": "inv-14"
+   },
+   "reason": "BackOff",
+   "message": "café message",
+   "source": {
+    "component": "default-scheduler",
+    "host": "node-1"
+   },
+   "firstTimestamp": "2025-05-30T18:35:00Z",
+   "lastTimestamp": "2025-06-01T11:28:00Z",
+   "count": 10,
+   "type": "Odd"
+  },
+  {
+   "metadata": {
+    "name": "eta.v1.20ddf",
+    "uid": "uid-0017",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T18:47:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "resume",
+    "namespace": "prod",
+    "uid": "inv-17"
+   },
+   "reason": "BackOff",
+   "message": "Successfully assigned",
+   "source": {
+    "component": "default-scheduler",
+    "host": "node-2"
+   },
+   "firstTimestamp": "2025-05-31T08:43:00Z",
+   "lastTimestamp": "2025-06-01T10:38:00Z",
+   "count": 6,
+   "type": "Odd",
+   "reportingComponent": "kubernetes.io/kubelet"
+  },
+  {
+   "metadata": {
+    "name": "Café.2a88a",
+    "uid": "uid-0022",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T06:49:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "item-a",
+    "namespace": "prod",
+    "uid": "inv-22"
+   },
+   "reason": "FailedMount",
+   "message": "café message",
+   "source": {
+    "component": "default-scheduler",
+    "host": "node-2"
+   },
+   "firstTimestamp": "2025-05-29T21:56:00Z",
+   "lastTimestamp": null,
+   "count": 3,
+   "type": "Odd"
+  },
+  {
+   "metadata": {
+    "name": "éclair.2e668",
+    "uid": "uid-0024",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T22:48:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "item-a",
+    "namespace": "prod",
+    "uid": "inv-24"
+   },
+   "reason": "Started",
+   "message": "Readiness probe failed: HTTP 503",
+   "source": {
+    "component": "kubelet",
+    "host": "node-1"
+   },
+   "firstTimestamp": "2025-05-29T17:35:00Z",
+   "lastTimestamp": null,
+   "count": 8,
+   "type": "Warning"
+  },
+  {
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "p"
+   },
+   "source": {
+    "component": "kubelet"
+   },
+   "firstTimestamp": "2025-05-30T10:00:00Z",
+   "lastTimestamp": "2025-05-30T10:00:00Z",
+   "type": "Normal",
+   "reason": "Tie",
+   "message": "tie",
+   "count": 2
+  },
+  {
+   "metadata": {
+    "name": "item-a.11667",
+    "uid": "uid-0009",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T17:25:00Z"
+   },
+   "involvedObject": {
+    "kind": "ReplicaSet",
+    "name": "日本語",
+    "namespace": "team-a",
+    "uid": "inv-9"
+   },
+   "reason": "FailedMount",
+   "message": "Successfully assigned",
+   "source": {},
+   "firstTimestamp": "2025-05-29T18:28:00Z",
+   "lastTimestamp": "2025-06-01T10:47:00Z",
+   "count": 10,
+   "type": "Odd",
+   "reportingComponent": "kubernetes.io/kubelet"
+  },
+  {
+   "metadata": {
+    "name": "kube-system.15445",
+    "uid": "uid-0011",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T09:42:00Z"
+   },
+   "involvedObject": {
+    "kind": "ReplicaSet",
+    "name": "cafe",
+    "namespace": "team-a",
+    "uid": "inv-11"
+   },
+   "reason": "Scheduled",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "source": {},
+   "firstTimestamp": "2025-05-31T00:39:00Z",
+   "lastTimestamp": "2025-06-01T11:07:00Z",
+   "count": 7,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "X.1d001",
+    "uid": "uid-0015",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-06-01T05:19:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "Beta-2",
+    "namespace": "team-a",
+    "uid": "inv-15"
+   },
+   "reason": "Pulled",
+   "message": "",
+   "source": {},
+   "firstTimestamp": "2025-05-29T16:54:00Z",
+   "lastTimestamp": null,
+   "count": 1,
+   "type": "Odd"
+  },
+  {
+   "metadata": {
+    "name": "zeta.1eef0",
+    "uid": "uid-0016",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-29T23:10:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "default",
+    "namespace": "team-a",
+    "uid": "inv-16"
+   },
+   "reason": "Scheduled",
+   "message": "",
+   "source": {},
+   "firstTimestamp": "2025-05-31T06:27:00Z",
+   "lastTimestamp": "2025-06-01T11:37:00Z",
+   "count": 3,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "cafe.26aac",
+    "uid": "uid-0020",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-06-01T09:28:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "alpha",
+    "namespace": "team-a",
+    "uid": "inv-20"
+   },
+   "reason": "BackOff",
+   "message": "café message",
+   "source": {
+    "component": "kubelet",
+    "host": "node-2"
+   },
+   "firstTimestamp": "2025-05-31T15:43:00Z",
+   "lastTimestamp": null,
+   "count": 7,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "café.2899b",
+    "uid": "uid-0021",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-29T18:19:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "éclair",
+    "namespace": "team-a",
+    "uid": "inv-21"
+   },
+   "reason": "Unhealthy",
+   "message": "",
+   "source": {
+    "component": "kubelet",
+    "host": ""
+   },
+   "firstTimestamp": "2025-06-01T10:09:00Z",
+   "lastTimestamp": "2025-06-01T11:46:00Z",
+   "count": 7,
+   "type": "Warning"
+  },
+  {
+   "metadata": {
+    "name": "alpha.0",
+    "uid": "uid-0000",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T03:12:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "emoji-😀",
+    "namespace": "team-b",
+    "uid": "inv-0"
+   },
+   "reason": "BackOff",
+   "message": "Successfully assigned",
+   "source": {
+    "component": "deployment-controller",
+    "host": "node-1"
+   },
+   "firstTimestamp": "2025-05-31T00:25:00Z",
+   "lastTimestamp": "2025-06-01T11:11:00Z",
+   "count": 4,
+   "type": "Odd"
+  },
+  {
+   "metadata": {
+    "name": "ALPHA.3dde",
+    "uid": "uid-0002",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T15:46:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "X",
+    "namespace": "team-b",
+    "uid": "inv-2"
+   },
+   "reason": "Killing",
+   "message": "Back-off restarting failed container",
+   "source": {
+    "component": "default-scheduler",
+    "host": "node-2"
+   },
+   "firstTimestamp": "2025-05-31T22:22:00Z",
+   "lastTimestamp": null,
+   "count": 2,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "beta-9.b99a",
+    "uid": "uid-0006",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-06-01T08:57:00Z"
+   },
+   "involvedObject": {
+    "kind": "Service",
+    "name": "9-item",
+    "namespace": "team-b",
+    "uid": "inv-6"
+   },
+   "reason": "BackOff",
+   "message": "Successfully assigned",
+   "source": {
+    "component": "default-scheduler",
+    "host": "node-1"
+   },
+   "firstTimestamp": "2025-05-30T12:07:00Z",
+   "lastTimestamp": "2025-06-01T10:40:00Z",
+   "count": 6,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "default.19223",
+    "uid": "uid-0013",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T02:01:00Z"
+   },
+   "involvedObject": {
+    "kind": "Node",
+    "name": "zebra",
+    "namespace": "team-b",
+    "uid": "inv-13"
+   },
+   "reason": "FailedMount",
+   "message": "Successfully assigned",
+   "source": {
+    "component": "deployment-controller",
+    "host": ""
+   },
+   "firstTimestamp": "2025-05-30T10:56:00Z",
+   "lastTimestamp": null,
+   "count": 6,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "eta-v1.22cce",
+    "uid": "uid-0018",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-29T22:13:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "eta v2",
+    "namespace": "team-b",
+    "uid": "inv-18"
+   },
+   "reason": "BackOff",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "source": {},
+   "firstTimestamp": "2025-06-01T01:05:00Z",
+   "lastTimestamp": "2025-06-01T11:57:00Z",
+   "count": 4,
+   "type": "Warning"
+  },
+  {
+   "metadata": {
+    "name": "name.with.dots.3bef1",
+    "uid": "uid-0031",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T11:35:00Z"
+   },
+   "involvedObject": {
+    "kind": "ReplicaSet",
+    "name": "x",
+    "namespace": "team-b",
+    "uid": "inv-31"
+   },
+   "reason": "BackOff",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "source": {},
+   "firstTimestamp": "2025-05-31T04:23:00Z",
+   "lastTimestamp": "2025-06-01T10:47:00Z",
+   "count": 9,
+   "type": "Odd"
+  },
+  {
+   "metadata": {
+    "name": "Beta-2.7bbc",
+    "uid": "uid-0004",
+    "namespace": "étude",
+    "creationTimestamp": "2025-06-01T05:40:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "eta-v1",
+    "namespace": "étude",
+    "uid": "inv-4"
+   },
+   "reason": "Unhealthy",
+   "message": "",
+   "source": {
+    "component": "deployment-controller",
+    "host": "node-1"
+   },
+   "firstTimestamp": "2025-05-30T06:57:00Z",
+   "lastTimestamp": "2025-06-01T10:45:00Z",
+   "count": 7,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "item_b.13556",
+    "uid": "uid-0010",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T16:42:00Z"
+   },
+   "involvedObject": {
+    "kind": "Deployment",
+    "name": "emoji-😀",
+    "namespace": "étude",
+    "uid": "inv-10"
+   },
+   "reason": "Unhealthy",
+   "message": "Successfully assigned",
+   "source": {
+    "component": "kubelet",
+    "host": "node-1"
+   },
+   "firstTimestamp": "2025-06-01T00:22:00Z",
+   "lastTimestamp": "2025-06-01T11:41:00Z",
+   "count": 7,
+   "type": "Normal"
+  },
+  {
+   "metadata": {
+    "name": "eta v2.24bbd",
+    "uid": "uid-0019",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T16:58:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "9-item",
+    "namespace": "étude",
+    "uid": "inv-19"
+   },
+   "reason": "BackOff",
+   "message": "Successfully assigned",
+   "source": {},
+   "firstTimestamp": "2025-05-29T23:37:00Z",
+   "lastTimestamp": "2025-06-01T11:06:00Z",
+   "count": 10,
+   "type": "Warning"
+  },
+  {
+   "metadata": {
+    "name": "Éclair.30557",
+    "uid": "uid-0025",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T08:56:00Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "résumé",
+    "namespace": "étude",
+    "uid": "inv-25"
+   },
+   "reason": "BackOff",
+   "message": "",
+   "source": {
+    "component": "default-scheduler",
+    "host": ""
+   },
+   "firstTimestamp": "2025-05-30T19:00:00Z",
+   "lastTimestamp": "2025-06-01T10:33:00Z",
+   "count": 11,
+   "type": "Odd"
+  }
+ ],
+ "noSort": ["uid-edge-3","uid-edge-4"],
+ "cells": {
+  "uid-edge-4": {
+   "type": "Normal",
+   "namespace": null,
+   "involvedObject": "Node/n1",
+   "message": "",
+   "count": 3,
+   "age": "2025-06-01T10:48:00Z",
+   "last": "2025-06-01T11:58:00Z",
+   "reason": "",
+   "source": "kubelet",
+   "objectKind": "Node"
+  },
+  "uid-0003": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "Pod/10-item",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": 6,
+   "age": "2025-05-31T16:43:00Z",
+   "last": "2025-06-01T10:55:00Z",
+   "reason": "Scheduled",
+   "source": "",
+   "objectKind": "Pod"
+  },
+  "uid-0007": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "Deployment/Alpha",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": 8,
+   "age": "2025-05-31T22:14:00Z",
+   "last": "2025-05-30T03:01:00Z",
+   "reason": "Unhealthy",
+   "source": "deployment-controller",
+   "objectKind": "Deployment"
+  },
+  "uid-0012": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "Deployment/9-item",
+   "message": "",
+   "count": 7,
+   "age": "2025-06-01T04:01:00Z",
+   "last": "2025-05-31T01:58:00Z",
+   "reason": "Unhealthy",
+   "source": "",
+   "objectKind": "Deployment"
+  },
+  "uid-0023": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "ReplicaSet/beta-10",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": 6,
+   "age": "2025-05-31T06:38:00Z",
+   "last": "2025-06-01T11:20:00Z",
+   "reason": "BackOff",
+   "source": "",
+   "objectKind": "ReplicaSet"
+  },
+  "uid-0027": {
+   "type": "Warning",
+   "namespace": "Prod",
+   "involvedObject": "Deployment/eta-v1",
+   "message": "",
+   "count": 6,
+   "age": "2025-05-31T22:17:00Z",
+   "last": "2025-06-01T10:58:00Z",
+   "reason": "Killing",
+   "source": "deployment-controller",
+   "objectKind": "Deployment"
+  },
+  "uid-0028": {
+   "type": "Odd",
+   "namespace": "Prod",
+   "involvedObject": "Node/name.with.dots",
+   "message": "Successfully assigned",
+   "count": 1,
+   "age": "2025-05-30T04:29:00Z",
+   "last": "2025-06-01T05:59:00Z",
+   "reason": "Started",
+   "source": "kubelet",
+   "objectKind": "Node"
+  },
+  "uid-0029": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "Deployment/zeta",
+   "message": "café message",
+   "count": 5,
+   "age": "2025-05-30T15:11:00Z",
+   "last": "2025-06-01T10:41:00Z",
+   "reason": "Pulled",
+   "source": "kubelet",
+   "objectKind": "Deployment"
+  },
+  "uid-0030": {
+   "type": "Odd",
+   "namespace": "Prod",
+   "involvedObject": "Node/résumé",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": 10,
+   "age": "2025-05-30T12:24:00Z",
+   "last": "2025-05-30T01:30:00Z",
+   "reason": "BackOff",
+   "source": "kubelet",
+   "objectKind": "Node"
+  },
+  "uid-edge-1": {
+   "type": "Normal",
+   "namespace": "default",
+   "involvedObject": "undefined/undefined",
+   "message": "zero timestamps",
+   "count": 1,
+   "age": "2025-06-01T10:50:00Z",
+   "last": "2025-06-01T10:50:00Z",
+   "reason": "Edge",
+   "source": "",
+   "objectKind": ""
+  },
+  "uid-edge-2": {
+   "type": "",
+   "namespace": "default",
+   "involvedObject": "Pod/p",
+   "message": "",
+   "count": 1,
+   "age": "2025-06-01T10:49:00Z",
+   "last": "2025-06-01T10:49:00Z",
+   "reason": "",
+   "source": "",
+   "objectKind": "Pod"
+  },
+  "uid-edge-3": {
+   "type": "Warning",
+   "namespace": "default",
+   "involvedObject": "Pod/q",
+   "message": "",
+   "count": 1,
+   "age": null,
+   "last": null,
+   "reason": "",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-0001": {
+   "type": "Normal",
+   "namespace": "kube-system",
+   "involvedObject": "Deployment/eta.v1",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": 5,
+   "age": "2025-05-31T16:49:00Z",
+   "last": "2025-06-01T10:47:00Z",
+   "reason": "Pulled",
+   "source": "",
+   "objectKind": "Deployment"
+  },
+  "uid-0005": {
+   "type": "Warning",
+   "namespace": "kube-system",
+   "involvedObject": "Deployment/Ａfullwidth",
+   "message": "café message",
+   "count": 4,
+   "age": "2025-05-31T16:56:00Z",
+   "last": "2025-06-01T11:03:00Z",
+   "reason": "Started",
+   "source": "",
+   "objectKind": "Deployment"
+  },
+  "uid-0008": {
+   "type": "Normal",
+   "namespace": "kube-system",
+   "involvedObject": "Node/X",
+   "message": "Back-off restarting failed container",
+   "count": 2,
+   "age": "2025-05-29T18:27:00Z",
+   "last": "2025-06-01T11:43:00Z",
+   "reason": "Killing",
+   "source": "deployment-controller",
+   "objectKind": "Node"
+  },
+  "uid-0026": {
+   "type": "Warning",
+   "namespace": "kube-system",
+   "involvedObject": "Pod/item_b",
+   "message": "Successfully assigned",
+   "count": 1,
+   "age": "2025-05-30T19:48:00Z",
+   "last": "2025-06-01T10:54:00Z",
+   "reason": "Pulled",
+   "source": "default-scheduler",
+   "objectKind": "Pod"
+  },
+  "uid-0014": {
+   "type": "Odd",
+   "namespace": "prod",
+   "involvedObject": "Deployment/name.with.dots",
+   "message": "café message",
+   "count": 10,
+   "age": "2025-05-30T18:35:00Z",
+   "last": "2025-06-01T11:28:00Z",
+   "reason": "BackOff",
+   "source": "default-scheduler",
+   "objectKind": "Deployment"
+  },
+  "uid-0017": {
+   "type": "Odd",
+   "namespace": "prod",
+   "involvedObject": "Deployment/resume",
+   "message": "Successfully assigned",
+   "count": 6,
+   "age": "2025-05-31T08:43:00Z",
+   "last": "2025-06-01T10:38:00Z",
+   "reason": "BackOff",
+   "source": "default-scheduler",
+   "objectKind": "Deployment"
+  },
+  "uid-0022": {
+   "type": "Odd",
+   "namespace": "prod",
+   "involvedObject": "Node/item-a",
+   "message": "café message",
+   "count": 3,
+   "age": "2025-05-29T21:56:00Z",
+   "last": "2025-05-31T06:49:00Z",
+   "reason": "FailedMount",
+   "source": "default-scheduler",
+   "objectKind": "Node"
+  },
+  "uid-0024": {
+   "type": "Warning",
+   "namespace": "prod",
+   "involvedObject": "Pod/item-a",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": 8,
+   "age": "2025-05-29T17:35:00Z",
+   "last": "2025-05-30T22:48:00Z",
+   "reason": "Started",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-00": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-01": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-02": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-03": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-04": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-05": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-06": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-07": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-08": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-09": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-10": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-11": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-12": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": 2,
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-0009": {
+   "type": "Odd",
+   "namespace": "team-a",
+   "involvedObject": "ReplicaSet/日本語",
+   "message": "Successfully assigned",
+   "count": 10,
+   "age": "2025-05-29T18:28:00Z",
+   "last": "2025-06-01T10:47:00Z",
+   "reason": "FailedMount",
+   "source": "",
+   "objectKind": "ReplicaSet"
+  },
+  "uid-0011": {
+   "type": "Normal",
+   "namespace": "team-a",
+   "involvedObject": "ReplicaSet/cafe",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "count": 7,
+   "age": "2025-05-31T00:39:00Z",
+   "last": "2025-06-01T11:07:00Z",
+   "reason": "Scheduled",
+   "source": "",
+   "objectKind": "ReplicaSet"
+  },
+  "uid-0015": {
+   "type": "Odd",
+   "namespace": "team-a",
+   "involvedObject": "Deployment/Beta-2",
+   "message": "",
+   "count": 1,
+   "age": "2025-05-29T16:54:00Z",
+   "last": "2025-06-01T05:19:00Z",
+   "reason": "Pulled",
+   "source": "",
+   "objectKind": "Deployment"
+  },
+  "uid-0016": {
+   "type": "Normal",
+   "namespace": "team-a",
+   "involvedObject": "Node/default",
+   "message": "",
+   "count": 3,
+   "age": "2025-05-31T06:27:00Z",
+   "last": "2025-06-01T11:37:00Z",
+   "reason": "Scheduled",
+   "source": "",
+   "objectKind": "Node"
+  },
+  "uid-0020": {
+   "type": "Normal",
+   "namespace": "team-a",
+   "involvedObject": "Pod/alpha",
+   "message": "café message",
+   "count": 7,
+   "age": "2025-05-31T15:43:00Z",
+   "last": "2025-06-01T09:28:00Z",
+   "reason": "BackOff",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-0021": {
+   "type": "Warning",
+   "namespace": "team-a",
+   "involvedObject": "Pod/éclair",
+   "message": "",
+   "count": 7,
+   "age": "2025-06-01T10:09:00Z",
+   "last": "2025-06-01T11:46:00Z",
+   "reason": "Unhealthy",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-0000": {
+   "type": "Odd",
+   "namespace": "team-b",
+   "involvedObject": "Node/emoji-😀",
+   "message": "Successfully assigned",
+   "count": 4,
+   "age": "2025-05-31T00:25:00Z",
+   "last": "2025-06-01T11:11:00Z",
+   "reason": "BackOff",
+   "source": "deployment-controller",
+   "objectKind": "Node"
+  },
+  "uid-0002": {
+   "type": "Normal",
+   "namespace": "team-b",
+   "involvedObject": "Node/X",
+   "message": "Back-off restarting failed container",
+   "count": 2,
+   "age": "2025-05-31T22:22:00Z",
+   "last": "2025-05-30T15:46:00Z",
+   "reason": "Killing",
+   "source": "default-scheduler",
+   "objectKind": "Node"
+  },
+  "uid-0006": {
+   "type": "Normal",
+   "namespace": "team-b",
+   "involvedObject": "Service/9-item",
+   "message": "Successfully assigned",
+   "count": 6,
+   "age": "2025-05-30T12:07:00Z",
+   "last": "2025-06-01T10:40:00Z",
+   "reason": "BackOff",
+   "source": "default-scheduler",
+   "objectKind": "Service"
+  },
+  "uid-0013": {
+   "type": "Normal",
+   "namespace": "team-b",
+   "involvedObject": "Node/zebra",
+   "message": "Successfully assigned",
+   "count": 6,
+   "age": "2025-05-30T10:56:00Z",
+   "last": "2025-05-30T02:01:00Z",
+   "reason": "FailedMount",
+   "source": "deployment-controller",
+   "objectKind": "Node"
+  },
+  "uid-0018": {
+   "type": "Warning",
+   "namespace": "team-b",
+   "involvedObject": "Pod/eta v2",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "count": 4,
+   "age": "2025-06-01T01:05:00Z",
+   "last": "2025-06-01T11:57:00Z",
+   "reason": "BackOff",
+   "source": "",
+   "objectKind": "Pod"
+  },
+  "uid-0031": {
+   "type": "Odd",
+   "namespace": "team-b",
+   "involvedObject": "ReplicaSet/x",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "count": 9,
+   "age": "2025-05-31T04:23:00Z",
+   "last": "2025-06-01T10:47:00Z",
+   "reason": "BackOff",
+   "source": "",
+   "objectKind": "ReplicaSet"
+  },
+  "uid-0004": {
+   "type": "Normal",
+   "namespace": "étude",
+   "involvedObject": "Deployment/eta-v1",
+   "message": "",
+   "count": 7,
+   "age": "2025-05-30T06:57:00Z",
+   "last": "2025-06-01T10:45:00Z",
+   "reason": "Unhealthy",
+   "source": "deployment-controller",
+   "objectKind": "Deployment"
+  },
+  "uid-0010": {
+   "type": "Normal",
+   "namespace": "étude",
+   "involvedObject": "Deployment/emoji-😀",
+   "message": "Successfully assigned",
+   "count": 7,
+   "age": "2025-06-01T00:22:00Z",
+   "last": "2025-06-01T11:41:00Z",
+   "reason": "Unhealthy",
+   "source": "kubelet",
+   "objectKind": "Deployment"
+  },
+  "uid-0019": {
+   "type": "Warning",
+   "namespace": "étude",
+   "involvedObject": "Pod/9-item",
+   "message": "Successfully assigned",
+   "count": 10,
+   "age": "2025-05-29T23:37:00Z",
+   "last": "2025-06-01T11:06:00Z",
+   "reason": "BackOff",
+   "source": "",
+   "objectKind": "Pod"
+  },
+  "uid-0025": {
+   "type": "Odd",
+   "namespace": "étude",
+   "involvedObject": "Pod/résumé",
+   "message": "",
+   "count": 11,
+   "age": "2025-05-30T19:00:00Z",
+   "last": "2025-06-01T10:33:00Z",
+   "reason": "BackOff",
+   "source": "default-scheduler",
+   "objectKind": "Pod"
+  }
+ },
+ "filterValues": {
+  "uid-edge-4": {
+   "type": "Normal",
+   "namespace": "",
+   "involvedObject": "Node/n1",
+   "message": "",
+   "count": "",
+   "age": "2025-06-01T10:48:00Z",
+   "last": "2025-06-01T11:58:00Z",
+   "reason": "",
+   "source": "kubelet",
+   "objectKind": "Node"
+  },
+  "uid-0003": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "Pod/10-item",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": "",
+   "age": "2025-05-31T16:43:00Z",
+   "last": "2025-06-01T10:55:00Z",
+   "reason": "Scheduled",
+   "source": "",
+   "objectKind": "Pod"
+  },
+  "uid-0007": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "Deployment/Alpha",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": "",
+   "age": "2025-05-31T22:14:00Z",
+   "last": "2025-05-30T03:01:00Z",
+   "reason": "Unhealthy",
+   "source": "deployment-controller",
+   "objectKind": "Deployment"
+  },
+  "uid-0012": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "Deployment/9-item",
+   "message": "",
+   "count": "",
+   "age": "2025-06-01T04:01:00Z",
+   "last": "2025-05-31T01:58:00Z",
+   "reason": "Unhealthy",
+   "source": "",
+   "objectKind": "Deployment"
+  },
+  "uid-0023": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "ReplicaSet/beta-10",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": "",
+   "age": "2025-05-31T06:38:00Z",
+   "last": "2025-06-01T11:20:00Z",
+   "reason": "BackOff",
+   "source": "",
+   "objectKind": "ReplicaSet"
+  },
+  "uid-0027": {
+   "type": "Warning",
+   "namespace": "Prod",
+   "involvedObject": "Deployment/eta-v1",
+   "message": "",
+   "count": "",
+   "age": "2025-05-31T22:17:00Z",
+   "last": "2025-06-01T10:58:00Z",
+   "reason": "Killing",
+   "source": "deployment-controller",
+   "objectKind": "Deployment"
+  },
+  "uid-0028": {
+   "type": "Odd",
+   "namespace": "Prod",
+   "involvedObject": "Node/name.with.dots",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-05-30T04:29:00Z",
+   "last": "2025-06-01T05:59:00Z",
+   "reason": "Started",
+   "source": "kubelet",
+   "objectKind": "Node"
+  },
+  "uid-0029": {
+   "type": "Normal",
+   "namespace": "Prod",
+   "involvedObject": "Deployment/zeta",
+   "message": "café message",
+   "count": "",
+   "age": "2025-05-30T15:11:00Z",
+   "last": "2025-06-01T10:41:00Z",
+   "reason": "Pulled",
+   "source": "kubelet",
+   "objectKind": "Deployment"
+  },
+  "uid-0030": {
+   "type": "Odd",
+   "namespace": "Prod",
+   "involvedObject": "Node/résumé",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": "",
+   "age": "2025-05-30T12:24:00Z",
+   "last": "2025-05-30T01:30:00Z",
+   "reason": "BackOff",
+   "source": "kubelet",
+   "objectKind": "Node"
+  },
+  "uid-edge-1": {
+   "type": "Normal",
+   "namespace": "default",
+   "involvedObject": "undefined/undefined",
+   "message": "zero timestamps",
+   "count": "",
+   "age": "2025-06-01T10:50:00Z",
+   "last": "2025-06-01T10:50:00Z",
+   "reason": "Edge",
+   "source": "",
+   "objectKind": ""
+  },
+  "uid-edge-2": {
+   "type": "",
+   "namespace": "default",
+   "involvedObject": "Pod/p",
+   "message": "",
+   "count": "",
+   "age": "2025-06-01T10:49:00Z",
+   "last": "2025-06-01T10:49:00Z",
+   "reason": "",
+   "source": "",
+   "objectKind": "Pod"
+  },
+  "uid-edge-3": {
+   "type": "Warning",
+   "namespace": "default",
+   "involvedObject": "Pod/q",
+   "message": "",
+   "count": "",
+   "age": "",
+   "last": "",
+   "reason": "",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-0001": {
+   "type": "Normal",
+   "namespace": "kube-system",
+   "involvedObject": "Deployment/eta.v1",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": "",
+   "age": "2025-05-31T16:49:00Z",
+   "last": "2025-06-01T10:47:00Z",
+   "reason": "Pulled",
+   "source": "",
+   "objectKind": "Deployment"
+  },
+  "uid-0005": {
+   "type": "Warning",
+   "namespace": "kube-system",
+   "involvedObject": "Deployment/Ａfullwidth",
+   "message": "café message",
+   "count": "",
+   "age": "2025-05-31T16:56:00Z",
+   "last": "2025-06-01T11:03:00Z",
+   "reason": "Started",
+   "source": "",
+   "objectKind": "Deployment"
+  },
+  "uid-0008": {
+   "type": "Normal",
+   "namespace": "kube-system",
+   "involvedObject": "Node/X",
+   "message": "Back-off restarting failed container",
+   "count": "",
+   "age": "2025-05-29T18:27:00Z",
+   "last": "2025-06-01T11:43:00Z",
+   "reason": "Killing",
+   "source": "deployment-controller",
+   "objectKind": "Node"
+  },
+  "uid-0026": {
+   "type": "Warning",
+   "namespace": "kube-system",
+   "involvedObject": "Pod/item_b",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-05-30T19:48:00Z",
+   "last": "2025-06-01T10:54:00Z",
+   "reason": "Pulled",
+   "source": "default-scheduler",
+   "objectKind": "Pod"
+  },
+  "uid-0014": {
+   "type": "Odd",
+   "namespace": "prod",
+   "involvedObject": "Deployment/name.with.dots",
+   "message": "café message",
+   "count": "",
+   "age": "2025-05-30T18:35:00Z",
+   "last": "2025-06-01T11:28:00Z",
+   "reason": "BackOff",
+   "source": "default-scheduler",
+   "objectKind": "Deployment"
+  },
+  "uid-0017": {
+   "type": "Odd",
+   "namespace": "prod",
+   "involvedObject": "Deployment/resume",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-05-31T08:43:00Z",
+   "last": "2025-06-01T10:38:00Z",
+   "reason": "BackOff",
+   "source": "default-scheduler",
+   "objectKind": "Deployment"
+  },
+  "uid-0022": {
+   "type": "Odd",
+   "namespace": "prod",
+   "involvedObject": "Node/item-a",
+   "message": "café message",
+   "count": "",
+   "age": "2025-05-29T21:56:00Z",
+   "last": "2025-05-31T06:49:00Z",
+   "reason": "FailedMount",
+   "source": "default-scheduler",
+   "objectKind": "Node"
+  },
+  "uid-0024": {
+   "type": "Warning",
+   "namespace": "prod",
+   "involvedObject": "Pod/item-a",
+   "message": "Readiness probe failed: HTTP 503",
+   "count": "",
+   "age": "2025-05-29T17:35:00Z",
+   "last": "2025-05-30T22:48:00Z",
+   "reason": "Started",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-00": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-01": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-02": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-03": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-04": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-05": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-06": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-07": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-08": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-09": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-10": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-11": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-tie-12": {
+   "type": "Normal",
+   "namespace": "prod",
+   "involvedObject": "Pod/p",
+   "message": "tie",
+   "count": "",
+   "age": "2025-05-30T10:00:00Z",
+   "last": "2025-05-30T10:00:00Z",
+   "reason": "Tie",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-0009": {
+   "type": "Odd",
+   "namespace": "team-a",
+   "involvedObject": "ReplicaSet/日本語",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-05-29T18:28:00Z",
+   "last": "2025-06-01T10:47:00Z",
+   "reason": "FailedMount",
+   "source": "",
+   "objectKind": "ReplicaSet"
+  },
+  "uid-0011": {
+   "type": "Normal",
+   "namespace": "team-a",
+   "involvedObject": "ReplicaSet/cafe",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "count": "",
+   "age": "2025-05-31T00:39:00Z",
+   "last": "2025-06-01T11:07:00Z",
+   "reason": "Scheduled",
+   "source": "",
+   "objectKind": "ReplicaSet"
+  },
+  "uid-0015": {
+   "type": "Odd",
+   "namespace": "team-a",
+   "involvedObject": "Deployment/Beta-2",
+   "message": "",
+   "count": "",
+   "age": "2025-05-29T16:54:00Z",
+   "last": "2025-06-01T05:19:00Z",
+   "reason": "Pulled",
+   "source": "",
+   "objectKind": "Deployment"
+  },
+  "uid-0016": {
+   "type": "Normal",
+   "namespace": "team-a",
+   "involvedObject": "Node/default",
+   "message": "",
+   "count": "",
+   "age": "2025-05-31T06:27:00Z",
+   "last": "2025-06-01T11:37:00Z",
+   "reason": "Scheduled",
+   "source": "",
+   "objectKind": "Node"
+  },
+  "uid-0020": {
+   "type": "Normal",
+   "namespace": "team-a",
+   "involvedObject": "Pod/alpha",
+   "message": "café message",
+   "count": "",
+   "age": "2025-05-31T15:43:00Z",
+   "last": "2025-06-01T09:28:00Z",
+   "reason": "BackOff",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-0021": {
+   "type": "Warning",
+   "namespace": "team-a",
+   "involvedObject": "Pod/éclair",
+   "message": "",
+   "count": "",
+   "age": "2025-06-01T10:09:00Z",
+   "last": "2025-06-01T11:46:00Z",
+   "reason": "Unhealthy",
+   "source": "kubelet",
+   "objectKind": "Pod"
+  },
+  "uid-0000": {
+   "type": "Odd",
+   "namespace": "team-b",
+   "involvedObject": "Node/emoji-😀",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-05-31T00:25:00Z",
+   "last": "2025-06-01T11:11:00Z",
+   "reason": "BackOff",
+   "source": "deployment-controller",
+   "objectKind": "Node"
+  },
+  "uid-0002": {
+   "type": "Normal",
+   "namespace": "team-b",
+   "involvedObject": "Node/X",
+   "message": "Back-off restarting failed container",
+   "count": "",
+   "age": "2025-05-31T22:22:00Z",
+   "last": "2025-05-30T15:46:00Z",
+   "reason": "Killing",
+   "source": "default-scheduler",
+   "objectKind": "Node"
+  },
+  "uid-0006": {
+   "type": "Normal",
+   "namespace": "team-b",
+   "involvedObject": "Service/9-item",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-05-30T12:07:00Z",
+   "last": "2025-06-01T10:40:00Z",
+   "reason": "BackOff",
+   "source": "default-scheduler",
+   "objectKind": "Service"
+  },
+  "uid-0013": {
+   "type": "Normal",
+   "namespace": "team-b",
+   "involvedObject": "Node/zebra",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-05-30T10:56:00Z",
+   "last": "2025-05-30T02:01:00Z",
+   "reason": "FailedMount",
+   "source": "deployment-controller",
+   "objectKind": "Node"
+  },
+  "uid-0018": {
+   "type": "Warning",
+   "namespace": "team-b",
+   "involvedObject": "Pod/eta v2",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "count": "",
+   "age": "2025-06-01T01:05:00Z",
+   "last": "2025-06-01T11:57:00Z",
+   "reason": "BackOff",
+   "source": "",
+   "objectKind": "Pod"
+  },
+  "uid-0031": {
+   "type": "Odd",
+   "namespace": "team-b",
+   "involvedObject": "ReplicaSet/x",
+   "message": "MountVolume.SetUp failed for volume \"cfg\"",
+   "count": "",
+   "age": "2025-05-31T04:23:00Z",
+   "last": "2025-06-01T10:47:00Z",
+   "reason": "BackOff",
+   "source": "",
+   "objectKind": "ReplicaSet"
+  },
+  "uid-0004": {
+   "type": "Normal",
+   "namespace": "étude",
+   "involvedObject": "Deployment/eta-v1",
+   "message": "",
+   "count": "",
+   "age": "2025-05-30T06:57:00Z",
+   "last": "2025-06-01T10:45:00Z",
+   "reason": "Unhealthy",
+   "source": "deployment-controller",
+   "objectKind": "Deployment"
+  },
+  "uid-0010": {
+   "type": "Normal",
+   "namespace": "étude",
+   "involvedObject": "Deployment/emoji-😀",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-06-01T00:22:00Z",
+   "last": "2025-06-01T11:41:00Z",
+   "reason": "Unhealthy",
+   "source": "kubelet",
+   "objectKind": "Deployment"
+  },
+  "uid-0019": {
+   "type": "Warning",
+   "namespace": "étude",
+   "involvedObject": "Pod/9-item",
+   "message": "Successfully assigned",
+   "count": "",
+   "age": "2025-05-29T23:37:00Z",
+   "last": "2025-06-01T11:06:00Z",
+   "reason": "BackOff",
+   "source": "",
+   "objectKind": "Pod"
+  },
+  "uid-0025": {
+   "type": "Odd",
+   "namespace": "étude",
+   "involvedObject": "Pod/résumé",
+   "message": "",
+   "count": "",
+   "age": "2025-05-30T19:00:00Z",
+   "last": "2025-06-01T10:33:00Z",
+   "reason": "BackOff",
+   "source": "default-scheduler",
+   "objectKind": "Pod"
+  }
+ },
+ "numeric": {
+  "uid-edge-4": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 3,
+   "age": 1.2,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0003": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 6,
+   "age": 15.483333333333333,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0007": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 8,
+   "age": 56.983333333333334,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0012": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 7,
+   "age": 34.03333333333333,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0023": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 6,
+   "age": 62.333333333333336,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0027": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 6,
+   "age": 66.51666666666667,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0028": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 1,
+   "age": 6.016666666666667,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0029": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 5,
+   "age": 58.93333333333333,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0030": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 10,
+   "age": 58.5,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-edge-1": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 1,
+   "age": 1.1666666666666667,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-edge-2": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 1,
+   "age": 1.1833333333333333,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-edge-3": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 1,
+   "age": null,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0001": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 5,
+   "age": 20.666666666666668,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0005": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 4,
+   "age": 18.35,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0008": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 6.216666666666667,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0026": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 1,
+   "age": 26.866666666666667,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0014": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 10,
+   "age": 59.8,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0017": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 6,
+   "age": 41.21666666666667,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0022": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 3,
+   "age": 29.183333333333334,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0024": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 8,
+   "age": 37.2,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-00": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-01": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-02": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-03": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-04": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-05": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-06": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-07": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-08": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-09": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-10": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-11": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-tie-12": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 50,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0009": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 10,
+   "age": 42.583333333333336,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0011": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 7,
+   "age": 50.3,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0015": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 1,
+   "age": 6.683333333333334,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0016": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 3,
+   "age": 60.833333333333336,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0020": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 7,
+   "age": 2.533333333333333,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0021": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 7,
+   "age": 65.68333333333334,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0000": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 4,
+   "age": 56.8,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0002": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 2,
+   "age": 44.233333333333334,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0006": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 6,
+   "age": 3.05,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0013": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 6,
+   "age": 57.983333333333334,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0018": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 4,
+   "age": 61.78333333333333,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0031": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 9,
+   "age": 24.416666666666668,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0004": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 7,
+   "age": 6.333333333333333,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0010": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 7,
+   "age": 43.3,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0019": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 10,
+   "age": 19.033333333333335,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  },
+  "uid-0025": {
+   "type": null,
+   "namespace": null,
+   "involvedObject": null,
+   "message": null,
+   "count": 11,
+   "age": 51.06666666666667,
+   "last": null,
+   "reason": null,
+   "source": null,
+   "objectKind": null
+  }
+ },
+ "sortOrders": {
+  "type": {
+   "asc": ["uid-edge-2","uid-edge-1","uid-0020","uid-0006","uid-0008","uid-0004","uid-0003","uid-0001","uid-0012","uid-0010","uid-0002","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0007","uid-0013","uid-0029","uid-0016","uid-0023","uid-0028","uid-0015","uid-0031","uid-0022","uid-0017","uid-0009","uid-0025","uid-0000","uid-0030","uid-0014","uid-0005","uid-0019","uid-0026","uid-0024","uid-0018","uid-0021","uid-0027"],
+   "desc": ["uid-0005","uid-0019","uid-0026","uid-0024","uid-0018","uid-0021","uid-0027","uid-0028","uid-0015","uid-0031","uid-0022","uid-0017","uid-0009","uid-0025","uid-0000","uid-0030","uid-0014","uid-edge-1","uid-0020","uid-0006","uid-0008","uid-0004","uid-0003","uid-0001","uid-0012","uid-0010","uid-0002","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0007","uid-0013","uid-0029","uid-0016","uid-0023","uid-edge-2"]
+  },
+  "namespace": {
+   "asc": ["uid-0028","uid-0003","uid-0012","uid-0007","uid-0030","uid-0029","uid-0023","uid-0027","uid-edge-1","uid-edge-2","uid-0008","uid-0005","uid-0001","uid-0026","uid-0022","uid-0024","uid-0017","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0014","uid-0020","uid-0015","uid-0009","uid-0011","uid-0016","uid-0021","uid-0006","uid-0031","uid-0002","uid-0000","uid-0013","uid-0018","uid-0004","uid-0019","uid-0010","uid-0025"],
+   "desc": ["uid-0004","uid-0019","uid-0010","uid-0025","uid-0006","uid-0031","uid-0002","uid-0000","uid-0013","uid-0018","uid-0020","uid-0015","uid-0009","uid-0011","uid-0016","uid-0021","uid-0022","uid-0024","uid-0017","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0014","uid-0008","uid-0005","uid-0001","uid-0026","uid-edge-1","uid-edge-2","uid-0028","uid-0003","uid-0012","uid-0007","uid-0030","uid-0029","uid-0023","uid-0027"]
+  },
+  "involvedObject": {
+   "asc": ["uid-0012","uid-0007","uid-0015","uid-0010","uid-0004","uid-0027","uid-0001","uid-0014","uid-0017","uid-0029","uid-0005","uid-0008","uid-0002","uid-0016","uid-0000","uid-0022","uid-0028","uid-0030","uid-0013","uid-0003","uid-0019","uid-0020","uid-0018","uid-0024","uid-0026","uid-edge-2","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0025","uid-0021","uid-0023","uid-0011","uid-0031","uid-0009","uid-0006","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-0006","uid-0009","uid-0031","uid-0011","uid-0023","uid-0021","uid-0025","uid-edge-2","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0026","uid-0024","uid-0018","uid-0020","uid-0019","uid-0003","uid-0013","uid-0030","uid-0028","uid-0022","uid-0000","uid-0016","uid-0008","uid-0002","uid-0005","uid-0029","uid-0017","uid-0014","uid-0001","uid-0004","uid-0027","uid-0010","uid-0015","uid-0007","uid-0012"]
+  },
+  "message": {
+   "asc": ["uid-edge-2","uid-0004","uid-0015","uid-0012","uid-0025","uid-0016","uid-0021","uid-0027","uid-0008","uid-0002","uid-0031","uid-0011","uid-0018","uid-0003","uid-0001","uid-0024","uid-0007","uid-0030","uid-0023","uid-0006","uid-0028","uid-0019","uid-0026","uid-0017","uid-0009","uid-0010","uid-0000","uid-0013","uid-0020","uid-0005","uid-0022","uid-0029","uid-0014","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0020","uid-0005","uid-0022","uid-0029","uid-0014","uid-0006","uid-0028","uid-0019","uid-0026","uid-0017","uid-0009","uid-0010","uid-0000","uid-0013","uid-0003","uid-0001","uid-0024","uid-0007","uid-0030","uid-0023","uid-0031","uid-0011","uid-0018","uid-0008","uid-0002","uid-edge-2","uid-0004","uid-0015","uid-0012","uid-0025","uid-0016","uid-0021","uid-0027"]
+  },
+  "count": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-0028","uid-0015","uid-0026","uid-0008","uid-0002","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0022","uid-0016","uid-0005","uid-0000","uid-0018","uid-0001","uid-0029","uid-0006","uid-0003","uid-0017","uid-0013","uid-0023","uid-0027","uid-0020","uid-0004","uid-0012","uid-0010","uid-0011","uid-0021","uid-0024","uid-0007","uid-0031","uid-0019","uid-0009","uid-0030","uid-0014","uid-0025"],
+   "desc": ["uid-0025","uid-0019","uid-0009","uid-0030","uid-0014","uid-0031","uid-0024","uid-0007","uid-0020","uid-0004","uid-0012","uid-0010","uid-0011","uid-0021","uid-0006","uid-0003","uid-0017","uid-0013","uid-0023","uid-0027","uid-0001","uid-0029","uid-0005","uid-0000","uid-0018","uid-0022","uid-0016","uid-0008","uid-0002","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-1","uid-edge-2","uid-0028","uid-0015","uid-0026"]
+  },
+  "age": {
+   "asc": ["uid-0015","uid-0024","uid-0008","uid-0009","uid-0022","uid-0019","uid-0028","uid-0004","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0013","uid-0006","uid-0030","uid-0029","uid-0014","uid-0025","uid-0026","uid-0000","uid-0011","uid-0031","uid-0016","uid-0023","uid-0017","uid-0020","uid-0003","uid-0001","uid-0005","uid-0007","uid-0027","uid-0002","uid-0010","uid-0018","uid-0012","uid-0021","uid-edge-2","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-0021","uid-0012","uid-0018","uid-0010","uid-0002","uid-0027","uid-0007","uid-0005","uid-0001","uid-0003","uid-0020","uid-0017","uid-0023","uid-0016","uid-0031","uid-0011","uid-0000","uid-0026","uid-0025","uid-0014","uid-0029","uid-0030","uid-0006","uid-0013","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0028","uid-0019","uid-0022","uid-0009","uid-0008","uid-0024","uid-0015"]
+  },
+  "last": {
+   "asc": ["uid-0030","uid-0013","uid-0007","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002","uid-0024","uid-0012","uid-0022","uid-0015","uid-0028","uid-0020","uid-0025","uid-0017","uid-0006","uid-0029","uid-0004","uid-0001","uid-0031","uid-0009","uid-edge-2","uid-edge-1","uid-0026","uid-0003","uid-0027","uid-0005","uid-0019","uid-0011","uid-0000","uid-0023","uid-0014","uid-0016","uid-0010","uid-0008","uid-0021","uid-0018"],
+   "desc": ["uid-0018","uid-0021","uid-0008","uid-0010","uid-0016","uid-0014","uid-0023","uid-0000","uid-0011","uid-0019","uid-0005","uid-0027","uid-0003","uid-0026","uid-edge-1","uid-edge-2","uid-0001","uid-0031","uid-0009","uid-0004","uid-0029","uid-0006","uid-0017","uid-0025","uid-0020","uid-0028","uid-0015","uid-0022","uid-0012","uid-0024","uid-0002","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0007","uid-0013","uid-0030"]
+  },
+  "reason": {
+   "asc": ["uid-edge-2","uid-0020","uid-0006","uid-0019","uid-0031","uid-0017","uid-0025","uid-0000","uid-0030","uid-0014","uid-0018","uid-0023","uid-edge-1","uid-0022","uid-0009","uid-0013","uid-0008","uid-0002","uid-0027","uid-0015","uid-0001","uid-0026","uid-0029","uid-0003","uid-0011","uid-0016","uid-0028","uid-0005","uid-0024","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0012","uid-0010","uid-0007","uid-0021"],
+   "desc": ["uid-0004","uid-0012","uid-0010","uid-0007","uid-0021","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0028","uid-0005","uid-0024","uid-0003","uid-0011","uid-0016","uid-0015","uid-0001","uid-0026","uid-0029","uid-0008","uid-0002","uid-0027","uid-0022","uid-0009","uid-0013","uid-edge-1","uid-0020","uid-0006","uid-0019","uid-0031","uid-0017","uid-0025","uid-0000","uid-0030","uid-0014","uid-0018","uid-0023","uid-edge-2"]
+  },
+  "source": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-0015","uid-0003","uid-0005","uid-0019","uid-0001","uid-0031","uid-0012","uid-0009","uid-0011","uid-0016","uid-0018","uid-0023","uid-0006","uid-0026","uid-0022","uid-0017","uid-0002","uid-0025","uid-0014","uid-0008","uid-0004","uid-0000","uid-0007","uid-0013","uid-0027","uid-0020","uid-0028","uid-0024","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0030","uid-0029","uid-0021"],
+   "desc": ["uid-0020","uid-0028","uid-0024","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0030","uid-0029","uid-0021","uid-0008","uid-0004","uid-0000","uid-0007","uid-0013","uid-0027","uid-0006","uid-0026","uid-0022","uid-0017","uid-0002","uid-0025","uid-0014","uid-edge-1","uid-edge-2","uid-0015","uid-0003","uid-0005","uid-0019","uid-0001","uid-0031","uid-0012","uid-0009","uid-0011","uid-0016","uid-0018","uid-0023"]
+  },
+  "objectKind": {
+   "asc": ["uid-edge-1","uid-0004","uid-0015","uid-0005","uid-0001","uid-0012","uid-0017","uid-0010","uid-0007","uid-0029","uid-0014","uid-0027","uid-0028","uid-0008","uid-0022","uid-0002","uid-0000","uid-0013","uid-0030","uid-0016","uid-edge-2","uid-0020","uid-0003","uid-0019","uid-0026","uid-0024","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0025","uid-0018","uid-0021","uid-0031","uid-0009","uid-0011","uid-0023","uid-0006"],
+   "desc": ["uid-0006","uid-0031","uid-0009","uid-0011","uid-0023","uid-edge-2","uid-0020","uid-0003","uid-0019","uid-0026","uid-0024","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0025","uid-0018","uid-0021","uid-0028","uid-0008","uid-0022","uid-0002","uid-0000","uid-0013","uid-0030","uid-0016","uid-0004","uid-0015","uid-0005","uid-0001","uid-0012","uid-0017","uid-0010","uid-0007","uid-0029","uid-0014","uid-0027","uid-edge-1"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0001","uid-0000","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0001","uid-0000","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0005","uid-0006","uid-0004"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0003","uid-0005","uid-0017","uid-0016","uid-0006","uid-0018","uid-0004","uid-0019"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0012","uid-0011"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0007","uid-0005","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0022","uid-0020","uid-0021"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0022","uid-0021"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0001","uid-0000","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0005","uid-0006","uid-0004"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0008","uid-0009","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0001","uid-0000","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0016","uid-0000"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0001","uid-0000","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": []
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0022","uid-tie-00","uid-0006"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": ["uid-0005"]
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0001","uid-0016","uid-0000","uid-0002"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0001","uid-0014","uid-0015","uid-0016","uid-0000","uid-0002"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0001","uid-0016","uid-0000","uid-0002"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0003","uid-0001","uid-0005","uid-0000","uid-0002","uid-0006","uid-0004"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0001","uid-0000","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-4","uid-edge-1","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": []
+  },
+  {
+   "query": "labels:tier",
+   "matches": []
+  },
+  {
+   "query": "annotation:note",
+   "matches": []
+  },
+  {
+   "query": "a:a/b",
+   "matches": []
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": []
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": ["uid-0008","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002"]
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": ["uid-0023","uid-0030","uid-0014","uid-0017","uid-0020","uid-0000","uid-0006","uid-0018","uid-0031","uid-0019","uid-0025"]
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": ["uid-0022","uid-0009","uid-0013"]
+  },
+  {
+   "query": "message:probe",
+   "matches": ["uid-0003","uid-0007","uid-0023","uid-0030","uid-0001","uid-0024"]
+  },
+  {
+   "query": "msg:/503/",
+   "matches": ["uid-0003","uid-0007","uid-0023","uid-0030","uid-0001","uid-0024"]
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": ["uid-0008","uid-0002"]
+  },
+  {
+   "query": "object:pod",
+   "matches": ["uid-0003","uid-edge-2","uid-edge-3","uid-0026","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0020","uid-0021","uid-0018","uid-0019","uid-0025"]
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": ["uid-edge-4","uid-0028","uid-0030","uid-0008","uid-0022","uid-0016","uid-0000","uid-0002","uid-0013"]
+  },
+  {
+   "query": "involved:deployment",
+   "matches": ["uid-0007","uid-0012","uid-0027","uid-0029","uid-0001","uid-0005","uid-0014","uid-0017","uid-0015","uid-0004","uid-0010"]
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": ["uid-0003","uid-edge-2","uid-edge-3","uid-0026","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0020","uid-0021","uid-0018","uid-0019","uid-0025"]
+  },
+  {
+   "query": "ok:node",
+   "matches": ["uid-edge-4","uid-0028","uid-0030","uid-0008","uid-0022","uid-0016","uid-0000","uid-0002","uid-0013"]
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": ["uid-0007","uid-0020"]
+  },
+  {
+   "query": "on:beta",
+   "matches": ["uid-0023","uid-0015"]
+  },
+  {
+   "query": "source:kubelet",
+   "matches": ["uid-edge-4","uid-0028","uid-0029","uid-0030","uid-edge-3","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0020","uid-0021","uid-0010"]
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": ["uid-0014","uid-0024","uid-0000","uid-0006","uid-0004","uid-0010"]
+  },
+  {
+   "query": "c:1",
+   "matches": ["uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0026","uid-0014","uid-0009","uid-0015","uid-0019","uid-0025"]
+  },
+  {
+   "query": "kind:warning",
+   "matches": ["uid-0027","uid-edge-3","uid-0005","uid-0026","uid-0024","uid-0021","uid-0018","uid-0019"]
+  },
+  {
+   "query": "t:normal",
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0029","uid-edge-1","uid-0001","uid-0008","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0016","uid-0020","uid-0002","uid-0006","uid-0013","uid-0004","uid-0010"]
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0027","uid-0022","uid-0024","uid-tie-12","uid-0021","uid-0025"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0027","uid-0022","uid-0024","uid-tie-12","uid-0021","uid-0025"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-edge-4","uid-0003","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0005","uid-tie-09","uid-tie-10","uid-0006","uid-0004"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0007","uid-0012","uid-0023","uid-0027","uid-0029","uid-0030","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0016","uid-0021","uid-0000","uid-0002","uid-0013","uid-0018","uid-0031","uid-0010","uid-0025"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0003","uid-0028","uid-0001","uid-0005","uid-0008","uid-0026","uid-0022","uid-0015","uid-0020","uid-0006","uid-0031","uid-0004","uid-0019"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0023","uid-0027","uid-0016","uid-0021","uid-0018"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-edge-4","uid-0028","uid-edge-1","uid-edge-2","uid-0008","uid-0015","uid-0020","uid-0006","uid-0004"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0006","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "type select Warning",
+   "filters": {
+    "type": {
+     "type": "select",
+     "values": ["Warning"]
+    }
+   },
+   "matches": ["uid-0027","uid-edge-3","uid-0005","uid-0026","uid-0024","uid-0021","uid-0018","uid-0019"]
+  },
+  {
+   "name": "type select Normal|Warning",
+   "filters": {
+    "type": {
+     "type": "select",
+     "values": ["Normal","Warning"]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0029","uid-edge-1","uid-edge-3","uid-0001","uid-0005","uid-0008","uid-0026","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0016","uid-0020","uid-0021","uid-0002","uid-0006","uid-0013","uid-0018","uid-0004","uid-0010","uid-0019"]
+  },
+  {
+   "name": "namespace select default",
+   "filters": {
+    "namespace": {
+     "type": "select",
+     "values": ["default"]
+    }
+   },
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "name": "reason select BackOff",
+   "filters": {
+    "reason": {
+     "type": "select",
+     "values": ["BackOff"]
+    }
+   },
+   "matches": ["uid-0023","uid-0030","uid-0014","uid-0017","uid-0020","uid-0000","uid-0006","uid-0018","uid-0031","uid-0019","uid-0025"]
+  },
+  {
+   "name": "source select kubelet|",
+   "filters": {
+    "source": {
+     "type": "select",
+     "values": ["kubelet",""]
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0012","uid-0023","uid-0028","uid-0029","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0005","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0020","uid-0021","uid-0018","uid-0031","uid-0010","uid-0019"]
+  },
+  {
+   "name": "count numeric",
+   "filters": {
+    "count": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0030","uid-0014","uid-0017","uid-0024","uid-0009","uid-0011","uid-0020","uid-0021","uid-0006","uid-0013","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  },
+  {
+   "name": "message regex",
+   "filters": {
+    "message": {
+     "type": "regex",
+     "conditions": ["failed"]
+    }
+   },
+   "matches": ["uid-0003","uid-0007","uid-0023","uid-0030","uid-0001","uid-0008","uid-0024","uid-0011","uid-0002","uid-0018","uid-0031"]
+  },
+  {
+   "name": "involvedObject regex",
+   "filters": {
+    "involvedObject": {
+     "type": "regex",
+     "conditions": ["^pod/","^Node/"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-edge-4","uid-0003","uid-0028","uid-0030","uid-edge-2","uid-edge-3","uid-0008","uid-0026","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0016","uid-0020","uid-0021","uid-0000","uid-0002","uid-0013","uid-0018","uid-0019","uid-0025"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0003","uid-0007","uid-0012","uid-0023","uid-0027","uid-0028","uid-0029","uid-0030","uid-0001","uid-0005","uid-0008","uid-0026","uid-0014","uid-0017","uid-0022","uid-0024","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0011","uid-0015","uid-0016","uid-0021","uid-0000","uid-0002","uid-0013","uid-0018","uid-0031","uid-0004","uid-0010","uid-0019","uid-0025"]
+  }
+ ],
+ "uniqueValues": {
+  "type": {
+   "values": ["Normal","Warning","Odd"],
+   "counts": {
+    "Normal": 30,
+    "Warning": 8,
+    "Odd": 10
+   }
+  },
+  "involvedObject": {
+   "values": ["Deployment/9-item","Deployment/Ａfullwidth","Deployment/Alpha","Deployment/Beta-2","Deployment/emoji-😀","Deployment/eta-v1","Deployment/eta.v1","Deployment/name.with.dots","Deployment/resume","Deployment/zeta","Node/default","Node/emoji-😀","Node/item-a","Node/n1","Node/name.with.dots","Node/résumé","Node/X","Node/zebra","Pod/10-item","Pod/9-item","Pod/alpha","Pod/éclair","Pod/eta v2","Pod/item_b","Pod/item-a","Pod/p","Pod/q","Pod/résumé","ReplicaSet/beta-10","ReplicaSet/cafe","ReplicaSet/x","ReplicaSet/日本語","Service/9-item","undefined/undefined"],
+   "counts": {
+    "Node/n1": 1,
+    "Pod/10-item": 1,
+    "Deployment/Alpha": 1,
+    "Deployment/9-item": 1,
+    "ReplicaSet/beta-10": 1,
+    "Deployment/eta-v1": 2,
+    "Node/name.with.dots": 1,
+    "Deployment/zeta": 1,
+    "Node/résumé": 1,
+    "undefined/undefined": 1,
+    "Pod/p": 14,
+    "Pod/q": 1,
+    "Deployment/eta.v1": 1,
+    "Deployment/Ａfullwidth": 1,
+    "Node/X": 2,
+    "Pod/item_b": 1,
+    "Deployment/name.with.dots": 1,
+    "Deployment/resume": 1,
+    "Node/item-a": 1,
+    "Pod/item-a": 1,
+    "ReplicaSet/日本語": 1,
+    "ReplicaSet/cafe": 1,
+    "Deployment/Beta-2": 1,
+    "Node/default": 1,
+    "Pod/alpha": 1,
+    "Pod/éclair": 1,
+    "Node/emoji-😀": 1,
+    "Service/9-item": 1,
+    "Node/zebra": 1,
+    "Pod/eta v2": 1,
+    "ReplicaSet/x": 1,
+    "Deployment/emoji-😀": 1,
+    "Pod/9-item": 1,
+    "Pod/résumé": 1
+   }
+  },
+  "message": {
+   "values": ["Back-off restarting failed container","café message","MountVolume.SetUp failed for volume \"cfg\"","Readiness probe failed: HTTP 503","Successfully assigned","tie","zero timestamps"],
+   "counts": {
+    "Readiness probe failed: HTTP 503": 6,
+    "Successfully assigned": 9,
+    "café message": 5,
+    "zero timestamps": 1,
+    "Back-off restarting failed container": 2,
+    "tie": 13,
+    "MountVolume.SetUp failed for volume \"cfg\"": 3
+   }
+  },
+  "count": null,
+  "last": {
+   "values": ["2025-05-30T01:30:00Z","2025-05-30T02:01:00Z","2025-05-30T03:01:00Z","2025-05-30T10:00:00Z","2025-05-30T15:46:00Z","2025-05-30T22:48:00Z","2025-05-31T01:58:00Z","2025-05-31T06:49:00Z","2025-06-01T05:19:00Z","2025-06-01T05:59:00Z","2025-06-01T09:28:00Z","2025-06-01T10:33:00Z","2025-06-01T10:38:00Z","2025-06-01T10:40:00Z","2025-06-01T10:41:00Z","2025-06-01T10:45:00Z","2025-06-01T10:47:00Z","2025-06-01T10:49:00Z","2025-06-01T10:50:00Z","2025-06-01T10:54:00Z","2025-06-01T10:55:00Z","2025-06-01T10:58:00Z","2025-06-01T11:03:00Z","2025-06-01T11:06:00Z","2025-06-01T11:07:00Z","2025-06-01T11:11:00Z","2025-06-01T11:20:00Z","2025-06-01T11:28:00Z","2025-06-01T11:37:00Z","2025-06-01T11:41:00Z","2025-06-01T11:43:00Z","2025-06-01T11:46:00Z","2025-06-01T11:57:00Z","2025-06-01T11:58:00Z"],
+   "counts": {
+    "2025-06-01T11:58:00Z": 1,
+    "2025-06-01T10:55:00Z": 1,
+    "2025-05-30T03:01:00Z": 1,
+    "2025-05-31T01:58:00Z": 1,
+    "2025-06-01T11:20:00Z": 1,
+    "2025-06-01T10:58:00Z": 1,
+    "2025-06-01T05:59:00Z": 1,
+    "2025-06-01T10:41:00Z": 1,
+    "2025-05-30T01:30:00Z": 1,
+    "2025-06-01T10:50:00Z": 1,
+    "2025-06-01T10:49:00Z": 1,
+    "2025-06-01T10:47:00Z": 3,
+    "2025-06-01T11:03:00Z": 1,
+    "2025-06-01T11:43:00Z": 1,
+    "2025-06-01T10:54:00Z": 1,
+    "2025-06-01T11:28:00Z": 1,
+    "2025-06-01T10:38:00Z": 1,
+    "2025-05-31T06:49:00Z": 1,
+    "2025-05-30T22:48:00Z": 1,
+    "2025-05-30T10:00:00Z": 13,
+    "2025-06-01T11:07:00Z": 1,
+    "2025-06-01T05:19:00Z": 1,
+    "2025-06-01T11:37:00Z": 1,
+    "2025-06-01T09:28:00Z": 1,
+    "2025-06-01T11:46:00Z": 1,
+    "2025-06-01T11:11:00Z": 1,
+    "2025-05-30T15:46:00Z": 1,
+    "2025-06-01T10:40:00Z": 1,
+    "2025-05-30T02:01:00Z": 1,
+    "2025-06-01T11:57:00Z": 1,
+    "2025-06-01T10:45:00Z": 1,
+    "2025-06-01T11:41:00Z": 1,
+    "2025-06-01T11:06:00Z": 1,
+    "2025-06-01T10:33:00Z": 1
+   }
+  },
+  "reason": {
+   "values": ["BackOff","Edge","FailedMount","Killing","Pulled","Scheduled","Started","Tie","Unhealthy"],
+   "counts": {
+    "Scheduled": 3,
+    "Unhealthy": 5,
+    "BackOff": 11,
+    "Killing": 3,
+    "Started": 3,
+    "Pulled": 4,
+    "Edge": 1,
+    "FailedMount": 3,
+    "Tie": 13
+   }
+  },
+  "source": {
+   "values": ["default-scheduler","deployment-controller","kubelet"],
+   "counts": {
+    "kubelet": 22,
+    "deployment-controller": 6,
+    "default-scheduler": 7
+   }
+  },
+  "objectKind": {
+   "values": ["Deployment","Node","Pod","ReplicaSet","Service"],
+   "counts": {
+    "Node": 9,
+    "Pod": 23,
+    "Deployment": 11,
+    "ReplicaSet": 4,
+    "Service": 1
+   }
+  }
+ }
+}

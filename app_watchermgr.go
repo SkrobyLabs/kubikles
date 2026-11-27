@@ -51,6 +51,25 @@ func NewResourceWatcherManager(ctx context.Context, app *App) *ResourceWatcherMa
 // If a watcher already exists, it increments the refCount and cancels any pending cleanup
 // If no watcher exists, it creates a new one and starts the watch loop
 func (m *ResourceWatcherManager) Subscribe(resourceType, namespace string) string {
+	return m.SubscribeFrom(resourceType, namespace, "")
+}
+
+// usableAnchor reports whether a caller-supplied resourceVersion may start a
+// watch. "0" means "any version, replay everything", which is exactly the
+// behaviour an anchor exists to avoid, so it is treated as no anchor.
+func usableAnchor(resourceVersion string) bool {
+	return resourceVersion != "" && resourceVersion != "0"
+}
+
+// SubscribeFrom is Subscribe with an optional anchor: the resourceVersion of a
+// list the caller has just completed for the same resource type and namespace.
+// A new watcher then starts after that version instead of replaying every
+// existing object as a synthetic ADDED event that the caller already has. The
+// anchor is only used when this call creates the watcher: a running watcher
+// already streams every change, so a reused one is never restarted or rewound.
+// An empty anchor keeps the replaying behaviour. If the API server rejects the
+// anchor as expired, the watch loop drops it and falls back to a full replay.
+func (m *ResourceWatcherManager) SubscribeFrom(resourceType, namespace, resourceVersion string) string {
 	key := resourceType + ":" + namespace
 
 	m.mutex.Lock()
@@ -78,6 +97,9 @@ func (m *ResourceWatcherManager) Subscribe(resourceType, namespace string) strin
 		RefCount:     1,
 		Cancel:       cancel,
 	}
+	if usableAnchor(resourceVersion) {
+		watcher.ResourceVersion = resourceVersion
+	}
 	m.watchers[key] = watcher
 
 	// Track watcher creation for performance metrics
@@ -95,6 +117,12 @@ func (m *ResourceWatcherManager) Subscribe(resourceType, namespace string) strin
 
 // SubscribeCRD subscribes to a CRD watcher using GVR, returning the watcher key
 func (m *ResourceWatcherManager) SubscribeCRD(group, version, resource, namespace string) string {
+	return m.SubscribeCRDFrom(group, version, resource, namespace, "")
+}
+
+// SubscribeCRDFrom is SubscribeCRD with an optional list resourceVersion
+// anchor; see SubscribeFrom.
+func (m *ResourceWatcherManager) SubscribeCRDFrom(group, version, resource, namespace, resourceVersion string) string {
 	key := "crd:" + group + "/" + version + "/" + resource + ":" + namespace
 
 	m.mutex.Lock()
@@ -124,6 +152,9 @@ func (m *ResourceWatcherManager) SubscribeCRD(group, version, resource, namespac
 		IsCRD:        true,
 		RefCount:     1,
 		Cancel:       cancel,
+	}
+	if usableAnchor(resourceVersion) {
+		watcher.ResourceVersion = resourceVersion
 	}
 	m.watchers[key] = watcher
 

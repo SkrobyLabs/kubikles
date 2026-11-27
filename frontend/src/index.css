@@ -1,12 +1,4 @@
-/* Font imports - using fontsource packages */
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/600.css';
-@import '@fontsource/dm-sans/400.css';
-@import '@fontsource/dm-sans/500.css';
-@import '@fontsource/dm-sans/600.css';
-@import '@fontsource/jetbrains-mono/400.css';
-@import '@fontsource/jetbrains-mono/500.css';
+/* Fonts are imported from src/fonts (latin + latin-ext, woff2 only); see src/utils/fontLoader.ts */
 
 @tailwind base;
 @tailwind components;
@@ -451,4 +443,24 @@ details:not([open]) > :not(summary) {
   background-color: rgba(239, 68, 68, 0.5) !important;
   width: 4px !important;
   margin-left: 3px;
+}
+
+/* Age cells: a changed digit settles in from just below while fading up. A small distance, a
+   partial fade and a long ease-out make it read as the value settling, not popping. Only opacity
+   and transform change, so the compositor does the work. */
+@keyframes age-settle {
+  from { transform: translateY(0.18em); opacity: 0.45; }
+  to { transform: translateY(0); opacity: 1; }
+}
+/* white-space: pre keeps the space in "4m 12s" from collapsing inside an inline-block. */
+.age-char,
+.age-digit {
+  display: inline-block;
+  white-space: pre;
+}
+.age-digit {
+  animation: age-settle 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .age-digit { animation: none; }
 }

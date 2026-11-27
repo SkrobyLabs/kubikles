@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon, PlayIcon, StopIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon, SignalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import IngressActionsMenu from './IngressActionsMenu';
 import { useIngresses } from '~/hooks/resources';
@@ -11,15 +13,24 @@ import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteIngress, GetIngressYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
 import { CopyableLabel } from '~/components/shared/DetailComponents';
+import { ingressSemantics, ingressStatus, ingressClass, ingressHosts, ingressAddress, ingressPaths } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildIngressViewColumns, INGRESS_HIDDEN_BY_DEFAULT, INGRESS_PINNED_COLUMNS } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
+
+const INGRESS_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const INGRESS_VIEW_OPTIONS = { sort: INGRESS_INITIAL_SORT, columns: defaultViewColumns('ingresses', INGRESS_HIDDEN_BY_DEFAULT) };
+const NO_DATA: any[] = [];
 
 export default function IngressList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { ingresses, loading, loadState } = useIngresses(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleShowDetails, handleEditYaml, handleShowDependencies } = useIngressActions();
+    const { ingresses, loading, loadState, view } = useIngresses(currentContext, selectedNamespaces, isVisible, INGRESS_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml, handleShowDependencies } = useStableCallbacks(useIngressActions());
     const selection = useSelection();
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     const {
         bulkModalProps,
@@ -99,78 +110,34 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
         }
     }, [refreshHostnames]);
 
-    const getHosts = (ingress: any) => {
-        const rules = ingress.spec?.rules || [];
-        const hosts = rules.map((r: any) => r.host).filter(Boolean);
-        return hosts.length > 0 ? hosts.join(', ') : '*';
-    };
-
-    const getPaths = (ingress: any) => {
-        const rules = ingress.spec?.rules || [];
-        const paths = [];
-        for (const rule of rules) {
-            const httpPaths = rule.http?.paths || [];
-            for (const p of httpPaths) {
-                paths.push(p.path || '/');
-            }
-        }
-        return paths.length > 0 ? paths.slice(0, 3).join(', ') + (paths.length > 3 ? '...' : '') : '-';
-    };
-
-    const getIngressClass = (ingress: any) => {
-        return ingress.spec?.ingressClassName || ingress.metadata?.annotations?.['kubernetes.io/ingress.class'] || '-';
-    };
-
-    const getAddress = (ingress: any) => {
-        const lbIngress = ingress.status?.loadBalancer?.ingress || [];
-        if (lbIngress.length === 0) return '-';
-        const addresses = lbIngress.map((lb: any) => lb.ip || lb.hostname).filter(Boolean);
-        return addresses.length > 0 ? addresses.join(', ') : '-';
-    };
-
-    const getIngressStatus = (ingress: any) => {
-        const lbIngress = ingress.status?.loadBalancer?.ingress || [];
-        const rules = ingress.spec?.rules || [];
-        const defaultBackend = ingress.spec?.defaultBackend;
-
-        if (lbIngress.length > 0) {
-            const hasAddress = lbIngress.some((lb: any) => lb.ip || lb.hostname);
-            if (hasAddress) return { status: 'Active', color: 'text-green-400' };
-        }
-        if (rules.length === 0 && !defaultBackend) {
-            return { status: 'No Rules', color: 'text-red-400' };
-        }
-        return { status: 'Pending', color: 'text-yellow-400' };
-    };
-
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: ingressSemantics.name.getValue },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: ingressSemantics.namespace.getValue },
         {
             key: 'status',
             label: 'Status',
             render: (item: any) => {
-                const { status, color } = getIngressStatus(item);
+                const { status, color } = ingressStatus(item);
                 return <span className={color}>{status}</span>;
             },
-            getValue: (item: any) => getIngressStatus(item).status
+            getValue: ingressSemantics.status.getValue
         },
-        { key: 'class', label: 'Class', render: (item: any) => getIngressClass(item), getValue: (item: any) => getIngressClass(item) },
+        { key: 'class', label: 'Class', render: (item: any) => ingressClass(item), getValue: ingressSemantics.class.getValue },
         { key: 'hosts', label: 'Hosts', render: (item: any) => {
             const rules = item.spec?.rules || [];
             const hosts = rules.map((r: any) => r.host).filter(Boolean);
             if (hosts.length === 0) return '*';
             return <span className="flex flex-wrap gap-1">{hosts.map((h: string) => <CopyableLabel key={h} value={h} />)}</span>;
-        }, getValue: (item: any) => getHosts(item) },
-        { key: 'address', label: 'Address', render: (item: any) => getAddress(item), getValue: (item: any) => getAddress(item) },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        }, getValue: ingressSemantics.hosts.getValue },
+        { key: 'address', label: 'Address', render: (item: any) => ingressAddress(item), getValue: ingressSemantics.address.getValue },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: ingressSemantics.age.getValue },
         // Hidden by default columns
         {
             key: 'paths',
             label: 'Paths',
             defaultHidden: true,
-            render: (item: any) => getPaths(item),
-            getValue: (item: any) => getPaths(item),
+            render: (item: any) => ingressPaths(item),
+            getValue: ingressSemantics.paths.getValue,
         },
         {
             key: 'tls',
@@ -181,7 +148,7 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
                 if (tls.length === 0) return <span className="text-gray-500">No</span>;
                 return <span className="text-green-400">Yes ({tls.length})</span>;
             },
-            getValue: (item: any) => (item.spec?.tls || []).length > 0 ? 'Yes' : 'No',
+            getValue: ingressSemantics.tls.getValue,
         },
         {
             key: 'defaultBackend',
@@ -194,25 +161,24 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
                 if (svc) return `${svc.name}:${svc.port?.number || svc.port?.name}`;
                 return '-';
             },
-            getValue: (item: any) => item.spec?.defaultBackend?.service?.name || '',
+            getValue: ingressSemantics.defaultBackend.getValue,
         },
         {
             key: 'rules',
             label: 'Rules',
             defaultHidden: true,
             render: (item: any) => (item.spec?.rules || []).length,
-            getValue: (item: any) => (item.spec?.rules || []).length,
+            getValue: ingressSemantics.rules.getValue,
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <IngressActionsMenu
+                <MenuBound
+                    as={IngressActionsMenu}
+                    menuId={`ingress-${item.metadata.uid}`}
                     ingress={item}
-                    isOpen={activeMenuId === `ingress-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `ingress-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                     onDelete={(ingress: any) => openBulkDelete([ingress])}
@@ -222,7 +188,15 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, openBulkDelete]);
+    ], [handleEditYaml, handleShowDependencies, openBulkDelete]);
+
+    const viewColumns = useMemo(
+        () => buildIngressViewColumns({
+            onEditYaml: handleEditYaml,
+            onShowDependencies: handleShowDependencies,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [handleEditYaml, handleShowDependencies, openBulkDelete]);
 
     return (
         <div className="flex flex-col h-full">
@@ -417,18 +391,19 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
             <div className="flex-1 min-h-0">
                 <ResourceList loadState={loadState}
                     title="Ingresses"
-                    columns={columns}
-                    data={ingresses}
+                    columns={view ? viewColumns : columns}
+                    source={view ?? null}
+                    viewPinnedColumns={INGRESS_PINNED_COLUMNS}
+                    data={view ? NO_DATA : ingresses}
                     isLoading={loading}
                     namespaces={namespaces}
                     currentNamespace={selectedNamespaces}
                     onNamespaceChange={setSelectedNamespaces}
                     showNamespaceSelector={true}
                     multiSelectNamespaces={true}
-                    highlightedUid={activeMenuId}
-                    initialSort={{ key: 'age', direction: 'desc' }}
+                    initialSort={INGRESS_INITIAL_SORT}
                     resourceType="ingresses"
-                    onRowClick={handleShowDetails}
+                    onRowClick={view ? showDetails : handleShowDetails}
                     selectable={true}
                     selection={selection}
                     onBulkDelete={openBulkDelete}

@@ -1,5 +1,9 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 
+export interface RefItem {
+    metadata: { uid: string; name: string; namespace?: string };
+}
+
 /**
  * Hook for managing selection state in list views
  * Supports single selection, multi-selection, and shift+click range selection
@@ -9,6 +13,9 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 export function useSelection() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set<any>());
     const lastSelectedIndexRef = useRef<number | null>(null);
+    // View-mode lists hold only the rows near the window, so the identity of selected rows
+    // (uid, namespace, name) is kept here for bulk actions and range selection.
+    const refsRef = useRef<Map<string, RefItem>>(new Map());
 
     // Toggle selection of a single item
     const toggleItem = useCallback((uid: string, index: number, items: any[], shiftKey = false) => {
@@ -43,6 +50,60 @@ export function useSelection() {
         lastSelectedIndexRef.current = index;
     }, []);
 
+    // ---- ref-based selection (windowed lists) ----------------------------------------------
+
+    const toggleRef = useCallback((ref: RefItem, index: number) => {
+        const uid = ref.metadata.uid;
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(uid)) {
+                next.delete(uid);
+                refsRef.current.delete(uid);
+            } else {
+                next.add(uid);
+                refsRef.current.set(uid, ref);
+            }
+            return next;
+        });
+        lastSelectedIndexRef.current = index;
+    }, []);
+
+    const addRefs = useCallback((refs: RefItem[], index?: number) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            for (const r of refs) {
+                next.add(r.metadata.uid);
+                refsRef.current.set(r.metadata.uid, r);
+            }
+            return next;
+        });
+        if (index !== undefined) lastSelectedIndexRef.current = index;
+    }, []);
+
+    const setRefs = useCallback((refs: RefItem[]) => {
+        refsRef.current = new Map(refs.map(r => [r.metadata.uid, r]));
+        setSelectedIds(new Set(refs.map(r => r.metadata.uid)));
+    }, []);
+
+    const getLastIndex = useCallback(() => lastSelectedIndexRef.current, []);
+
+    /** Drops selected uids the backend reports as gone. */
+    const pruneByUids = useCallback((gone: Iterable<string>) => {
+        const drop = new Set(gone);
+        if (drop.size === 0) return;
+        setSelectedIds(prev => {
+            let any = false;
+            for (const uid of prev) if (drop.has(uid)) { any = true; break; }
+            if (!any) return prev;
+            const next = new Set<string>();
+            for (const uid of prev) {
+                if (drop.has(uid)) refsRef.current.delete(uid);
+                else next.add(uid);
+            }
+            return next;
+        });
+    }, []);
+
     // Select a single item (without toggle)
     const selectItem = useCallback((uid: string) => {
         setSelectedIds(prev => {
@@ -72,6 +133,7 @@ export function useSelection() {
     // Deselect all items
     const deselectAll = useCallback(() => {
         setSelectedIds(new Set<any>());
+        refsRef.current = new Map();
         lastSelectedIndexRef.current = null;
     }, []);
 
@@ -148,7 +210,23 @@ export function useSelection() {
         });
     }, []);
 
+    // Identity items of the selected rows, for bulk actions on a windowed list.
+    const getRefItems = useCallback((): RefItem[] => {
+        const out: RefItem[] = [];
+        for (const uid of selectedIds) {
+            const r = refsRef.current.get(uid);
+            if (r) out.push(r);
+        }
+        return out;
+    }, [selectedIds]);
+
     return useMemo(() => ({
+        toggleRef,
+        addRefs,
+        setRefs,
+        getLastIndex,
+        pruneByUids,
+        getRefItems,
         selectedIds,
         selectedCount,
         toggleItem,
@@ -162,6 +240,12 @@ export function useSelection() {
         getSelectedItems,
         pruneSelection,
     }), [
+        toggleRef,
+        addRefs,
+        setRefs,
+        getLastIndex,
+        pruneByUids,
+        getRefItems,
         selectedIds,
         selectedCount,
         toggleItem,

@@ -42,6 +42,28 @@ type resourceCache struct {
 	gvrCache map[string]*schema.GroupVersionResource
 	// CRD resource cache: "kind/namespace/name" -> fetched unstructured resource
 	crdCache map[string]*unstructured.Unstructured
+	// reader answers list getters from warm store shards (nil: always list live). Set through
+	// useStore; only dependency graph requests do, the UI lists never read the store.
+	reader      StoreReader
+	contextName string
+}
+
+// useStore lets the list getters read warm store shards of contextName before listing live.
+func (rc *resourceCache) useStore(c *Client, contextName string) {
+	if c == nil {
+		return
+	}
+	rc.reader = c.readerOrNil()
+	rc.contextName = contextName
+}
+
+// warm returns the warm store's objects of a type as values, or ok=false when the store is not
+// in use or has no synced shard.
+func warm[T any](rc *resourceCache, resourceType, namespace string) ([]T, bool) {
+	if rc.reader == nil {
+		return nil, false
+	}
+	return storeListFrom[T](rc.reader, rc.contextName, resourceType, namespace)
 }
 
 func newResourceCache(ctx context.Context, cs kubernetes.Interface, dc dynamic.Interface) *resourceCache {
@@ -150,17 +172,21 @@ func (rc *resourceCache) getPods(namespace string) ([]v1.Pod, error) {
 	if cached, ok := rc.pods[namespace]; ok {
 		return cached, nil
 	}
-	list, err := rc.cs.CoreV1().Pods(namespace).List(rc.ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
+	items, ok := warm[v1.Pod](rc, "pods", namespace)
+	if !ok {
+		list, err := rc.cs.CoreV1().Pods(namespace).List(rc.ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		items = list.Items
 	}
-	rc.pods[namespace] = list.Items
+	rc.pods[namespace] = items
 	// Build name index for O(1) lookups
-	rc.podsByName[namespace] = make(map[string]*v1.Pod, len(list.Items))
-	for i := range list.Items {
-		rc.podsByName[namespace][list.Items[i].Name] = &list.Items[i]
+	rc.podsByName[namespace] = make(map[string]*v1.Pod, len(items))
+	for i := range items {
+		rc.podsByName[namespace][items[i].Name] = &items[i]
 	}
-	return list.Items, nil
+	return items, nil
 }
 
 // getPodByName returns a pod by name using the cached pod list, or fetches the list if not cached.
@@ -183,42 +209,54 @@ func (rc *resourceCache) getServices(namespace string) ([]v1.Service, error) {
 	if cached, ok := rc.services[namespace]; ok {
 		return cached, nil
 	}
-	list, err := rc.cs.CoreV1().Services(namespace).List(rc.ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
+	items, ok := warm[v1.Service](rc, "services", namespace)
+	if !ok {
+		list, err := rc.cs.CoreV1().Services(namespace).List(rc.ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		items = list.Items
 	}
-	rc.services[namespace] = list.Items
-	return list.Items, nil
+	rc.services[namespace] = items
+	return items, nil
 }
 
 func (rc *resourceCache) getIngresses(namespace string) ([]networkingv1.Ingress, error) {
 	if cached, ok := rc.ingresses[namespace]; ok {
 		return cached, nil
 	}
-	list, err := rc.cs.NetworkingV1().Ingresses(namespace).List(rc.ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
+	items, ok := warm[networkingv1.Ingress](rc, "ingresses", namespace)
+	if !ok {
+		list, err := rc.cs.NetworkingV1().Ingresses(namespace).List(rc.ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		items = list.Items
 	}
-	rc.ingresses[namespace] = list.Items
-	return list.Items, nil
+	rc.ingresses[namespace] = items
+	return items, nil
 }
 
 func (rc *resourceCache) getReplicaSets(namespace string) ([]appsv1.ReplicaSet, error) {
 	if cached, ok := rc.replicaSets[namespace]; ok {
 		return cached, nil
 	}
-	list, err := rc.cs.AppsV1().ReplicaSets(namespace).List(rc.ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
+	items, ok := warm[appsv1.ReplicaSet](rc, "replicasets", namespace)
+	if !ok {
+		list, err := rc.cs.AppsV1().ReplicaSets(namespace).List(rc.ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		items = list.Items
 	}
-	rc.replicaSets[namespace] = list.Items
+	rc.replicaSets[namespace] = items
 	// Build name-indexed map for O(1) lookups
-	nameMap := make(map[string]*appsv1.ReplicaSet, len(list.Items))
-	for i := range list.Items {
-		nameMap[list.Items[i].Name] = &list.Items[i]
+	nameMap := make(map[string]*appsv1.ReplicaSet, len(items))
+	for i := range items {
+		nameMap[items[i].Name] = &items[i]
 	}
 	rc.replicaSetsByName[namespace] = nameMap
-	return list.Items, nil
+	return items, nil
 }
 
 // getReplicaSetByName returns a ReplicaSet by name with O(1) lookup
@@ -239,18 +277,22 @@ func (rc *resourceCache) getJobs(namespace string) ([]batchv1.Job, error) {
 	if cached, ok := rc.jobs[namespace]; ok {
 		return cached, nil
 	}
-	list, err := rc.cs.BatchV1().Jobs(namespace).List(rc.ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
+	items, ok := warm[batchv1.Job](rc, "jobs", namespace)
+	if !ok {
+		list, err := rc.cs.BatchV1().Jobs(namespace).List(rc.ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		items = list.Items
 	}
-	rc.jobs[namespace] = list.Items
+	rc.jobs[namespace] = items
 	// Build name-indexed map for O(1) lookups
-	nameMap := make(map[string]*batchv1.Job, len(list.Items))
-	for i := range list.Items {
-		nameMap[list.Items[i].Name] = &list.Items[i]
+	nameMap := make(map[string]*batchv1.Job, len(items))
+	for i := range items {
+		nameMap[items[i].Name] = &items[i]
 	}
 	rc.jobsByName[namespace] = nameMap
-	return list.Items, nil
+	return items, nil
 }
 
 // getJobByName returns a Job by name with O(1) lookup
@@ -273,13 +315,17 @@ func (rc *resourceCache) getAllPods() ([]v1.Pod, error) {
 	if rc.allPodsCached {
 		return rc.allPods, nil
 	}
-	list, err := rc.cs.CoreV1().Pods("").List(rc.ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
+	items, ok := warm[v1.Pod](rc, "pods", "")
+	if !ok {
+		list, err := rc.cs.CoreV1().Pods("").List(rc.ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		items = list.Items
 	}
-	rc.allPods = list.Items
+	rc.allPods = items
 	rc.allPodsCached = true
-	return list.Items, nil
+	return items, nil
 }
 
 // getAllIngresses returns all ingresses cluster-wide with caching
@@ -288,11 +334,15 @@ func (rc *resourceCache) getAllIngresses() ([]networkingv1.Ingress, error) {
 	if rc.allIngressesCached {
 		return rc.allIngresses, nil
 	}
-	list, err := rc.cs.NetworkingV1().Ingresses("").List(rc.ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
+	items, ok := warm[networkingv1.Ingress](rc, "ingresses", "")
+	if !ok {
+		list, err := rc.cs.NetworkingV1().Ingresses("").List(rc.ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		items = list.Items
 	}
-	rc.allIngresses = list.Items
+	rc.allIngresses = items
 	rc.allIngressesCached = true
-	return list.Items, nil
+	return items, nil
 }

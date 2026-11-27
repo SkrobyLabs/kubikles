@@ -11,7 +11,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
-	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 func resourceRequestValue(requests v1.ResourceList, resourceName v1.ResourceName) int64 {
@@ -76,65 +75,45 @@ func isScheduledNonTerminalPod(pod *v1.Pod) bool {
 
 func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 	if IsDebugClusterContext(c.GetCurrentContext()) {
-		return &NodeMetricsResult{Available: false, Error: "metrics not available on debug cluster"}, nil
+		return c.debugNodeMetrics()
 	}
 
-	c.mu.Lock()
-	// Lazy init metrics client
-	if c.metricsClient == nil {
-		config, err := c.configLoading.ClientConfig()
-		if err != nil {
-			c.mu.Unlock()
-			return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
-		}
-		mc, err := newAuthenticatedClient(config, metricsclientset.NewForConfigAndClient)
-		if err != nil {
-			c.mu.Unlock()
-			return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
-		}
-		c.metricsClient = mc
-	}
-	c.mu.Unlock()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Get clientset early so we can use it in goroutines
-	cs, err := c.getClientset()
+	mc, err := c.ensureMetricsClient()
 	if err != nil {
 		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
 	}
 
-	// Fetch node metrics, nodes, pods, and pod metrics in parallel
+	// Node metrics, nodes, pods and pod metrics come from short-lived shared
+	// snapshots (see metrics_snapshot.go) fetched in parallel.
 	var nodeMetricsList *metricsv1beta1.NodeMetricsList
 	var nodes *v1.NodeList
 	var pods *v1.PodList
 	var podMetricsList *metricsv1beta1.PodMetricsList
 	var podMetricsErr error
 
-	g, gctx := errgroup.WithContext(ctx)
+	var g errgroup.Group
 
 	g.Go(func() error {
 		var err error
-		nodeMetricsList, err = c.metricsClient.MetricsV1beta1().NodeMetricses().List(gctx, metav1.ListOptions{})
+		nodeMetricsList, err = c.snapshotNodeMetrics(mc)
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		nodes, err = cs.CoreV1().Nodes().List(gctx, metav1.ListOptions{})
+		nodes, err = c.snapshotNodes()
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		pods, err = cs.CoreV1().Pods("").List(gctx, metav1.ListOptions{})
+		pods, err = c.snapshotPods()
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		podMetricsList, err = c.metricsClient.MetricsV1beta1().PodMetricses("").List(gctx, metav1.ListOptions{})
+		podMetricsList, err = c.snapshotPodMetrics(mc)
 		// Pod metrics might fail, but we can still return node metrics without committed
 		podMetricsErr = err
 		return nil // Don't fail the group for pod metrics
@@ -716,57 +695,37 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 
 func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 	if IsDebugClusterContext(c.GetCurrentContext()) {
-		return &PodMetricsResult{Available: false, Error: "metrics not available on debug cluster"}, nil
+		return c.debugPodMetrics()
 	}
 
-	c.mu.Lock()
-	// Lazy init metrics client
-	if c.metricsClient == nil {
-		config, err := c.configLoading.ClientConfig()
-		if err != nil {
-			c.mu.Unlock()
-			return &PodMetricsResult{Available: false, Error: err.Error()}, nil
-		}
-		mc, err := newAuthenticatedClient(config, metricsclientset.NewForConfigAndClient)
-		if err != nil {
-			c.mu.Unlock()
-			return &PodMetricsResult{Available: false, Error: err.Error()}, nil
-		}
-		c.metricsClient = mc
-	}
-	c.mu.Unlock()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Get clientset early so we can use it in goroutines
-	cs, err := c.getClientset()
+	mc, err := c.ensureMetricsClient()
 	if err != nil {
 		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
 	}
 
-	// Fetch pod metrics, pods, and nodes in parallel
+	// Pod metrics, pods and nodes come from short-lived shared snapshots
+	// (see metrics_snapshot.go) fetched in parallel.
 	var podMetricsList *metricsv1beta1.PodMetricsList
 	var pods *v1.PodList
 	var nodes *v1.NodeList
 
-	g, gctx := errgroup.WithContext(ctx)
+	var g errgroup.Group
 
 	g.Go(func() error {
 		var err error
-		podMetricsList, err = c.metricsClient.MetricsV1beta1().PodMetricses("").List(gctx, metav1.ListOptions{})
+		podMetricsList, err = c.snapshotPodMetrics(mc)
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		pods, err = cs.CoreV1().Pods("").List(gctx, metav1.ListOptions{})
+		pods, err = c.snapshotPods()
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		nodes, err = cs.CoreV1().Nodes().List(gctx, metav1.ListOptions{})
+		nodes, err = c.snapshotNodes()
 		return err
 	})
 

@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import ReplicaSetActionsMenu from './ReplicaSetActionsMenu';
 import { useReplicaSets } from '~/hooks/resources';
@@ -14,15 +16,17 @@ import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteReplicaSet, GetReplicaSetYaml, ScaleReplicaSet } from 'wailsjs/go/main/App';
 import ScaleModal from '~/components/shared/ScaleModal';
 import { formatAge } from '~/utils/formatting';
-import { getOwnerViewId } from '~/utils/owner-navigation';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-// Get controller from owner references
-function getController(item: any) {
-    const owners = item.metadata?.ownerReferences || [];
-    const controller = owners.find((owner: any) => owner.controller);
-    return controller ? { kind: controller.kind, name: controller.name, uid: controller.uid, apiVersion: controller.apiVersion } : null;
-}
+import { replicaSetSemantics } from './semantics';
+import { getController } from '../workloadSemantics';
+import { renderControlledBy } from '../ControlledBy';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildReplicaSetViewColumns, REPLICASET_HIDDEN_BY_DEFAULT, REPLICASET_PINNED_COLUMNS } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
+
+const REPLICASET_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const REPLICASET_VIEW_OPTIONS = { sort: REPLICASET_INITIAL_SORT, columns: defaultViewColumns('replicasets', REPLICASET_HIDDEN_BY_DEFAULT) };
+const NO_DATA: any[] = [];
 
 export default function ReplicaSetList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
@@ -34,7 +38,6 @@ export default function ReplicaSetList({ isVisible }: { isVisible: boolean }) {
             ensureCRDsLoaded();
         }
     }, [isVisible, ensureCRDsLoaded]);
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     const {
@@ -49,77 +52,52 @@ export default function ReplicaSetList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetReplicaSetYaml,
 
     });
-    const { replicaSets, loading, loadState } = useReplicaSets(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useReplicaSetActions();
+    const { replicaSets, loading, loadState, view } = useReplicaSets(currentContext, selectedNamespaces, isVisible, REPLICASET_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useStableCallbacks(useReplicaSetActions());
     const { addNotification } = useNotification();
     const [scaleTarget, setScaleTarget] = useState<any>(null);
+    const withObject = useWithFullObject(view ?? null);
+    // Details and scaling need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
+    const startScale = useMemo(() => withObject(setScaleTarget), [withObject]);
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name, initialSort: 'asc' },
-        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: replicaSetSemantics.name.getValue, initialSort: 'asc' },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: replicaSetSemantics.namespace.getValue },
         {
             key: 'desired',
             label: 'Desired',
             render: (item: any) => item.spec?.replicas || 0,
-            getValue: (item: any) => item.spec?.replicas || 0
+            getValue: replicaSetSemantics.desired.getValue
         },
         {
             key: 'current',
             label: 'Current',
             render: (item: any) => item.status?.replicas || 0,
-            getValue: (item: any) => item.status?.replicas || 0
+            getValue: replicaSetSemantics.current.getValue
         },
         {
             key: 'ready',
             label: 'Ready',
             render: (item: any) => item.status?.readyReplicas || 0,
-            getValue: (item: any) => item.status?.readyReplicas || 0
+            getValue: replicaSetSemantics.ready.getValue
         },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: replicaSetSemantics.age.getValue },
         {
             key: 'controlledBy',
             label: 'Controlled By',
-            render: (item: any) => {
-                const controller = getController(item);
-                if (!controller) {
-                    return <span className="text-gray-600">-</span>;
-                }
-
-                const viewId = getOwnerViewId(controller, crds);
-
-                if (viewId) {
-                    return (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigateWithSearch(viewId, `uid:"${controller.uid}"`);
-                            }}
-                            className="text-primary hover:text-primary/80 hover:underline transition-colors"
-                            title={`Go to ${controller.kind}: ${controller.name}`}
-                        >
-                            {controller.kind}
-                        </button>
-                    );
-                }
-
-                return (
-                    <span className="text-gray-400" title={controller.name}>
-                        {controller.kind}
-                    </span>
-                );
-            },
-            getValue: (item: any) => getController(item)?.kind || ''
+            render: (item: any) => renderControlledBy(getController(item), crds, navigateWithSearch),
+            getValue: replicaSetSemantics.controlledBy.getValue
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <ReplicaSetActionsMenu
+                <MenuBound
+                    as={ReplicaSetActionsMenu}
+                    menuId={`rs-${item.metadata.uid}`}
                     replicaSet={item}
-                    isOpen={activeMenuId === `rs-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `rs-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
                     onDelete={() => openBulkDelete([item])}
@@ -130,24 +108,37 @@ export default function ReplicaSetList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, openBulkDelete, handleViewLogs, navigateWithSearch, crds]);
+    ], [handleEditYaml, handleShowDependencies, openBulkDelete, handleViewLogs, navigateWithSearch, crds]);
+
+    const viewColumns = useMemo(
+        () => buildReplicaSetViewColumns({
+            crds,
+            navigateWithSearch,
+            onEditYaml: handleEditYaml as (item: any) => void,
+            onShowDependencies: handleShowDependencies as (item: any) => void,
+            onDelete: item => openBulkDelete([item]),
+            onViewLogs: handleViewLogs as (item: any) => void,
+            onScale: startScale,
+        }),
+        [crds, navigateWithSearch, handleEditYaml, handleShowDependencies, openBulkDelete, handleViewLogs, startScale]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="ReplicaSets"
-                columns={columns}
-                data={replicaSets}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                viewPinnedColumns={REPLICASET_PINNED_COLUMNS}
+                data={view ? NO_DATA : replicaSets}
                 isLoading={loading}
                 namespaces={namespaces}
                 currentNamespace={selectedNamespaces}
                 onNamespaceChange={setSelectedNamespaces}
                 showNamespaceSelector={true}
                 multiSelectNamespaces={true}
-                highlightedUid={activeMenuId}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={REPLICASET_INITIAL_SORT}
                 resourceType="replicasets"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

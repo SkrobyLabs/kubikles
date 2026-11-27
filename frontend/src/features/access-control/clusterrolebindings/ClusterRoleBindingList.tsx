@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useClusterRoleBindings } from '~/hooks/resources';
 import { useK8s } from '~/context';
@@ -10,14 +12,23 @@ import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ClusterRoleBindingActionsMenu from './ClusterRoleBindingActionsMenu';
 import { useClusterRoleBindingActions } from './useClusterRoleBindingActions';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { clusterRoleBindingSemantics } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildClusterRoleBindingViewColumns } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
+
+const CLUSTERROLEBINDING_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const CLUSTERROLEBINDING_VIEW_OPTIONS = { sort: CLUSTERROLEBINDING_INITIAL_SORT, columns: defaultViewColumns('clusterrolebindings') };
+const NO_DATA: any[] = [];
 
 export default function ClusterRoleBindingList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { clusterRoleBindings, loading, loadState } = useClusterRoleBindings(currentContext, isVisible) as any;
-    const { handleShowDetails, handleEditYaml } = useClusterRoleBindingActions();
+    const { clusterRoleBindings, loading, loadState, view } = useClusterRoleBindings(currentContext, isVisible, CLUSTERROLEBINDING_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml } = useStableCallbacks(useClusterRoleBindingActions());
     const selection = useSelection();
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     // Unified bulk actions (also used for single delete)
     const {
@@ -34,7 +45,7 @@ export default function ClusterRoleBindingList({ isVisible }: { isVisible: boole
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: clusterRoleBindingSemantics.name.getValue },
         {
             key: 'roleRef',
             label: 'Role Ref',
@@ -47,26 +58,25 @@ export default function ClusterRoleBindingList({ isVisible }: { isVisible: boole
                     </span>
                 );
             },
-            getValue: (item: any) => `${item.roleRef?.kind}/${item.roleRef?.name}`
+            getValue: clusterRoleBindingSemantics.roleRef.getValue
         },
         {
             key: 'subjects',
             label: 'Subjects',
             align: 'center',
             render: (item: any) => (item.subjects || []).length,
-            getValue: (item: any) => (item.subjects || []).length
+            getValue: clusterRoleBindingSemantics.subjects.getValue
         },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: clusterRoleBindingSemantics.age.getValue },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <ClusterRoleBindingActionsMenu
+                <MenuBound
+                    as={ClusterRoleBindingActionsMenu}
+                    menuId={`clusterrolebinding-${item.metadata.uid}`}
                     clusterRoleBinding={item}
-                    isOpen={activeMenuId === `clusterrolebinding-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `clusterrolebinding-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onDelete={(clusterRoleBinding: any) => openBulkDelete([clusterRoleBinding])}
                 />
@@ -75,19 +85,27 @@ export default function ClusterRoleBindingList({ isVisible }: { isVisible: boole
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete]);
+    ], [handleEditYaml, openBulkDelete]);
+
+    const viewColumns = useMemo(
+        () => buildClusterRoleBindingViewColumns({
+            onEditYaml: handleEditYaml,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [handleEditYaml, openBulkDelete]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="Cluster Role Bindings"
-                columns={columns}
-                data={clusterRoleBindings}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : clusterRoleBindings}
                 isLoading={loading}
                 showNamespaceSelector={false}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={CLUSTERROLEBINDING_INITIAL_SORT}
                 resourceType="clusterrolebindings"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

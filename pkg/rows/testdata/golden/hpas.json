@@ -1,0 +1,3906 @@
+{
+ "type": "hpas",
+ "now": 1748779200000,
+ "columns": ["name","namespace","reference","minmax","replicas","age"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "reference": "select",
+  "minmax": "select",
+  "replicas": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "StatefulSet",
+     "name": "db",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T06:59:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 20,
+    "minReplicas": 1,
+    "metrics": [
+     {
+      "type": "Pods",
+      "pods": {
+       "metric": {
+        "name": "qps"
+       },
+       "target": {
+        "type": "AverageValue",
+        "averageValue": "100"
+       }
+      }
+     },
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 7,
+    "currentReplicas": 2
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T02:23:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5,
+    "metrics": [
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     },
+     {
+      "type": "ContainerResource",
+      "containerResource": {
+       "name": "memory",
+       "container": "app",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 70
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 4,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T01:23:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Rollout",
+     "name": "canary",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 100,
+    "minReplicas": 5,
+    "metrics": [
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 6,
+    "currentReplicas": 8
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T01:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "StatefulSet",
+     "name": "db",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T12:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Rollout",
+     "name": "canary",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 20,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "ContainerResource",
+      "containerResource": {
+       "name": "memory",
+       "container": "app",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 70
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 3,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T06:48:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "ReplicaSet",
+     "name": "rs-1",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 1,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "ContainerResource",
+      "containerResource": {
+       "name": "memory",
+       "container": "app",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 70
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 5
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T06:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 20,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 2
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T21:15:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 5,
+    "metrics": [
+     {
+      "type": "ContainerResource",
+      "containerResource": {
+       "name": "memory",
+       "container": "app",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 70
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T09:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "ReplicaSet",
+     "name": "rs-1",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 1,
+    "minReplicas": 1,
+    "metrics": [
+     {
+      "type": "Pods",
+      "pods": {
+       "metric": {
+        "name": "qps"
+       },
+       "target": {
+        "type": "AverageValue",
+        "averageValue": "100"
+       }
+      }
+     },
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 6,
+    "currentReplicas": 6
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T08:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "StatefulSet",
+     "name": "db",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 100
+   },
+   "status": {
+    "desiredReplicas": 4,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T06:11:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "a",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "no-min",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "a",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 1
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-10",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "a",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 4,
+    "minReplicas": 0
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 2
+   },
+   "metadata": {
+    "name": "min-zero",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "a",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 0,
+    "minReplicas": 2
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "max-zero",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "a",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 5,
+    "minReplicas": 1
+   },
+   "status": {
+    "desiredReplicas": 2
+   },
+   "metadata": {
+    "name": "no-current",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "",
+     "name": "",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 5,
+    "minReplicas": 1
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "empty-target",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "a",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 2
+   },
+   "status": {
+    "desiredReplicas": 0,
+    "currentReplicas": 12
+   },
+   "metadata": {
+    "name": "desired-zero",
+    "namespace": "default",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "a",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 1,
+    "metrics": [
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     },
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     },
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 5,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     },
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 8
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T10:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Rollout",
+     "name": "canary",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 3,
+    "currentReplicas": 5
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T19:59:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 100,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 7,
+    "currentReplicas": 6
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T18:19:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     },
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T00:28:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 2,
+    "metrics": [
+     {
+      "type": "Pods",
+      "pods": {
+       "metric": {
+        "name": "qps"
+       },
+       "target": {
+        "type": "AverageValue",
+        "averageValue": "100"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T15:51:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Rollout",
+     "name": "canary",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T03:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 5,
+    "minReplicas": 2,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T05:06:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Rollout",
+     "name": "canary",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     },
+     {
+      "type": "Pods",
+      "pods": {
+       "metric": {
+        "name": "qps"
+       },
+       "target": {
+        "type": "AverageValue",
+        "averageValue": "100"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 5
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T12:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "StatefulSet",
+     "name": "db",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 20,
+    "minReplicas": 3
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T08:50:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 1,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 7
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-29T22:18:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 5,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 3,
+    "currentReplicas": 2
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T00:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 3
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 1,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     },
+     {
+      "type": "Resource",
+      "resource": {
+       "name": "cpu",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 80
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-06-01T00:25:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "StatefulSet",
+     "name": "db",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 5
+   },
+   "status": {
+    "desiredReplicas": 8,
+    "currentReplicas": 7
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T15:26:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 5,
+    "minReplicas": 2
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 7
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T11:31:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Rollout",
+     "name": "canary",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 8
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T00:01:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Rollout",
+     "name": "canary",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 1,
+    "minReplicas": 2,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 5,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T07:05:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Rollout",
+     "name": "canary",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 100,
+    "minReplicas": 3
+   },
+   "status": {
+    "desiredReplicas": 7,
+    "currentReplicas": 8
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T05:00:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "same",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 1
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-8",
+    "creationTimestamp": "2025-06-01T10:33:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "StatefulSet",
+     "name": "db",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 5,
+    "minReplicas": 1,
+    "metrics": [
+     {
+      "type": "ContainerResource",
+      "containerResource": {
+       "name": "memory",
+       "container": "app",
+       "target": {
+        "type": "Utilization",
+        "averageUtilization": 70
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 7,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T21:43:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "web",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     },
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 6,
+    "currentReplicas": 6
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T00:59:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "same",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 1
+   },
+   "status": {
+    "desiredReplicas": 1,
+    "currentReplicas": 1
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-9",
+    "creationTimestamp": "2025-06-01T10:32:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "Deployment",
+     "name": "Zeta",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 3,
+    "minReplicas": 3,
+    "metrics": [
+     {
+      "type": "External",
+      "external": {
+       "metric": {
+        "name": "queue"
+       },
+       "target": {
+        "type": "Value",
+        "value": "30"
+       }
+      }
+     }
+    ]
+   },
+   "status": {
+    "desiredReplicas": 6,
+    "currentReplicas": 2
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T12:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "scaleTargetRef": {
+     "kind": "StatefulSet",
+     "name": "db",
+     "apiVersion": "apps/v1"
+    },
+    "maxReplicas": 10
+   },
+   "status": {
+    "desiredReplicas": 2,
+    "currentReplicas": 4
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T13:49:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-4","uid-edge-10"],
+ "cells": {
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "Prod",
+   "reference": "StatefulSet/db",
+   "minmax": "1/10",
+   "replicas": 1,
+   "age": "2025-05-31T06:59:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "Prod",
+   "reference": "Deployment/web",
+   "minmax": "1/20",
+   "replicas": 2,
+   "age": "2025-06-01T02:23:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "Prod",
+   "reference": "Deployment/web",
+   "minmax": "5/10",
+   "replicas": 4,
+   "age": "2025-05-31T01:23:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "Prod",
+   "reference": "Rollout/canary",
+   "minmax": "5/100",
+   "replicas": 8,
+   "age": "2025-06-01T01:40:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "Prod",
+   "reference": "StatefulSet/db",
+   "minmax": "3/10",
+   "replicas": 3,
+   "age": "2025-05-31T12:34:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "Prod",
+   "reference": "Rollout/canary",
+   "minmax": "3/20",
+   "replicas": 4,
+   "age": "2025-06-01T06:48:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "Prod",
+   "reference": "ReplicaSet/rs-1",
+   "minmax": "3/1",
+   "replicas": 5,
+   "age": "2025-05-31T06:39:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "Prod",
+   "reference": "Deployment/web",
+   "minmax": "5/20",
+   "replicas": 2,
+   "age": "2025-05-31T21:15:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "default",
+   "reference": "Deployment/Zeta",
+   "minmax": "1/5",
+   "replicas": 4,
+   "age": "2025-05-30T09:17:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "reference": "ReplicaSet/rs-1",
+   "minmax": "1/1",
+   "replicas": 6,
+   "age": "2025-05-30T08:17:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "default",
+   "reference": "StatefulSet/db",
+   "minmax": "1/100",
+   "replicas": 4,
+   "age": "2025-05-31T06:11:00Z"
+  },
+  "uid-edge-1": {
+   "name": "no-min",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "1/3",
+   "replicas": 1,
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-10": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "1/3",
+   "replicas": 1,
+   "age": null
+  },
+  "uid-edge-2": {
+   "name": "min-zero",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "0/4",
+   "replicas": 2,
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "max-zero",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "2/0",
+   "replicas": 1,
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-current",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "1/5",
+   "replicas": "-",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "empty-target",
+   "namespace": "default",
+   "reference": "/",
+   "minmax": "1/5",
+   "replicas": 1,
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "desired-zero",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "2/10",
+   "replicas": 12,
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-7": {
+   "name": "annotated",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "1/3",
+   "replicas": 1,
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "kube-system",
+   "reference": "Deployment/web",
+   "minmax": "3/5",
+   "replicas": 8,
+   "age": "2025-05-31T10:17:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "kube-system",
+   "reference": "Rollout/canary",
+   "minmax": "1/10",
+   "replicas": 5,
+   "age": "2025-05-29T19:59:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "kube-system",
+   "reference": "Deployment/web",
+   "minmax": "5/100",
+   "replicas": 6,
+   "age": "2025-05-31T18:19:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "kube-system",
+   "reference": "Deployment/Zeta",
+   "minmax": "3/10",
+   "replicas": 4,
+   "age": "2025-05-30T00:28:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "kube-system",
+   "reference": "Deployment/Zeta",
+   "minmax": "2/3",
+   "replicas": 4,
+   "age": "2025-05-31T15:51:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "prod",
+   "reference": "Rollout/canary",
+   "minmax": "3/3",
+   "replicas": 1,
+   "age": "2025-05-31T03:39:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "prod",
+   "reference": "Deployment/web",
+   "minmax": "2/5",
+   "replicas": 4,
+   "age": "2025-05-31T05:06:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "prod",
+   "reference": "Rollout/canary",
+   "minmax": "3/10",
+   "replicas": 5,
+   "age": "2025-05-30T12:17:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "prod",
+   "reference": "StatefulSet/db",
+   "minmax": "3/20",
+   "replicas": 3,
+   "age": "2025-05-31T08:50:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "3/1",
+   "replicas": 7,
+   "age": "2025-05-29T22:18:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "prod",
+   "reference": "Deployment/web",
+   "minmax": "5/5",
+   "replicas": 2,
+   "age": "2025-05-31T00:39:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": 3,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "team-a",
+   "reference": "Deployment/Zeta",
+   "minmax": "1/1",
+   "replicas": 1,
+   "age": "2025-06-01T00:25:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-a",
+   "reference": "StatefulSet/db",
+   "minmax": "5/3",
+   "replicas": 7,
+   "age": "2025-05-30T15:26:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "team-a",
+   "reference": "Deployment/web",
+   "minmax": "2/5",
+   "replicas": 7,
+   "age": "2025-05-31T11:31:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "team-a",
+   "reference": "Rollout/canary",
+   "minmax": "1/10",
+   "replicas": 8,
+   "age": "2025-05-31T00:01:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "team-a",
+   "reference": "Rollout/canary",
+   "minmax": "2/1",
+   "replicas": 4,
+   "age": "2025-05-30T07:05:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "team-a",
+   "reference": "Rollout/canary",
+   "minmax": "3/100",
+   "replicas": 8,
+   "age": "2025-05-30T05:00:00Z"
+  },
+  "uid-edge-8": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "reference": "Deployment/same",
+   "minmax": "1/3",
+   "replicas": 1,
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "team-b",
+   "reference": "StatefulSet/db",
+   "minmax": "1/5",
+   "replicas": 1,
+   "age": "2025-05-30T21:43:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "team-b",
+   "reference": "Deployment/web",
+   "minmax": "3/3",
+   "replicas": 6,
+   "age": "2025-05-30T00:59:00Z"
+  },
+  "uid-edge-9": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "reference": "Deployment/same",
+   "minmax": "1/3",
+   "replicas": 1,
+   "age": "2025-06-01T10:32:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "étude",
+   "reference": "Deployment/Zeta",
+   "minmax": "3/3",
+   "replicas": 2,
+   "age": "2025-05-31T12:17:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "étude",
+   "reference": "StatefulSet/db",
+   "minmax": "1/10",
+   "replicas": 4,
+   "age": "2025-05-31T13:49:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "Prod",
+   "reference": "StatefulSet/db",
+   "minmax": "1/10",
+   "replicas": "",
+   "age": "2025-05-31T06:59:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "Prod",
+   "reference": "Deployment/web",
+   "minmax": "1/20",
+   "replicas": "",
+   "age": "2025-06-01T02:23:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "Prod",
+   "reference": "Deployment/web",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-31T01:23:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "Prod",
+   "reference": "Rollout/canary",
+   "minmax": "5/100",
+   "replicas": "",
+   "age": "2025-06-01T01:40:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "Prod",
+   "reference": "StatefulSet/db",
+   "minmax": "3/10",
+   "replicas": "",
+   "age": "2025-05-31T12:34:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "Prod",
+   "reference": "Rollout/canary",
+   "minmax": "3/20",
+   "replicas": "",
+   "age": "2025-06-01T06:48:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "Prod",
+   "reference": "ReplicaSet/rs-1",
+   "minmax": "3/1",
+   "replicas": "",
+   "age": "2025-05-31T06:39:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "Prod",
+   "reference": "Deployment/web",
+   "minmax": "5/20",
+   "replicas": "",
+   "age": "2025-05-31T21:15:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "default",
+   "reference": "Deployment/Zeta",
+   "minmax": "1/5",
+   "replicas": "",
+   "age": "2025-05-30T09:17:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "reference": "ReplicaSet/rs-1",
+   "minmax": "1/1",
+   "replicas": "",
+   "age": "2025-05-30T08:17:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "default",
+   "reference": "StatefulSet/db",
+   "minmax": "1/100",
+   "replicas": "",
+   "age": "2025-05-31T06:11:00Z"
+  },
+  "uid-edge-1": {
+   "name": "no-min",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "1/3",
+   "replicas": "",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-10": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "1/3",
+   "replicas": "",
+   "age": ""
+  },
+  "uid-edge-2": {
+   "name": "min-zero",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "0/4",
+   "replicas": "",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "max-zero",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "2/0",
+   "replicas": "",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-current",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "1/5",
+   "replicas": "-",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "empty-target",
+   "namespace": "default",
+   "reference": "/",
+   "minmax": "1/5",
+   "replicas": "",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "desired-zero",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "2/10",
+   "replicas": "",
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-7": {
+   "name": "annotated",
+   "namespace": "default",
+   "reference": "Deployment/a",
+   "minmax": "1/3",
+   "replicas": "",
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "kube-system",
+   "reference": "Deployment/web",
+   "minmax": "3/5",
+   "replicas": "",
+   "age": "2025-05-31T10:17:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "kube-system",
+   "reference": "Rollout/canary",
+   "minmax": "1/10",
+   "replicas": "",
+   "age": "2025-05-29T19:59:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "kube-system",
+   "reference": "Deployment/web",
+   "minmax": "5/100",
+   "replicas": "",
+   "age": "2025-05-31T18:19:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "kube-system",
+   "reference": "Deployment/Zeta",
+   "minmax": "3/10",
+   "replicas": "",
+   "age": "2025-05-30T00:28:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "kube-system",
+   "reference": "Deployment/Zeta",
+   "minmax": "2/3",
+   "replicas": "",
+   "age": "2025-05-31T15:51:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "prod",
+   "reference": "Rollout/canary",
+   "minmax": "3/3",
+   "replicas": "",
+   "age": "2025-05-31T03:39:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "prod",
+   "reference": "Deployment/web",
+   "minmax": "2/5",
+   "replicas": "",
+   "age": "2025-05-31T05:06:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "prod",
+   "reference": "Rollout/canary",
+   "minmax": "3/10",
+   "replicas": "",
+   "age": "2025-05-30T12:17:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "prod",
+   "reference": "StatefulSet/db",
+   "minmax": "3/20",
+   "replicas": "",
+   "age": "2025-05-31T08:50:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "3/1",
+   "replicas": "",
+   "age": "2025-05-29T22:18:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "prod",
+   "reference": "Deployment/web",
+   "minmax": "5/5",
+   "replicas": "",
+   "age": "2025-05-31T00:39:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "reference": "Deployment/Zeta",
+   "minmax": "5/10",
+   "replicas": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "team-a",
+   "reference": "Deployment/Zeta",
+   "minmax": "1/1",
+   "replicas": "",
+   "age": "2025-06-01T00:25:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-a",
+   "reference": "StatefulSet/db",
+   "minmax": "5/3",
+   "replicas": "",
+   "age": "2025-05-30T15:26:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "team-a",
+   "reference": "Deployment/web",
+   "minmax": "2/5",
+   "replicas": "",
+   "age": "2025-05-31T11:31:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "team-a",
+   "reference": "Rollout/canary",
+   "minmax": "1/10",
+   "replicas": "",
+   "age": "2025-05-31T00:01:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "team-a",
+   "reference": "Rollout/canary",
+   "minmax": "2/1",
+   "replicas": "",
+   "age": "2025-05-30T07:05:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "team-a",
+   "reference": "Rollout/canary",
+   "minmax": "3/100",
+   "replicas": "",
+   "age": "2025-05-30T05:00:00Z"
+  },
+  "uid-edge-8": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "reference": "Deployment/same",
+   "minmax": "1/3",
+   "replicas": "",
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "team-b",
+   "reference": "StatefulSet/db",
+   "minmax": "1/5",
+   "replicas": "",
+   "age": "2025-05-30T21:43:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "team-b",
+   "reference": "Deployment/web",
+   "minmax": "3/3",
+   "replicas": "",
+   "age": "2025-05-30T00:59:00Z"
+  },
+  "uid-edge-9": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "reference": "Deployment/same",
+   "minmax": "1/3",
+   "replicas": "",
+   "age": "2025-06-01T10:32:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "étude",
+   "reference": "Deployment/Zeta",
+   "minmax": "3/3",
+   "replicas": "",
+   "age": "2025-05-31T12:17:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "étude",
+   "reference": "StatefulSet/db",
+   "minmax": "1/10",
+   "replicas": "",
+   "age": "2025-05-31T13:49:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 29.016666666666666
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 2,
+   "age": 9.616666666666667
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 34.61666666666667
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 8,
+   "age": 10.333333333333334
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 23.433333333333334
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 5.2
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 5,
+   "age": 29.35
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 2,
+   "age": 14.75
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 50.71666666666667
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 6,
+   "age": 51.71666666666667
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 29.816666666666666
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-10": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": null
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 2,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": null,
+   "age": 1.3833333333333333
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 1.4
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 12,
+   "age": 1.4166666666666667
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 1.4333333333333333
+  },
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 8,
+   "age": 25.716666666666665
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 5,
+   "age": 64.01666666666667
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 6,
+   "age": 17.683333333333334
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 59.53333333333333
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 20.15
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 32.35
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 30.9
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 5,
+   "age": 47.71666666666667
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 27.166666666666668
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 7,
+   "age": 61.7
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 2,
+   "age": 35.35
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 3,
+   "age": 50
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 11.583333333333334
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 7,
+   "age": 44.56666666666667
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 7,
+   "age": 24.483333333333334
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 8,
+   "age": 35.983333333333334
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 52.916666666666664
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 8,
+   "age": 55
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 1.45
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 38.28333333333333
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 6,
+   "age": 59.016666666666666
+  },
+  "uid-edge-9": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 1,
+   "age": 1.4666666666666666
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 2,
+   "age": 23.716666666666665
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "reference": null,
+   "minmax": null,
+   "replicas": 4,
+   "age": 22.183333333333334
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-edge-7","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-edge-6","uid-0029","uid-edge-5","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-edge-3","uid-edge-2","uid-0031","uid-edge-1","uid-0026","uid-0027","uid-edge-8","uid-edge-9","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-8","uid-edge-9","uid-0027","uid-0026","uid-edge-1","uid-0031","uid-edge-2","uid-edge-3","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-edge-5","uid-0029","uid-edge-6","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-edge-7","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0027","uid-0004","uid-0018","uid-0031","uid-0022","uid-0002","uid-0030","uid-0010","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-5","uid-edge-6","uid-edge-7","uid-0025","uid-0001","uid-0006","uid-0012","uid-0024","uid-0000","uid-0019","uid-0008","uid-0016","uid-0011","uid-0009","uid-0021","uid-0014","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0017","uid-edge-8","uid-0003","uid-0015","uid-0020","uid-0013","uid-0023","uid-0028","uid-edge-9","uid-0005","uid-0007","uid-0029","uid-0026"],
+   "desc": ["uid-0029","uid-0026","uid-edge-9","uid-0005","uid-0007","uid-edge-8","uid-0003","uid-0015","uid-0020","uid-0013","uid-0023","uid-0028","uid-0016","uid-0011","uid-0009","uid-0021","uid-0014","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0017","uid-0012","uid-0024","uid-0000","uid-0019","uid-0008","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-5","uid-edge-6","uid-edge-7","uid-0025","uid-0001","uid-0006","uid-0027","uid-0004","uid-0018","uid-0031","uid-0022","uid-0002","uid-0030","uid-0010"]
+  },
+  "reference": {
+   "asc": ["uid-edge-5","uid-0003","uid-0024","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0001","uid-0019","uid-0017","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0004","uid-0031","uid-0012","uid-0015","uid-0000","uid-0011","uid-0010","uid-0021","uid-0007","uid-0030","uid-0006","uid-0027","uid-0018","uid-0009","uid-0020","uid-0014","uid-0023","uid-0028","uid-0008","uid-0029","uid-0022","uid-0016","uid-0002","uid-0025","uid-0005","uid-0013"],
+   "desc": ["uid-0029","uid-0022","uid-0016","uid-0002","uid-0025","uid-0005","uid-0013","uid-0027","uid-0018","uid-0009","uid-0020","uid-0014","uid-0023","uid-0028","uid-0008","uid-0030","uid-0006","uid-0004","uid-0031","uid-0012","uid-0015","uid-0000","uid-0011","uid-0010","uid-0021","uid-0007","uid-edge-8","uid-edge-9","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-6","uid-edge-7","uid-0003","uid-0024","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0001","uid-0019","uid-0017","uid-edge-5"]
+  },
+  "minmax": {
+   "asc": ["uid-edge-2","uid-0003","uid-0006","uid-0029","uid-0002","uid-0020","uid-0008","uid-0025","uid-0004","uid-edge-1","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-5","uid-0005","uid-0001","uid-edge-3","uid-0023","uid-edge-6","uid-0024","uid-0015","uid-0011","uid-0030","uid-0017","uid-0022","uid-0014","uid-0019","uid-0028","uid-0027","uid-0016","uid-0026","uid-0009","uid-0007","uid-0000","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0018","uid-0012","uid-0031","uid-0013","uid-0021"],
+   "desc": ["uid-0021","uid-0013","uid-0031","uid-0018","uid-0012","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0000","uid-0026","uid-0009","uid-0007","uid-0027","uid-0016","uid-0028","uid-0022","uid-0014","uid-0019","uid-0030","uid-0017","uid-0015","uid-0011","uid-0024","uid-edge-6","uid-0023","uid-edge-3","uid-edge-5","uid-0005","uid-0001","uid-edge-1","uid-edge-7","uid-edge-8","uid-edge-9","uid-0004","uid-0025","uid-0029","uid-0002","uid-0020","uid-0008","uid-0003","uid-0006","uid-edge-2"]
+  },
+  "replicas": {
+   "asc": ["uid-edge-1","uid-edge-3","uid-edge-5","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0002","uid-0009","uid-0005","uid-edge-2","uid-0004","uid-0031","uid-0026","uid-0021","uid-0022","uid-0016","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0027","uid-0024","uid-0029","uid-0025","uid-0011","uid-0010","uid-0001","uid-0023","uid-0019","uid-0030","uid-0014","uid-0008","uid-0012","uid-0006","uid-0007","uid-0015","uid-0013","uid-0017","uid-0018","uid-0000","uid-0020","uid-0028","uid-edge-6"],
+   "desc": ["uid-edge-6","uid-0018","uid-0000","uid-0020","uid-0028","uid-0015","uid-0013","uid-0017","uid-0012","uid-0006","uid-0007","uid-0030","uid-0014","uid-0008","uid-0027","uid-0024","uid-0029","uid-0025","uid-0011","uid-0010","uid-0001","uid-0023","uid-0019","uid-0022","uid-0016","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-2","uid-0004","uid-0031","uid-0026","uid-0021","uid-edge-1","uid-edge-3","uid-edge-5","uid-edge-7","uid-edge-8","uid-edge-9","uid-0003","uid-0002","uid-0009","uid-0005"]
+  },
+  "age": {
+   "asc": ["uid-0008","uid-0017","uid-0019","uid-0007","uid-0028","uid-0023","uid-0006","uid-0001","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0014","uid-0013","uid-0005","uid-0020","uid-0021","uid-0010","uid-0009","uid-0011","uid-0025","uid-0030","uid-0002","uid-0016","uid-0000","uid-0015","uid-0026","uid-0022","uid-0029","uid-0024","uid-0012","uid-0031","uid-0003","uid-0018","uid-0004","uid-0027","uid-edge-9","uid-edge-8","uid-edge-7","uid-edge-6","uid-edge-5","uid-edge-3","uid-edge-2","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0027","uid-0004","uid-0018","uid-0003","uid-0031","uid-0012","uid-0024","uid-0029","uid-0022","uid-0026","uid-0015","uid-0000","uid-0016","uid-0002","uid-0030","uid-0025","uid-0011","uid-0009","uid-0010","uid-0021","uid-0020","uid-0005","uid-0013","uid-0014","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0001","uid-0006","uid-0023","uid-0028","uid-0007","uid-0019","uid-0017","uid-0008"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0002","uid-0001","uid-0000"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0002","uid-0001","uid-0000"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0004","uid-0006","uid-0003","uid-0005"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0004","uid-0018","uid-0006","uid-0019","uid-0016","uid-0017","uid-0003","uid-0005"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0012","uid-0011"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-edge-3","uid-0014","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-tie-09","uid-0005","uid-0007"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0022","uid-0021","uid-0020"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0022","uid-0021"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0002","uid-0001","uid-0000"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0004","uid-0006","uid-0003","uid-0005"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0010","uid-0008","uid-0009","uid-0007"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-edge-7","uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0002","uid-0001","uid-edge-7","uid-0000"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0002","uid-0001","uid-0000"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0006","uid-0005"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0001","uid-0009","uid-0016","uid-tie-00","uid-0003","uid-0023"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0006","uid-0003","uid-0005"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0002","uid-0001","uid-0000","uid-0016"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0002","uid-0001","uid-edge-3","uid-0000","uid-0014","uid-0016","uid-0015"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0002","uid-0001","uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-edge-7","uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0002","uid-0004","uid-0001","uid-0006","uid-0000","uid-0003","uid-0005"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0002","uid-0001","uid-0000"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0002","uid-0004","uid-0031","uid-0024","uid-0013","uid-0023","uid-0028"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0002","uid-0004","uid-0031","uid-0024","uid-0013","uid-0023","uid-0028"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-7"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-7"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-8"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0022","uid-0027","uid-0025","uid-0024","uid-0021","uid-tie-12"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0025","uid-0024"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0022","uid-0027","uid-0025","uid-0024","uid-0021","uid-tie-12"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0004","uid-0006","uid-tie-09","uid-tie-10","uid-0005"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0006","uid-0003","uid-0005"]
+  },
+  {
+   "query": "target:Deployment/web",
+   "matches": ["uid-0004","uid-0010","uid-0031","uid-0000","uid-0012","uid-0011","uid-0021","uid-0015","uid-0007"]
+  },
+  {
+   "query": "reference:statefulset",
+   "matches": ["uid-0002","uid-0022","uid-0025","uid-0016","uid-0013","uid-0005","uid-0029"]
+  },
+  {
+   "query": "ref:/^Deployment\\//",
+   "matches": ["uid-0004","uid-0010","uid-0031","uid-0001","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-6","uid-edge-7","uid-0000","uid-0012","uid-0019","uid-0024","uid-0011","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0015","uid-edge-8","uid-0007","uid-edge-9","uid-0026"]
+  },
+  {
+   "query": "scaletarget:rs-1",
+   "matches": ["uid-0030","uid-0006"]
+  },
+  {
+   "query": "targetkind:deployment",
+   "matches": ["uid-0004","uid-0010","uid-0031","uid-0001","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-6","uid-edge-7","uid-0000","uid-0012","uid-0019","uid-0024","uid-0011","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0015","uid-edge-8","uid-0007","uid-edge-9","uid-0026"]
+  },
+  {
+   "query": "kind:Rollout",
+   "matches": ["uid-0018","uid-0027","uid-0008","uid-0009","uid-0014","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "query": "refkind:/^R/",
+   "matches": ["uid-0018","uid-0027","uid-0030","uid-0006","uid-0008","uid-0009","uid-0014","uid-0020","uid-0023","uid-0028"]
+  },
+  {
+   "query": "targetname:web",
+   "matches": ["uid-0004","uid-0010","uid-0031","uid-0000","uid-0012","uid-0011","uid-0021","uid-0015","uid-0007"]
+  },
+  {
+   "query": "refname:/^z/i",
+   "matches": ["uid-0001","uid-0019","uid-0024","uid-0017","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0026"]
+  },
+  {
+   "query": "minreplicas:1",
+   "matches": ["uid-0002","uid-0004","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-4","uid-edge-5","uid-edge-7","uid-0008","uid-0003","uid-0020","uid-edge-8","uid-0005","uid-edge-9","uid-0029"]
+  },
+  {
+   "query": "min:2",
+   "matches": ["uid-edge-3","uid-edge-6","uid-0024","uid-0011","uid-0015","uid-0023"]
+  },
+  {
+   "query": "min:0",
+   "matches": ["uid-edge-2"]
+  },
+  {
+   "query": "maxreplicas:10",
+   "matches": ["uid-0002","uid-0010","uid-0018","uid-0022","uid-0025","uid-edge-6","uid-0008","uid-0012","uid-0019","uid-0014","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0020","uid-0028","uid-0029"]
+  },
+  {
+   "query": "max:100",
+   "matches": ["uid-0018","uid-0025","uid-0012","uid-0028"]
+  },
+  {
+   "query": "max:0",
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0031","uid-0025","uid-edge-6","uid-0008","uid-0012","uid-0019","uid-0014","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0020","uid-0028","uid-0029"]
+  },
+  {
+   "query": "currentreplicas:3",
+   "matches": ["uid-0022","uid-0016","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "current:1",
+   "matches": ["uid-0002","uid-edge-1","uid-edge-10","uid-edge-3","uid-edge-5","uid-edge-6","uid-edge-7","uid-0009","uid-0003","uid-edge-8","uid-0005","uid-edge-9"]
+  },
+  {
+   "query": "replicas:5",
+   "matches": ["uid-0030","uid-0008","uid-0014"]
+  },
+  {
+   "query": "desiredreplicas:0",
+   "matches": ["uid-edge-6"]
+  },
+  {
+   "query": "desired:2",
+   "matches": ["uid-edge-4","uid-0029"]
+  },
+  {
+   "query": "metrics:resource",
+   "matches": ["uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0001","uid-0006","uid-edge-7","uid-0019","uid-0009","uid-0003","uid-0005"]
+  },
+  {
+   "query": "metrictype:pods",
+   "matches": ["uid-0004","uid-0006","uid-0024","uid-0014"]
+  },
+  {
+   "query": "metrics:\"Resource Pods\"",
+   "matches": []
+  },
+  {
+   "query": "metrics:/external/i",
+   "matches": ["uid-edge-7","uid-0000","uid-0008","uid-0019","uid-0011","uid-0014","uid-0017","uid-0003","uid-0020","uid-0023","uid-0007","uid-0026"]
+  },
+  {
+   "query": "target:/\\/web$/ OR min:5",
+   "matches": ["uid-0004","uid-0010","uid-0018","uid-0031","uid-0000","uid-0012","uid-0011","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0013","uid-0015","uid-0007"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0002","uid-0001","uid-edge-7","uid-0000"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0002","uid-0001","uid-edge-7","uid-0000","uid-0016"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0004","uid-0018","uid-0031","uid-0006","uid-edge-10","uid-edge-3","uid-edge-5","uid-edge-7","uid-0019","uid-0009","uid-0016","uid-0017","uid-tie-00","uid-tie-01","uid-0003","uid-0013","uid-0020","uid-0023","uid-edge-8","uid-0005","uid-edge-9"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0002","uid-0001","uid-0000"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0004","uid-0006","uid-0003","uid-0005"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0022","uid-0027","uid-0025","uid-0024","uid-0021","uid-tie-12"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0002","uid-0010","uid-0030","uid-0001","uid-0006","uid-0025","uid-0000","uid-0008","uid-0019","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-0005","uid-0007"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0025","uid-0000","uid-0012","uid-0024","uid-0016","uid-0003","uid-0015","uid-0026","uid-0029"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0008","uid-0017"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0004","uid-0018","uid-0027","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0003","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0009","uid-0011","uid-0014","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9","uid-0026","uid-0029"]
+  },
+  {
+   "name": "reference select Deployment/web",
+   "filters": {
+    "reference": {
+     "type": "select",
+     "values": ["Deployment/web"]
+    }
+   },
+   "matches": ["uid-0004","uid-0010","uid-0031","uid-0000","uid-0012","uid-0011","uid-0021","uid-0015","uid-0007"]
+  },
+  {
+   "name": "reference select Deployment/web|StatefulSet/db",
+   "filters": {
+    "reference": {
+     "type": "select",
+     "values": ["Deployment/web","StatefulSet/db"]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0010","uid-0022","uid-0031","uid-0025","uid-0000","uid-0012","uid-0011","uid-0016","uid-0021","uid-0013","uid-0015","uid-0005","uid-0007","uid-0029"]
+  },
+  {
+   "name": "minmax select 0/4",
+   "filters": {
+    "minmax": {
+     "type": "select",
+     "values": ["0/4"]
+    }
+   },
+   "matches": ["uid-edge-2"]
+  },
+  {
+   "name": "minmax select 2/0|1/3",
+   "filters": {
+    "minmax": {
+     "type": "select",
+     "values": ["2/0","1/3"]
+    }
+   },
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-3","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "name": "replicas select -",
+   "filters": {
+    "replicas": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": ["uid-edge-4"]
+  },
+  {
+   "name": "replicas select 3",
+   "filters": {
+    "replicas": {
+     "type": "select",
+     "values": ["3"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0003","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-edge-8","uid-0005","uid-0007","uid-edge-9"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0018","uid-0022","uid-0031","uid-0001","uid-0006","uid-0025","uid-edge-10","uid-edge-3","uid-edge-5","uid-edge-7","uid-0000","uid-0019","uid-0024","uid-0009","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-0003","uid-0013","uid-0020","uid-0023","uid-edge-8","uid-0005","uid-edge-9"]
+  },
+  {
+   "name": "reference regex",
+   "filters": {
+    "reference": {
+     "type": "regex",
+     "conditions": ["^Deployment/"]
+    }
+   },
+   "matches": ["uid-0004","uid-0010","uid-0031","uid-0001","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-6","uid-edge-7","uid-0000","uid-0012","uid-0019","uid-0024","uid-0011","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0015","uid-edge-8","uid-0007","uid-edge-9","uid-0026"]
+  },
+  {
+   "name": "replicas numeric",
+   "filters": {
+    "replicas": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 3
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0010","uid-0018","uid-0022","uid-0027","uid-0030","uid-0001","uid-0006","uid-0025","uid-edge-6","uid-0000","uid-0008","uid-0012","uid-0019","uid-0024","uid-0011","uid-0014","uid-0016","uid-0017","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0013","uid-0015","uid-0020","uid-0023","uid-0028","uid-0007","uid-0029"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0018","uid-0022","uid-0031","uid-0001","uid-0006","uid-0025","uid-0000","uid-0019","uid-0024","uid-0009","uid-0016","uid-0017","uid-0021","uid-tie-00","uid-tie-01","uid-0003","uid-0013","uid-0020","uid-0023","uid-0005"]
+  }
+ ],
+ "uniqueValues": {
+  "reference": {
+   "values": ["/","Deployment/a","Deployment/same","Deployment/web","Deployment/Zeta","ReplicaSet/rs-1","Rollout/canary","StatefulSet/db"],
+   "counts": {
+    "StatefulSet/db": 7,
+    "Deployment/web": 9,
+    "Rollout/canary": 8,
+    "ReplicaSet/rs-1": 2,
+    "Deployment/Zeta": 19,
+    "Deployment/a": 7,
+    "/": 1,
+    "Deployment/same": 2
+   }
+  },
+  "minmax": {
+   "values": ["0/4","1/1","1/10","1/100","1/20","1/3","1/5","2/0","2/1","2/10","2/3","2/5","3/1","3/10","3/100","3/20","3/3","3/5","5/10","5/100","5/20","5/3","5/5"],
+   "counts": {
+    "1/10": 4,
+    "1/20": 1,
+    "5/10": 14,
+    "5/100": 2,
+    "3/10": 3,
+    "3/20": 2,
+    "3/1": 2,
+    "5/20": 1,
+    "1/5": 4,
+    "1/1": 2,
+    "1/100": 1,
+    "1/3": 5,
+    "0/4": 1,
+    "2/0": 1,
+    "2/10": 1,
+    "3/5": 1,
+    "2/3": 1,
+    "3/3": 3,
+    "2/5": 2,
+    "5/5": 1,
+    "5/3": 1,
+    "2/1": 1,
+    "3/100": 1
+   }
+  },
+  "replicas": {
+   "values": ["-"],
+   "counts": {
+    "-": 1
+   }
+  }
+ }
+}

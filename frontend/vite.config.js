@@ -31,14 +31,30 @@ export default defineConfig({
     globals: true,
     environment: 'node',
   },
+  // The view worker is built as an inline Blob (?worker&inline) so loading it never depends on
+  // the asset scheme handler. Classic (iife) format works on older WKWebView.
+  worker: {
+    format: 'iife',
+  },
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'monaco': ['monaco-editor', '@monaco-editor/react'],
-          'flow': ['@xyflow/react', 'dagre'],
-          'xterm': ['xterm', 'xterm-addon-fit'],
-        }
+        // Function form so shared deps are assigned deliberately. With the
+        // object form React ended up inside the flow chunk, which made the
+        // entry modulepreload React Flow and Monaco before first paint.
+        // flow / monaco / xterm are only reachable from lazy imports.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'vendor-react'
+          // main.tsx imports @monaco-editor/loader to point it at local files, so
+          // it is reachable at startup. Give it its own tiny chunk so the editor
+          // wrapper (monaco) stays lazy-only.
+          if (/node_modules\/(@monaco-editor\/loader|state-local)\//.test(id)) return 'monaco-loader'
+          if (/node_modules\/(monaco-editor|@monaco-editor\/react)\//.test(id)) return 'monaco'
+          if (/node_modules\/(@xyflow|dagre|@dagrejs|graphlib)\//.test(id)) return 'flow'
+          if (/node_modules\/(xterm|xterm-addon-fit|@xterm)\//.test(id)) return 'xterm'
+          return undefined
+        },
       }
     }
   },

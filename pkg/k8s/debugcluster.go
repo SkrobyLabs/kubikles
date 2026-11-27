@@ -202,6 +202,12 @@ func buildFakeClientset(cfg DebugClusterConfig) (kubernetes.Interface, error) {
 		for i := range 10 {
 			objects = append(objects, generateEvent(nsName, i))
 		}
+
+		// Service accounts, quotas, limit ranges, network policies, autoscalers, budgets, leases
+		objects = append(objects, generatePolicyObjects(nsName)...)
+
+		// Ingresses, endpoints, endpoint slices, roles, role bindings
+		objects = append(objects, generateNetworkObjects(nsName)...)
 	}
 
 	log.Printf("[Debug Cluster] Generated %d objects in %v", len(objects), time.Since(start))
@@ -272,9 +278,9 @@ func generateNode(idx int) *corev1.Node {
 			ResourceVersion:   nextRV(),
 			CreationTimestamp: metav1.Now(),
 			Labels: map[string]string{
-				"kubernetes.io/hostname": name,
-				"kubernetes.io/os":       "linux",
-				"kubernetes.io/arch":     "amd64",
+				"kubernetes.io/hostname":         name,
+				"kubernetes.io/os":               "linux",
+				"kubernetes.io/arch":             "amd64",
 				"node-role.kubernetes.io/worker": "",
 			},
 		},
@@ -313,9 +319,9 @@ func podPhase(idx int) (corev1.PodPhase, []corev1.ContainerStatus) {
 	switch {
 	case idx%100 < 80: // 80% Running
 		return corev1.PodRunning, []corev1.ContainerStatus{{
-			Name:  containerName,
-			Ready: true,
-			State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.Now()}},
+			Name:         containerName,
+			Ready:        true,
+			State:        corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.Now()}},
 			RestartCount: int32(idx % 3),
 		}}
 	case idx%100 < 90: // 10% Pending
@@ -794,10 +800,10 @@ func generateEvent(ns string, idx int) *corev1.Event {
 			Name:      fmt.Sprintf("pod-%d", idx),
 			Namespace: ns,
 		},
-		Reason:  reasons[idx%len(reasons)],
-		Message: fmt.Sprintf("Debug event message %d: %s", idx, reasons[idx%len(reasons)]),
-		Type:    types[idx%len(types)],
-		Count:   int32(1 + idx%5),
+		Reason:         reasons[idx%len(reasons)],
+		Message:        fmt.Sprintf("Debug event message %d: %s", idx, reasons[idx%len(reasons)]),
+		Type:           types[idx%len(types)],
+		Count:          int32(1 + idx%5),
 		FirstTimestamp: metav1.Now(),
 		LastTimestamp:  metav1.Now(),
 	}

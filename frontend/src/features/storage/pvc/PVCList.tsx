@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { usePVCs } from '~/hooks/resources';
 import { useK8s } from '~/context';
@@ -10,53 +12,23 @@ import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import PVCActionsMenu from './PVCActionsMenu';
 import { usePVCActions } from './usePVCActions';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { pvcSemantics, pvcCapacity } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildPVCViewColumns, PVC_HIDDEN_BY_DEFAULT, getStatusColor, renderAccessModes } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
 
-const getStatusColor = (phase: any) => {
-    switch (phase) {
-        case 'Bound':
-            return 'text-green-400';
-        case 'Pending':
-            return 'text-yellow-400';
-        case 'Lost':
-            return 'text-red-400';
-        default:
-            return 'text-gray-400';
-    }
-};
-
-const getAccessModeColor = (mode: any) => {
-    switch (mode) {
-        case 'ReadWriteOnce':
-            return 'text-blue-400';
-        case 'ReadOnlyMany':
-            return 'text-yellow-400';
-        case 'ReadWriteMany':
-            return 'text-green-400';
-        case 'ReadWriteOncePod':
-            return 'text-purple-400';
-        default:
-            return 'text-gray-400';
-    }
-};
-
-const renderAccessModes = (modes: any) => {
-    if (!modes || modes.length === 0) return '-';
-    return (
-        <span className="flex flex-wrap gap-1">
-            {modes.map((mode: any, idx: number) => (
-                <span key={idx} className={getAccessModeColor(mode)}>{mode}</span>
-            ))}
-        </span>
-    );
-};
+const PVC_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const PVC_VIEW_OPTIONS = { sort: PVC_INITIAL_SORT, columns: defaultViewColumns('persistentvolumeclaims', PVC_HIDDEN_BY_DEFAULT) };
+const NO_DATA: any[] = [];
 
 export default function PVCList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { pvcs, loading, loadState } = usePVCs(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePVCActions();
+    const { pvcs, loading, loadState, view } = usePVCs(currentContext, selectedNamespaces, isVisible, PVC_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml, handleShowDependencies } = useStableCallbacks(usePVCActions());
     const selection = useSelection();
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     const {
         bulkModalProps,
@@ -72,8 +44,8 @@ export default function PVCList({ isVisible }: { isVisible: boolean }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: pvcSemantics.name.getValue },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: pvcSemantics.namespace.getValue },
         {
             key: 'status',
             label: 'Status',
@@ -82,32 +54,32 @@ export default function PVCList({ isVisible }: { isVisible: boolean }) {
                     {item.status?.phase || 'Unknown'}
                 </span>
             ),
-            getValue: (item: any) => item.status?.phase
+            getValue: pvcSemantics.status.getValue
         },
-        { key: 'volume', label: 'Volume', render: (item: any) => item.spec?.volumeName || '-', getValue: (item: any) => item.spec?.volumeName || '' },
+        { key: 'volume', label: 'Volume', render: (item: any) => item.spec?.volumeName || '-', getValue: pvcSemantics.volume.getValue },
         {
             key: 'capacity',
             label: 'Capacity',
-            render: (item: any) => item.status?.capacity?.storage || item.spec?.resources?.requests?.storage || '-',
-            getValue: (item: any) => item.status?.capacity?.storage || item.spec?.resources?.requests?.storage || ''
+            render: (item: any) => pvcCapacity(item) || '-',
+            getValue: pvcSemantics.capacity.getValue
         },
-        { key: 'accessModes', label: 'Access Modes', render: (item: any) => renderAccessModes(item.spec?.accessModes), getValue: (item: any) => item.spec?.accessModes?.join(', ') || '' },
-        { key: 'storageClass', label: 'Storage Class', render: (item: any) => item.spec?.storageClassName || '-', getValue: (item: any) => item.spec?.storageClassName || '' },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'accessModes', label: 'Access Modes', render: (item: any) => renderAccessModes(item.spec?.accessModes), getValue: pvcSemantics.accessModes.getValue },
+        { key: 'storageClass', label: 'Storage Class', render: (item: any) => item.spec?.storageClassName || '-', getValue: pvcSemantics.storageClass.getValue },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: pvcSemantics.age.getValue },
         // Hidden by default columns
         {
             key: 'volumeMode',
             label: 'Volume Mode',
             defaultHidden: true,
             render: (item: any) => item.spec?.volumeMode || 'Filesystem',
-            getValue: (item: any) => item.spec?.volumeMode || 'Filesystem',
+            getValue: pvcSemantics.volumeMode.getValue,
         },
         {
             key: 'requested',
             label: 'Requested',
             defaultHidden: true,
             render: (item: any) => item.spec?.resources?.requests?.storage || '-',
-            getValue: (item: any) => item.spec?.resources?.requests?.storage || '',
+            getValue: pvcSemantics.requested.getValue,
         },
         {
             key: 'selector',
@@ -119,18 +91,17 @@ export default function PVCList({ isVisible }: { isVisible: boolean }) {
                 if (entries.length === 0) return <span className="text-gray-500">-</span>;
                 return <span title={entries.map(([k, v]) => `${k}=${v}`).join('\n')}>{entries.length} label{entries.length > 1 ? 's' : ''}</span>;
             },
-            getValue: (item: any) => Object.entries(item.spec?.selector?.matchLabels || {}).map(([k, v]) => `${k}=${v}`).join(','),
+            getValue: pvcSemantics.selector.getValue,
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <PVCActionsMenu
+                <MenuBound
+                    as={PVCActionsMenu}
+                    menuId={`pvc-${item.metadata.uid}`}
                     pvc={item}
-                    isOpen={activeMenuId === `pvc-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `pvc-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                     onDelete={(item: any) => openBulkDelete([item])}
@@ -140,23 +111,32 @@ export default function PVCList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, openBulkDelete]);
+    ], [handleEditYaml, handleShowDependencies, openBulkDelete]);
+
+    const viewColumns = useMemo(
+        () => buildPVCViewColumns({
+            onEditYaml: handleEditYaml,
+            onShowDependencies: handleShowDependencies,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [handleEditYaml, handleShowDependencies, openBulkDelete]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="Persistent Volume Claims"
-                columns={columns}
-                data={pvcs}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : pvcs}
                 isLoading={loading}
                 namespaces={namespaces}
                 currentNamespace={selectedNamespaces}
                 onNamespaceChange={setSelectedNamespaces}
                 showNamespaceSelector={true}
                 multiSelectNamespaces={true}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={PVC_INITIAL_SORT}
                 resourceType="pvcs"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

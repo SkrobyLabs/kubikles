@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useStorageClasses } from '~/hooks/resources';
 import { useK8s } from '~/context';
@@ -7,43 +9,26 @@ import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteStorageClass, GetStorageClassYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
+import { storageClassSemantics, isDefaultStorageClass } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildStorageClassViewColumns, getReclaimPolicyColor, getBindingModeColor, STORAGE_CLASS_PINNED_COLUMNS } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
+
+const STORAGECLASS_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const STORAGECLASS_VIEW_OPTIONS = { sort: STORAGECLASS_INITIAL_SORT, columns: defaultViewColumns('storageclasses') };
+const NO_DATA: any[] = [];
 import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import StorageClassActionsMenu from './StorageClassActionsMenu';
 import { useStorageClassActions } from './useStorageClassActions';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
-
-// Get color for reclaim policy
-const getReclaimPolicyColor = (policy: any) => {
-    switch (policy) {
-        case 'Delete':
-            return 'text-red-400';
-        case 'Retain':
-            return 'text-green-400';
-        case 'Recycle':
-            return 'text-yellow-400';
-        default:
-            return 'text-gray-400';
-    }
-};
-
-// Get color for volume binding mode
-const getBindingModeColor = (mode: any) => {
-    switch (mode) {
-        case 'Immediate':
-            return 'text-green-400';
-        case 'WaitForFirstConsumer':
-            return 'text-orange-400';
-        default:
-            return 'text-gray-400';
-    }
-};
 
 export default function StorageClassList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { storageClasses, loading, loadState } = useStorageClasses(currentContext, isVisible) as any;
-    const { handleShowDetails, handleEditYaml } = useStorageClassActions();
+    const { storageClasses, loading, loadState, view } = useStorageClasses(currentContext, isVisible, STORAGECLASS_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml } = useStableCallbacks(useStorageClassActions());
     const selection = useSelection();
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     // Unified bulk actions (also used for single delete)
     const {
@@ -66,21 +51,21 @@ export default function StorageClassList({ isVisible }: { isVisible: boolean }) 
             render: (item: any) => (
                 <div className="flex items-center gap-2">
                     {item.metadata?.name}
-                    {item.metadata?.annotations?.['storageclass.kubernetes.io/is-default-class'] === 'true' && (
+                    {isDefaultStorageClass(item) && (
                         <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">default</span>
                     )}
                 </div>
             ),
-            getValue: (item: any) => item.metadata?.name
+            getValue: storageClassSemantics.name.getValue
         },
-        { key: 'provisioner', label: 'Provisioner', render: (item: any) => item.provisioner || '-', getValue: (item: any) => item.provisioner || '' },
+        { key: 'provisioner', label: 'Provisioner', render: (item: any) => item.provisioner || '-', getValue: storageClassSemantics.provisioner.getValue },
         {
             key: 'reclaimPolicy',
             label: 'Reclaim Policy',
             render: (item: any) => item.reclaimPolicy ? (
                 <span className={getReclaimPolicyColor(item.reclaimPolicy)}>{item.reclaimPolicy}</span>
             ) : '-',
-            getValue: (item: any) => item.reclaimPolicy || ''
+            getValue: storageClassSemantics.reclaimPolicy.getValue
         },
         {
             key: 'volumeBindingMode',
@@ -88,7 +73,7 @@ export default function StorageClassList({ isVisible }: { isVisible: boolean }) 
             render: (item: any) => item.volumeBindingMode ? (
                 <span className={getBindingModeColor(item.volumeBindingMode)}>{item.volumeBindingMode}</span>
             ) : '-',
-            getValue: (item: any) => item.volumeBindingMode || ''
+            getValue: storageClassSemantics.volumeBindingMode.getValue
         },
         {
             key: 'allowVolumeExpansion',
@@ -98,19 +83,18 @@ export default function StorageClassList({ isVisible }: { isVisible: boolean }) 
             ) : (
                 <span className="text-gray-500">-</span>
             ),
-            getValue: (item: any) => item.allowVolumeExpansion ? 'Yes' : 'No'
+            getValue: storageClassSemantics.allowVolumeExpansion.getValue
         },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: storageClassSemantics.age.getValue },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <StorageClassActionsMenu
+                <MenuBound
+                    as={StorageClassActionsMenu}
+                    menuId={`storageclass-${item.metadata.uid}`}
                     storageClass={item}
-                    isOpen={activeMenuId === `storageclass-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `storageclass-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onDelete={(storageClass: any) => openBulkDelete([storageClass])}
                 />
@@ -119,19 +103,28 @@ export default function StorageClassList({ isVisible }: { isVisible: boolean }) 
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete]);
+    ], [handleEditYaml, openBulkDelete]);
+
+    const viewColumns = useMemo(
+        () => buildStorageClassViewColumns({
+            onEditYaml: handleEditYaml,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [handleEditYaml, openBulkDelete]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="Storage Classes"
-                columns={columns}
-                data={storageClasses}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                viewPinnedColumns={STORAGE_CLASS_PINNED_COLUMNS}
+                data={view ? NO_DATA : storageClasses}
                 isLoading={loading}
                 showNamespaceSelector={false}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={STORAGECLASS_INITIAL_SORT}
                 resourceType="storageclasses"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

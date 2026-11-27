@@ -32,6 +32,7 @@ func (c *Client) ListStatefulSetsWithContext(ctx context.Context, contextName, n
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {

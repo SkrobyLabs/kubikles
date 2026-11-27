@@ -3,9 +3,15 @@ package k8s
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 )
@@ -22,104 +28,11 @@ func (c *Client) WatchResource(ctx context.Context, resourceType, namespace, res
 		ResourceVersion:     resourceVersion,
 	}
 
-	switch resourceType {
-	// Core API (v1)
-	case "pods":
-		return cs.CoreV1().Pods(namespace).Watch(ctx, opts)
-	case "namespaces":
-		return cs.CoreV1().Namespaces().Watch(ctx, opts)
-	case "nodes":
-		return cs.CoreV1().Nodes().Watch(ctx, opts)
-	case "events":
-		return cs.CoreV1().Events(namespace).Watch(ctx, opts)
-	case "services":
-		return cs.CoreV1().Services(namespace).Watch(ctx, opts)
-	case "configmaps":
-		return cs.CoreV1().ConfigMaps(namespace).Watch(ctx, opts)
-	case "secrets":
-		return cs.CoreV1().Secrets(namespace).Watch(ctx, opts)
-	case "persistentvolumes":
-		return cs.CoreV1().PersistentVolumes().Watch(ctx, opts)
-	case "persistentvolumeclaims":
-		return cs.CoreV1().PersistentVolumeClaims(namespace).Watch(ctx, opts)
-
-	// Apps API (v1)
-	case "deployments":
-		return cs.AppsV1().Deployments(namespace).Watch(ctx, opts)
-	case "statefulsets":
-		return cs.AppsV1().StatefulSets(namespace).Watch(ctx, opts)
-	case "daemonsets":
-		return cs.AppsV1().DaemonSets(namespace).Watch(ctx, opts)
-	case "replicasets":
-		return cs.AppsV1().ReplicaSets(namespace).Watch(ctx, opts)
-
-	// Batch API (v1)
-	case "jobs":
-		return cs.BatchV1().Jobs(namespace).Watch(ctx, opts)
-	case "cronjobs":
-		return cs.BatchV1().CronJobs(namespace).Watch(ctx, opts)
-
-	// Networking API (v1)
-	case "ingresses":
-		return cs.NetworkingV1().Ingresses(namespace).Watch(ctx, opts)
-	case "ingressclasses":
-		return cs.NetworkingV1().IngressClasses().Watch(ctx, opts)
-	case "networkpolicies":
-		return cs.NetworkingV1().NetworkPolicies(namespace).Watch(ctx, opts)
-
-	// Storage API (v1)
-	case "storageclasses":
-		return cs.StorageV1().StorageClasses().Watch(ctx, opts)
-	case "csidrivers":
-		return cs.StorageV1().CSIDrivers().Watch(ctx, opts)
-	case "csinodes":
-		return cs.StorageV1().CSINodes().Watch(ctx, opts)
-
-	// Autoscaling API (v2)
-	case "hpas":
-		return cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Watch(ctx, opts)
-
-	// Policy API (v1)
-	case "pdbs":
-		return cs.PolicyV1().PodDisruptionBudgets(namespace).Watch(ctx, opts)
-
-	// Core API (v1) - additional resources
-	case "resourcequotas":
-		return cs.CoreV1().ResourceQuotas(namespace).Watch(ctx, opts)
-	case "limitranges":
-		return cs.CoreV1().LimitRanges(namespace).Watch(ctx, opts)
-	case "endpoints":
-		return cs.CoreV1().Endpoints(namespace).Watch(ctx, opts)
-
-	// RBAC API (v1) - service accounts already in core
-	case "serviceaccounts":
-		return cs.CoreV1().ServiceAccounts(namespace).Watch(ctx, opts)
-	case "roles":
-		return cs.RbacV1().Roles(namespace).Watch(ctx, opts)
-	case "clusterroles":
-		return cs.RbacV1().ClusterRoles().Watch(ctx, opts)
-	case "rolebindings":
-		return cs.RbacV1().RoleBindings(namespace).Watch(ctx, opts)
-	case "clusterrolebindings":
-		return cs.RbacV1().ClusterRoleBindings().Watch(ctx, opts)
-
-	// Admission Registration API (v1)
-	case "validatingwebhookconfigurations":
-		return cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Watch(ctx, opts)
-	case "mutatingwebhookconfigurations":
-		return cs.AdmissionregistrationV1().MutatingWebhookConfigurations().Watch(ctx, opts)
-
-	// Scheduling API (v1)
-	case "priorityclasses":
-		return cs.SchedulingV1().PriorityClasses().Watch(ctx, opts)
-
-	// Coordination API (v1)
-	case "leases":
-		return cs.CoordinationV1().Leases(namespace).Watch(ctx, opts)
-
-	default:
+	d, ok := LookupResource(resourceType)
+	if !ok {
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
 	}
+	return d.Watch(ctx, cs, namespace, opts)
 }
 
 // WatchCRD creates a watch for a custom resource using the dynamic client.
@@ -146,4 +59,90 @@ func (c *Client) WatchCRD(ctx context.Context, group, version, resource, namespa
 		return dc.Resource(gvr).Namespace(namespace).Watch(ctx, opts)
 	}
 	return dc.Resource(gvr).Watch(ctx, opts)
+}
+
+// WatchObjectMeta is the identity of a watched object, read through
+// meta.Accessor so callers never need a decoded map.
+type WatchObjectMeta struct {
+	Name            string
+	Namespace       string
+	ResourceVersion string
+}
+
+// WatchObjectInfo extracts identity metadata from a watch event object without
+// serializing it. It is all a BOOKMARK event needs.
+func WatchObjectInfo(obj runtime.Object) (WatchObjectMeta, error) {
+	acc, err := meta.Accessor(obj)
+	if err != nil {
+		return WatchObjectMeta{}, err
+	}
+	return WatchObjectMeta{
+		Name:            acc.GetName(),
+		Namespace:       acc.GetNamespace(),
+		ResourceVersion: acc.GetResourceVersion(),
+	}, nil
+}
+
+// EncodeWatchObject strips managedFields and marshals the object to JSON
+// exactly once. The returned bytes travel as json.RawMessage so the Wails
+// bridge only validates and copies them instead of re-walking a map, which
+// previously cost a YAML round trip plus a second marshal per event.
+//
+// The object must be owned by the caller (watch decoders hand out a fresh
+// object per event), because managedFields are cleared in place.
+func EncodeWatchObject(obj runtime.Object) (WatchObjectMeta, json.RawMessage, error) {
+	acc, err := meta.Accessor(obj)
+	if err != nil {
+		return WatchObjectMeta{}, nil, err
+	}
+	if acc.GetManagedFields() != nil {
+		acc.SetManagedFields(nil)
+	}
+	info := WatchObjectMeta{
+		Name:            acc.GetName(),
+		Namespace:       acc.GetNamespace(),
+		ResourceVersion: acc.GetResourceVersion(),
+	}
+
+	var payload interface{} = obj
+	if u, ok := obj.(*unstructured.Unstructured); ok {
+		// Marshal the content map directly: Unstructured.MarshalJSON appends a
+		// newline and goes through the scheme, neither of which we want here.
+		payload = u.Object
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return info, nil, fmt.Errorf("failed to marshal watch object: %w", err)
+	}
+	return info, raw, nil
+}
+
+// StripManagedFieldsObject clears metadata.managedFields in place on a typed
+// or unstructured object. Objects kept in the shared store call it on ingest;
+// the field is large and no list or watch consumer reads it.
+func StripManagedFieldsObject(obj runtime.Object) {
+	switch o := obj.(type) {
+	case *unstructured.Unstructured:
+		if md, ok := o.Object["metadata"].(map[string]interface{}); ok {
+			delete(md, "managedFields")
+		}
+	case metav1.Object:
+		if o.GetManagedFields() != nil {
+			o.SetManagedFields(nil)
+		}
+	default:
+		if acc, err := meta.Accessor(obj); err == nil && acc.GetManagedFields() != nil {
+			acc.SetManagedFields(nil)
+		}
+	}
+}
+
+// IsStaleResourceVersionError reports whether a watch open failed because the
+// requested resourceVersion is no longer (or never was) usable.
+func IsStaleResourceVersionError(err error) bool {
+	if apierrors.IsGone(err) || apierrors.IsResourceExpired(err) || apierrors.IsInvalid(err) || apierrors.IsBadRequest(err) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "too old") || strings.Contains(msg, "expired")
 }

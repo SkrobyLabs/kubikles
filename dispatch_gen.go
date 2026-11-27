@@ -10,6 +10,7 @@ import (
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/resourceactions"
+	"kubikles/pkg/rows"
 	"kubikles/pkg/server"
 	"kubikles/pkg/terminal"
 )
@@ -71,6 +72,12 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.ApplyYAML(p0)
+	case "BulkBenchIPC":
+		p0, err := unmarshalArg[int](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return c.app.BulkBenchIPC(p0), nil
 	case "CancelAIRequest":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -153,6 +160,13 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.CloseTerminalSession(p0)
+	case "CloseView":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		c.app.CloseView(p0)
+		return nil, nil
 	case "CollectIngressHostnames":
 		p0, err := unmarshalArg[[]string](args, 0)
 		if err != nil {
@@ -1050,6 +1064,10 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return c.app.GetAvailablePort(p0), nil
+	case "GetBulkInfo":
+		return c.app.GetBulkInfo(), nil
+	case "GetBulkProbeReport":
+		return c.app.GetBulkProbeReport(), nil
 	case "GetCRDPrinterColumns":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1490,6 +1508,12 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		result, err := c.app.GetLimitRangeYaml(p0, p1)
 		return result, err
+	case "GetListOutcome":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return c.app.GetListOutcome(p0), nil
 	case "GetListRequestStats":
 		return c.app.GetListRequestStats(), nil
 	case "GetManagedHosts":
@@ -2093,6 +2117,20 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		result, err := c.app.GetResourceDependencies(p0, p1, p2)
 		return result, err
+	case "GetResourceObject":
+		p0, err := unmarshalArg[rows.ObjectRef](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.GetResourceObject(p0)
+		return result, err
+	case "GetResourceObjects":
+		p0, err := unmarshalArg[[]rows.ObjectRef](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.GetResourceObjects(p0)
+		return result, err
 	case "GetResourceQuotaYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2221,6 +2259,57 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		return result, err
 	case "GetVersionInfo":
 		return c.app.GetVersionInfo(), nil
+	case "GetViewFacet":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.GetViewFacet(p0, p1)
+		return result, err
+	case "GetViewRefs":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[int](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		p2, err := unmarshalArg[int](args, 2)
+		if err != nil {
+			return nil, err
+		}
+		p3, err := unmarshalArg[uint64](args, 3)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.GetViewRefs(p0, p1, p2, p3)
+		return result, err
+	case "GetViewWindow":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[int](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		p2, err := unmarshalArg[int](args, 2)
+		if err != nil {
+			return nil, err
+		}
+		p3, err := unmarshalArg[uint64](args, 3)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.GetViewWindow(p0, p1, p2, p3)
+		return result, err
+	case "GetViewsInfo":
+		return c.app.GetViewsInfo(), nil
 	case "HelmDryRunUpgrade":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2789,6 +2878,13 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		return nil, c.app.OpenIssueRulesDir()
 	case "OpenThemesDir":
 		return nil, c.app.OpenThemesDir()
+	case "OpenView":
+		p0, err := unmarshalArg[rows.ViewSpec](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.OpenView(p0)
+		return result, err
 	case "PrepareResourceAction":
 		p0, err := unmarshalArg[resourceactions.ResourceRef](args, 0)
 		if err != nil {
@@ -2836,6 +2932,13 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.RenameContext(p0, p1)
+	case "ReportBulkProbe":
+		p0, err := unmarshalArg[map[string]interface{}](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		c.app.ReportBulkProbe(p0)
+		return nil, nil
 	case "ResetDebugCluster":
 		return nil, c.app.ResetDebugCluster()
 	case "ResizePVC":
@@ -3129,6 +3232,13 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.SetAnthropicAPIKey(p0)
+	case "SetBulkTransport":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		c.app.SetBulkTransport(p0)
+		return nil, nil
 	case "SetClientPoolSize":
 		p0, err := unmarshalArg[int](args, 0)
 		if err != nil {
@@ -3194,6 +3304,24 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		c.app.SetK8sAPITimeout(p0)
 		return nil, nil
+	case "SetLegacyEventDedupe":
+		p0, err := unmarshalArg[bool](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		c.app.SetLegacyEventDedupe(p0)
+		return nil, nil
+	case "SetMetricsOverlayConfig":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[int](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		c.app.SetMetricsOverlayConfig(p0, p1)
+		return nil, nil
 	case "SetNodeSchedulable":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3227,6 +3355,35 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.SetTheme(p0)
+	case "SetViewActive":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[bool](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		c.app.SetViewActive(p0, p1)
+		return nil, nil
+	case "SetViewSelection":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[[]string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.SetViewSelection(p0, p1)
+		return result, err
+	case "SetWindowVisible":
+		p0, err := unmarshalArg[bool](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		c.app.SetWindowVisible(p0)
+		return nil, nil
 	case "StartAISession":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3368,6 +3525,28 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return c.app.SubscribeCRDWatcher(p0, p1, p2, p3), nil
+	case "SubscribeCRDWatcherFrom":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		p2, err := unmarshalArg[string](args, 2)
+		if err != nil {
+			return nil, err
+		}
+		p3, err := unmarshalArg[string](args, 3)
+		if err != nil {
+			return nil, err
+		}
+		p4, err := unmarshalArg[string](args, 4)
+		if err != nil {
+			return nil, err
+		}
+		return c.app.SubscribeCRDWatcherFrom(p0, p1, p2, p3, p4), nil
 	case "SubscribeResourceWatcher":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3378,6 +3557,20 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return c.app.SubscribeResourceWatcher(p0, p1), nil
+	case "SubscribeResourceWatcherFrom":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		p2, err := unmarshalArg[string](args, 2)
+		if err != nil {
+			return nil, err
+		}
+		return c.app.SubscribeResourceWatcherFrom(p0, p1, p2), nil
 	case "SuspendCronJob":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3999,6 +4192,17 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.UpdateValidatingWebhookConfigurationYaml(p0, p1)
+	case "UpdateView":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[rows.ViewPatch](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.UpdateView(p0, p1)
+		return result, err
 	case "UpgradeHelmRelease":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {

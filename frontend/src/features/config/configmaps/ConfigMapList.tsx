@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback, useRef } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useConfigMaps } from '~/hooks/resources';
 import { useK8s } from '~/context';
@@ -13,15 +15,21 @@ import ConfigMapActionsMenu from './ConfigMapActionsMenu';
 import { useConfigMapActions } from './useConfigMapActions';
 import Logger from '~/utils/Logger';
 import { sleep } from '~/utils/bulkExecutor';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { configMapSemantics } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildConfigMapViewColumns } from './viewColumns';
 
 // System ConfigMaps auto-created by Kubernetes in every namespace
 const SYSTEM_CONFIGMAP_NAMES = ['kube-root-ca.crt'];
 
+const CONFIGMAP_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const CONFIGMAP_HIDDEN_BY_DEFAULT = ['keyCount', 'binaryKeys', 'size'];
+const CONFIGMAP_VIEW_COLUMNS = defaultViewColumns('configmaps', CONFIGMAP_HIDDEN_BY_DEFAULT);
+const NO_DATA: any[] = [];
+
 export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { addNotification } = useNotification();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
     const [hideSystemConfigMaps, setHideSystemConfigMaps] = useState(true);
 
@@ -113,8 +121,14 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
             if (err && err.toString() !== '') addNotification({ type: 'error', title: 'Failed to save backup', message: String(err) });
         }
     }, []);
-    const { configMaps, loading, loadState } = useConfigMaps(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleEditYaml, handleEditKeyValue, handleShowDependencies, handleDelete } = useConfigMapActions();
+    // The backend view hides system ConfigMaps itself (preset), so the toggle is a view option.
+    const viewOptions = useMemo(() => ({
+        sort: CONFIGMAP_INITIAL_SORT,
+        hide: hideSystemConfigMaps ? ['system'] : [],
+        columns: CONFIGMAP_VIEW_COLUMNS,
+    }), [hideSystemConfigMaps]);
+    const { configMaps, loading, loadState, view } = useConfigMaps(currentContext, selectedNamespaces, isVisible, viewOptions) as any;
+    const { handleEditYaml, handleEditKeyValue, handleShowDependencies, handleDelete } = useStableCallbacks(useConfigMapActions());
 
     // Filter out system ConfigMaps if toggle is enabled
     const filteredConfigMaps = useMemo(() => {
@@ -123,17 +137,17 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
     }, [configMaps, hideSystemConfigMaps]);
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
-        { key: 'keys', label: 'Keys', render: (item: any) => Object.keys(item.data || {}).join(', '), getValue: (item: any) => Object.keys(item.data || {}).join(', ') },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: configMapSemantics.name.getValue },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: configMapSemantics.namespace.getValue },
+        { key: 'keys', label: 'Keys', render: (item: any) => Object.keys(item.data || {}).join(', '), getValue: configMapSemantics.keys.getValue },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: configMapSemantics.age.getValue },
         // Hidden by default columns
         {
             key: 'keyCount',
             label: 'Key Count',
             defaultHidden: true,
             render: (item: any) => Object.keys(item.data || {}).length,
-            getValue: (item: any) => Object.keys(item.data || {}).length,
+            getValue: configMapSemantics.keyCount.getValue,
         },
         {
             key: 'binaryKeys',
@@ -143,7 +157,7 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
                 const count = Object.keys(item.binaryData || {}).length;
                 return count > 0 ? count : <span className="text-gray-500">-</span>;
             },
-            getValue: (item: any) => Object.keys(item.binaryData || {}).length,
+            getValue: configMapSemantics.binaryKeys.getValue,
         },
         {
             key: 'size',
@@ -156,18 +170,17 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
                 if (total < 1024) return `${total} B`;
                 return `${(total / 1024).toFixed(1)} KB`;
             },
-            getValue: (item: any) => JSON.stringify(item.data || {}).length + JSON.stringify(item.binaryData || {}).length,
+            getValue: configMapSemantics.size.getValue,
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <ConfigMapActionsMenu
+                <MenuBound
+                    as={ConfigMapActionsMenu}
+                    menuId={`configmap-${item.metadata.uid}`}
                     configMap={item}
-                    isOpen={activeMenuId === `configmap-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `configmap-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
@@ -177,7 +190,11 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete]);
+    ], [handleEditYaml, handleShowDependencies, handleDelete]);
+
+    const viewColumns = useMemo(
+        () => buildConfigMapViewColumns({ onEditYaml: handleEditYaml, onShowDependencies: handleShowDependencies, onDelete: handleDelete }),
+        [handleEditYaml, handleShowDependencies, handleDelete]);
 
     const systemToggle = (
         <label
@@ -197,15 +214,16 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
         <>
             <ResourceList loadState={loadState}
                 title="ConfigMaps"
-                columns={columns}
-                data={filteredConfigMaps}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : filteredConfigMaps}
                 isLoading={loading}
                 namespaces={namespaces}
                 currentNamespace={selectedNamespaces}
                 onNamespaceChange={setSelectedNamespaces}
                 showNamespaceSelector={true}
                 multiSelectNamespaces={true}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={CONFIGMAP_INITIAL_SORT}
                 resourceType="configmaps"
                 onRowClick={handleEditKeyValue}
                 selectable={true}

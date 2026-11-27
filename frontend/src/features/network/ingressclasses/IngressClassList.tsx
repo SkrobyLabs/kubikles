@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import IngressClassActionsMenu from './IngressClassActionsMenu';
 import { useIngressClasses } from '~/hooks/resources';
@@ -10,13 +12,18 @@ import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteIngressClass, GetIngressClassYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { ingressClassSemantics, isDefaultIngressClass } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildIngressClassViewColumns } from './viewColumns';
+
+const INGRESSCLASS_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const INGRESSCLASS_VIEW_OPTIONS = { sort: INGRESSCLASS_INITIAL_SORT, columns: defaultViewColumns('ingressclasses') };
+const NO_DATA: any[] = [];
 
 export default function IngressClassList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { ingressClasses, loading, loadState } = useIngressClasses(currentContext, isVisible) as any;
-    const { handleEditYaml } = useIngressClassActions();
+    const { ingressClasses, loading, loadState, view } = useIngressClasses(currentContext, isVisible, INGRESSCLASS_VIEW_OPTIONS) as any;
+    const { handleEditYaml } = useStableCallbacks(useIngressClassActions());
     const selection = useSelection();
 
     const {
@@ -32,34 +39,29 @@ export default function IngressClassList({ isVisible }: { isVisible: boolean }) 
 
     });
 
-    const isDefault = (ingressClass: any) => {
-        return ingressClass.metadata?.annotations?.['ingressclass.kubernetes.io/is-default-class'] === 'true';
-    };
-
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
-        { key: 'controller', label: 'Controller', render: (item: any) => item.spec?.controller || '-', getValue: (item: any) => item.spec?.controller || '' },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: ingressClassSemantics.name.getValue },
+        { key: 'controller', label: 'Controller', render: (item: any) => item.spec?.controller || '-', getValue: ingressClassSemantics.controller.getValue },
         {
             key: 'default',
             label: 'Default',
-            render: (item: any) => isDefault(item) ? (
+            render: (item: any) => isDefaultIngressClass(item) ? (
                 <CheckCircleIcon className="h-5 w-5 text-green-400" />
             ) : (
                 <span className="text-gray-500">-</span>
             ),
-            getValue: (item: any) => isDefault(item) ? 'Yes' : 'No'
+            getValue: ingressClassSemantics.default.getValue
         },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: ingressClassSemantics.age.getValue },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <IngressClassActionsMenu
+                <MenuBound
+                    as={IngressClassActionsMenu}
+                    menuId={`ingressclass-${item.metadata.uid}`}
                     ingressClass={item}
-                    isOpen={activeMenuId === `ingressclass-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `ingressclass-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onDelete={(ingressClass: any) => openBulkDelete([ingressClass])}
                 />
@@ -68,18 +70,25 @@ export default function IngressClassList({ isVisible }: { isVisible: boolean }) 
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete]);
+    ], [handleEditYaml, openBulkDelete]);
+
+    const viewColumns = useMemo(
+        () => buildIngressClassViewColumns({
+            onEditYaml: handleEditYaml,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [handleEditYaml, openBulkDelete]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="Ingress Classes"
-                columns={columns}
-                data={ingressClasses}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : ingressClasses}
                 isLoading={loading}
                 showNamespaceSelector={false}
-                highlightedUid={activeMenuId}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={INGRESSCLASS_INITIAL_SORT}
                 resourceType="ingressclasses"
                 selectable={true}
                 selection={selection}

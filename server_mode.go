@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
+	"kubikles/pkg/bulk"
 	"kubikles/pkg/crashlog"
 	"kubikles/pkg/events"
 	"kubikles/pkg/server"
@@ -23,7 +25,12 @@ func RunServer(assets embed.FS, port int, label string) {
 	app := NewApp()
 
 	// Create server with generated switch-based dispatcher (enables DCE)
-	srv := server.New(NewAppMethodCaller(app), assets, port)
+	var extraHosts []string
+	if v := os.Getenv("KUBIKLES_ALLOWED_HOSTS"); v != "" {
+		extraHosts = strings.Split(v, ",")
+	}
+	srv := server.New(NewAppMethodCaller(app), assets, port).
+		WithBulk(app.newBulkHandler(true, bulk.NewHostChecker(extraHosts)))
 
 	// Set up the app's event emitter to use the server's WebSocket broadcast
 	app.SetEmitter(events.EmitterFunc(func(name string, data ...interface{}) {

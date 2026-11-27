@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { converter, normalizeAnsiCodes, stripAnsiCodes, highlightMatchesInHtml } from './logUtils';
 
 // Contrasting colors for pod/container name prefixes (designed for dark backgrounds)
@@ -58,9 +58,66 @@ const parseLogPrefix = (content: any) => {
     return null;
 };
 
+// Rendering an entry is a pure function of (entry, parsePrefixes): the converter is not
+// created with stream:true, so no colour state leaks between lines. Cache the result per
+// entry object so re-renders (scroll, toggles, row recycling) skip the regex and ANSI work.
+interface RenderedLine { prefixInfo: ReturnType<typeof parseLogPrefix>; normalized: string; html: string; }
+const renderedPlain = new WeakMap<object, RenderedLine>();
+const renderedPrefixed = new WeakMap<object, RenderedLine>();
+
+const getRenderedLine = (entry: any, parsePrefixes: boolean): RenderedLine => {
+    const cache = parsePrefixes ? renderedPrefixed : renderedPlain;
+    let rendered = cache.get(entry);
+    if (!rendered) {
+        // Parse prefix only when viewing multiple pods or containers
+        const prefixInfo = parsePrefixes ? parseLogPrefix(entry.content) : null;
+        // Get content without prefix for ANSI processing
+        const normalized = normalizeAnsiCodes(prefixInfo ? prefixInfo.rest : entry.content);
+        rendered = { prefixInfo, normalized, html: converter.toHtml(normalized) };
+        cache.set(entry, rendered);
+    }
+    return rendered;
+};
+
+function SkipIndicator({ count }: { count: number }) {
+    return (
+        <div className="flex items-center justify-center py-1 text-gray-500 text-xs italic select-none">
+            <span className="px-2 bg-gray-800/50 rounded">
+                ... skipped {count} line{count !== 1 ? 's' : ''} ...
+            </span>
+        </div>
+    );
+}
+
+interface LogLineProps {
+    entry: any;
+    showTimestamps: any;
+    searchTerm: any;
+    searchRegex: any;
+    wrapLines: any;
+    parsePrefixes?: boolean;
+    /** Stable line id, rendered as data-log-idx. Falls back to entry.originalIndex. */
+    lineId?: number;
+    /** Whether the line matches the search. Falls back to entry.isMatch. */
+    isMatch?: boolean;
+}
+
+// Search props only matter to matching lines, so a term change must not re-render the rest.
+const logLinePropsEqual = (prev: LogLineProps, next: LogLineProps) => {
+    if (prev.entry !== next.entry
+        || prev.showTimestamps !== next.showTimestamps
+        || prev.wrapLines !== next.wrapLines
+        || prev.parsePrefixes !== next.parsePrefixes
+        || prev.lineId !== next.lineId
+        || prev.isMatch !== next.isMatch) return false;
+    const matched = next.isMatch ?? next.entry.isMatch;
+    if (matched && (prev.searchTerm !== next.searchTerm || prev.searchRegex !== next.searchRegex)) return false;
+    return true;
+};
+
 /**
  * Renders a single log line with ANSI color support and search highlighting.
- * Memoized to prevent re-renders when parent re-renders with same props.
+ * Memoized so appends and unrelated prop changes do not re-render existing lines.
  */
 export const LogLine = React.memo(function LogLine({
     entry,
@@ -68,33 +125,21 @@ export const LogLine = React.memo(function LogLine({
     searchTerm,
     searchRegex,
     wrapLines,
-    parsePrefixes
-}: { entry: any; showTimestamps: any; searchTerm: any; searchRegex: any; wrapLines: any; parsePrefixes?: boolean }) {
+    parsePrefixes,
+    lineId,
+    isMatch
+}: LogLineProps) {
     // Skip indicator (for filtered view)
-    if (entry.isSkipIndicator) {
-        return (
-            <div className="flex items-center justify-center py-1 text-gray-500 text-xs italic select-none">
-                <span className="px-2 bg-gray-800/50 rounded">
-                    ... skipped {entry.skippedCount} line{entry.skippedCount !== 1 ? 's' : ''} ...
-                </span>
-            </div>
-        );
-    }
+    if (entry.isSkipIndicator) return <SkipIndicator count={entry.skippedCount} />;
 
-    // Parse prefix only when viewing multiple pods or containers
-    const prefixInfo = useMemo(() => parsePrefixes ? parseLogPrefix(entry.content) : null, [entry.content, parsePrefixes]);
-
-    // Get content without prefix for ANSI processing
-    const contentToProcess = prefixInfo ? prefixInfo.rest : entry.content;
-
-    // Convert ANSI codes in content
-    const normalizedContent = normalizeAnsiCodes(contentToProcess);
-    let htmlContent = converter.toHtml(normalizedContent);
+    const matched = isMatch ?? entry.isMatch;
+    const { prefixInfo, normalized, html } = getRenderedLine(entry, !!parsePrefixes);
+    let htmlContent = html;
 
     // If searching and this line matches, highlight the matches while preserving ANSI colors
-    if (searchTerm && searchRegex && entry.isMatch) {
-        const strippedContent = stripAnsiCodes(normalizedContent);
-        htmlContent = highlightMatchesInHtml(htmlContent, strippedContent, searchRegex);
+    if (searchTerm && searchRegex && matched) {
+        const strippedContent = stripAnsiCodes(normalized);
+        htmlContent = highlightMatchesInHtml(html, strippedContent, searchRegex);
     }
 
     // Render the prefix with appropriate coloring
@@ -125,8 +170,8 @@ export const LogLine = React.memo(function LogLine({
 
     return (
         <div
-            data-log-idx={entry.originalIndex}
-            className={`flex ${entry.isMatch ? 'bg-yellow-500/10' : ''} ${wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}
+            data-log-idx={lineId ?? entry.originalIndex}
+            className={`flex ${matched ? 'bg-yellow-500/10' : ''} ${wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}
         >
             {showTimestamps && entry.timestamp && (
                 <span className="text-gray-500 select-none mr-2 shrink-0">
@@ -137,7 +182,7 @@ export const LogLine = React.memo(function LogLine({
             <span data-log-content="" dangerouslySetInnerHTML={{ __html: htmlContent }} />
         </div>
     );
-});
+}, logLinePropsEqual);
 
 /**
  * Spinner component for loading states.

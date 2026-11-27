@@ -1,0 +1,2878 @@
+{
+ "type": "clusterrolebindings",
+ "now": 1748779200000,
+ "columns": ["name","roleRef","subjects","age"],
+ "filterTypes": {
+  "name": "regex",
+  "roleRef": "select",
+  "subjects": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "view"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "Group",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "Group",
+     "name": "alice",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "creationTimestamp": "2025-05-30T08:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "Zeta"
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "creationTimestamp": "2025-05-31T03:03:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "edit"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "bob",
+     "namespace": "default"
+    },
+    {
+     "kind": "ServiceAccount",
+     "name": "bob",
+     "namespace": "kube-system"
+    }
+   ],
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "creationTimestamp": "2025-05-30T02:37:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "view"
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "creationTimestamp": "2025-05-29T22:57:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "Zeta"
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "creationTimestamp": "2025-06-01T01:37:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "view"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "creationTimestamp": "2025-05-30T16:04:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "view"
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "creationTimestamp": "2025-06-01T01:15:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "view"
+   },
+   "subjects": [
+    {
+     "kind": "User",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "creationTimestamp": "2025-05-30T13:08:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "cluster-admin"
+   },
+   "subjects": [
+    {
+     "kind": "User",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "creationTimestamp": "2025-05-30T13:09:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "view"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "alice",
+     "namespace": "default"
+    },
+    {
+     "kind": "ServiceAccount",
+     "name": "devs",
+     "namespace": "prod"
+    },
+    {
+     "kind": "Group",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "creationTimestamp": "2025-05-30T09:26:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "Zeta"
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "creationTimestamp": "2025-05-31T08:15:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "cluster-admin"
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "creationTimestamp": "2025-05-30T03:10:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "alice",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "creationTimestamp": "2025-05-31T01:56:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "edit"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "prod"
+    }
+   ],
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "creationTimestamp": "2025-05-31T17:09:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "view"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "creationTimestamp": "2025-06-01T00:26:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "User",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "Group",
+     "name": "alice",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "creationTimestamp": "2025-06-01T01:25:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "cluster-admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "devs",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "creationTimestamp": "2025-05-31T18:51:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "cluster-admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "bob",
+     "namespace": "prod"
+    }
+   ],
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "creationTimestamp": "2025-05-31T05:37:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "view"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "devs",
+     "namespace": "kube-system"
+    }
+   ],
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "creationTimestamp": "2025-05-30T11:10:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "view"
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "creationTimestamp": "2025-06-01T10:46:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "Zeta"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "alice",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "devs",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "ServiceAccount",
+     "name": "devs",
+     "namespace": "prod"
+    }
+   ],
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "creationTimestamp": "2025-05-29T17:21:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "view"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "prod"
+    }
+   ],
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "creationTimestamp": "2025-06-01T07:17:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "alice",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "ServiceAccount",
+     "name": "default",
+     "namespace": "kube-system"
+    },
+    {
+     "kind": "Group",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "creationTimestamp": "2025-05-31T14:12:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "Zeta"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "system:masters",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "creationTimestamp": "2025-05-30T09:35:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "cluster-admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "alice",
+     "namespace": "prod"
+    },
+    {
+     "kind": "User",
+     "name": "devs",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "creationTimestamp": "2025-05-30T18:07:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "cluster-admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "creationTimestamp": "2025-05-30T07:37:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "cluster-admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "User",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "creationTimestamp": "2025-05-30T02:29:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "Zeta"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "bob",
+     "namespace": "prod"
+    }
+   ],
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "creationTimestamp": "2025-06-01T07:43:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "edit"
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "creationTimestamp": "2025-06-01T07:44:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "alice",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "creationTimestamp": "2025-05-30T16:15:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "devs",
+     "apiGroup": "rbac.authorization.k8s.io"
+    },
+    {
+     "kind": "ServiceAccount",
+     "name": "default",
+     "namespace": "kube-system"
+    },
+    {
+     "kind": "User",
+     "name": "alice",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "creationTimestamp": "2025-05-30T02:56:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "prod"
+    },
+    {
+     "kind": "Group",
+     "name": "bob",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "creationTimestamp": "2025-05-30T08:27:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "cluster-admin"
+   },
+   "metadata": {
+    "name": "no-subjects",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "kind": "",
+    "name": ""
+   },
+   "subjects": [
+    {
+     "kind": "User",
+     "name": "carol"
+    }
+   ],
+   "metadata": {
+    "name": "empty-ref",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "kind": "ClusterRole",
+    "name": "view"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "sa",
+     "namespace": "a"
+    },
+    {
+     "kind": "ServiceAccount",
+     "name": "sb"
+    },
+    {
+     "kind": "User",
+     "name": "sa"
+    },
+    {
+     "kind": "User",
+     "name": "sa"
+    }
+   ],
+   "metadata": {
+    "name": "mixed-subjects",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "kind": "ClusterRole",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "g1"
+    }
+   ],
+   "metadata": {
+    "name": "no-timestamp",
+    "uid": "uid-edge-4",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "system:masters",
+     "namespace": "default"
+    },
+    {
+     "kind": "Group",
+     "name": "default",
+     "apiGroup": "rbac.authorization.k8s.io"
+    }
+   ],
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-4"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "roleRef": "Role/view",
+   "subjects": 3,
+   "age": "2025-05-30T08:00:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "roleRef": "Role/Zeta",
+   "subjects": 0,
+   "age": "2025-05-31T03:03:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "roleRef": "Role/edit",
+   "subjects": 2,
+   "age": "2025-05-30T02:37:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "roleRef": "ClusterRole/view",
+   "subjects": 0,
+   "age": "2025-05-29T22:57:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "roleRef": "Role/Zeta",
+   "subjects": 0,
+   "age": "2025-06-01T01:37:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "roleRef": "ClusterRole/view",
+   "subjects": 1,
+   "age": "2025-05-30T16:04:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "roleRef": "ClusterRole/view",
+   "subjects": 0,
+   "age": "2025-06-01T01:15:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "roleRef": "Role/view",
+   "subjects": 2,
+   "age": "2025-05-30T13:08:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "roleRef": "Role/cluster-admin",
+   "subjects": 1,
+   "age": "2025-05-30T13:09:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "roleRef": "Role/view",
+   "subjects": 3,
+   "age": "2025-05-30T09:26:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "roleRef": "Role/Zeta",
+   "subjects": 0,
+   "age": "2025-05-31T08:15:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "roleRef": "ClusterRole/cluster-admin",
+   "subjects": 0,
+   "age": "2025-05-30T03:10:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "roleRef": "ClusterRole/admin",
+   "subjects": 1,
+   "age": "2025-05-31T01:56:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "roleRef": "ClusterRole/edit",
+   "subjects": 3,
+   "age": "2025-05-31T17:09:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "roleRef": "Role/view",
+   "subjects": 2,
+   "age": "2025-06-01T00:26:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "roleRef": "Role/admin",
+   "subjects": 3,
+   "age": "2025-06-01T01:25:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "roleRef": "Role/cluster-admin",
+   "subjects": 1,
+   "age": "2025-05-31T18:51:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "roleRef": "ClusterRole/cluster-admin",
+   "subjects": 1,
+   "age": "2025-05-31T05:37:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "roleRef": "ClusterRole/view",
+   "subjects": 1,
+   "age": "2025-05-30T11:10:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "roleRef": "ClusterRole/view",
+   "subjects": 0,
+   "age": "2025-06-01T10:46:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "roleRef": "ClusterRole/Zeta",
+   "subjects": 3,
+   "age": "2025-05-29T17:21:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "roleRef": "Role/view",
+   "subjects": 1,
+   "age": "2025-06-01T07:17:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "roleRef": "ClusterRole/admin",
+   "subjects": 3,
+   "age": "2025-05-31T14:12:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "roleRef": "Role/Zeta",
+   "subjects": 3,
+   "age": "2025-05-30T09:35:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "roleRef": "ClusterRole/cluster-admin",
+   "subjects": 3,
+   "age": "2025-05-30T18:07:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "roleRef": "Role/cluster-admin",
+   "subjects": 2,
+   "age": "2025-05-30T07:37:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "roleRef": "Role/cluster-admin",
+   "subjects": 2,
+   "age": "2025-05-30T02:29:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "roleRef": "ClusterRole/Zeta",
+   "subjects": 1,
+   "age": "2025-06-01T07:43:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "roleRef": "Role/edit",
+   "subjects": 0,
+   "age": "2025-06-01T07:44:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "roleRef": "ClusterRole/admin",
+   "subjects": 1,
+   "age": "2025-05-30T16:15:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "roleRef": "Role/admin",
+   "subjects": 3,
+   "age": "2025-05-30T02:56:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T08:27:00Z"
+  },
+  "uid-edge-1": {
+   "name": "no-subjects",
+   "roleRef": "ClusterRole/cluster-admin",
+   "subjects": 0,
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "empty-ref",
+   "roleRef": "/",
+   "subjects": 1,
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "mixed-subjects",
+   "roleRef": "ClusterRole/view",
+   "subjects": 4,
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-timestamp",
+   "roleRef": "ClusterRole/admin",
+   "subjects": 1,
+   "age": null
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "roleRef": "Role/admin",
+   "subjects": 2,
+   "age": "2025-05-30T10:00:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "roleRef": "Role/view",
+   "subjects": "",
+   "age": "2025-05-30T08:00:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "roleRef": "Role/Zeta",
+   "subjects": "",
+   "age": "2025-05-31T03:03:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "roleRef": "Role/edit",
+   "subjects": "",
+   "age": "2025-05-30T02:37:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "roleRef": "ClusterRole/view",
+   "subjects": "",
+   "age": "2025-05-29T22:57:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "roleRef": "Role/Zeta",
+   "subjects": "",
+   "age": "2025-06-01T01:37:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "roleRef": "ClusterRole/view",
+   "subjects": "",
+   "age": "2025-05-30T16:04:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "roleRef": "ClusterRole/view",
+   "subjects": "",
+   "age": "2025-06-01T01:15:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "roleRef": "Role/view",
+   "subjects": "",
+   "age": "2025-05-30T13:08:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "roleRef": "Role/cluster-admin",
+   "subjects": "",
+   "age": "2025-05-30T13:09:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "roleRef": "Role/view",
+   "subjects": "",
+   "age": "2025-05-30T09:26:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "roleRef": "Role/Zeta",
+   "subjects": "",
+   "age": "2025-05-31T08:15:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "roleRef": "ClusterRole/cluster-admin",
+   "subjects": "",
+   "age": "2025-05-30T03:10:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "roleRef": "ClusterRole/admin",
+   "subjects": "",
+   "age": "2025-05-31T01:56:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "roleRef": "ClusterRole/edit",
+   "subjects": "",
+   "age": "2025-05-31T17:09:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "roleRef": "Role/view",
+   "subjects": "",
+   "age": "2025-06-01T00:26:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-06-01T01:25:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "roleRef": "Role/cluster-admin",
+   "subjects": "",
+   "age": "2025-05-31T18:51:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "roleRef": "ClusterRole/cluster-admin",
+   "subjects": "",
+   "age": "2025-05-31T05:37:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "roleRef": "ClusterRole/view",
+   "subjects": "",
+   "age": "2025-05-30T11:10:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "roleRef": "ClusterRole/view",
+   "subjects": "",
+   "age": "2025-06-01T10:46:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "roleRef": "ClusterRole/Zeta",
+   "subjects": "",
+   "age": "2025-05-29T17:21:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "roleRef": "Role/view",
+   "subjects": "",
+   "age": "2025-06-01T07:17:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "roleRef": "ClusterRole/admin",
+   "subjects": "",
+   "age": "2025-05-31T14:12:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "roleRef": "Role/Zeta",
+   "subjects": "",
+   "age": "2025-05-30T09:35:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "roleRef": "ClusterRole/cluster-admin",
+   "subjects": "",
+   "age": "2025-05-30T18:07:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "roleRef": "Role/cluster-admin",
+   "subjects": "",
+   "age": "2025-05-30T07:37:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "roleRef": "Role/cluster-admin",
+   "subjects": "",
+   "age": "2025-05-30T02:29:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "roleRef": "ClusterRole/Zeta",
+   "subjects": "",
+   "age": "2025-06-01T07:43:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "roleRef": "Role/edit",
+   "subjects": "",
+   "age": "2025-06-01T07:44:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "roleRef": "ClusterRole/admin",
+   "subjects": "",
+   "age": "2025-05-30T16:15:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T02:56:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T08:27:00Z"
+  },
+  "uid-edge-1": {
+   "name": "no-subjects",
+   "roleRef": "ClusterRole/cluster-admin",
+   "subjects": "",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "empty-ref",
+   "roleRef": "/",
+   "subjects": "",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "mixed-subjects",
+   "roleRef": "ClusterRole/view",
+   "subjects": "",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-timestamp",
+   "roleRef": "ClusterRole/admin",
+   "subjects": "",
+   "age": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "roleRef": "Role/admin",
+   "subjects": "",
+   "age": "2025-05-30T10:00:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 52
+  },
+  "uid-0001": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 32.95
+  },
+  "uid-0002": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 57.38333333333333
+  },
+  "uid-0003": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 61.05
+  },
+  "uid-0004": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 10.383333333333333
+  },
+  "uid-0005": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 43.93333333333333
+  },
+  "uid-0006": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 10.75
+  },
+  "uid-0007": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 46.86666666666667
+  },
+  "uid-0008": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 46.85
+  },
+  "uid-0009": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 50.56666666666667
+  },
+  "uid-0010": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 27.75
+  },
+  "uid-0011": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 56.833333333333336
+  },
+  "uid-0012": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 34.06666666666667
+  },
+  "uid-0013": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 18.85
+  },
+  "uid-0014": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 11.566666666666666
+  },
+  "uid-0015": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 10.583333333333334
+  },
+  "uid-0016": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 17.15
+  },
+  "uid-0017": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 30.383333333333333
+  },
+  "uid-0018": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 48.833333333333336
+  },
+  "uid-0019": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 1.2333333333333334
+  },
+  "uid-0020": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 66.65
+  },
+  "uid-0021": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 4.716666666666667
+  },
+  "uid-0022": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 21.8
+  },
+  "uid-0023": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 50.416666666666664
+  },
+  "uid-0024": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 41.88333333333333
+  },
+  "uid-0025": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 52.38333333333333
+  },
+  "uid-0026": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 57.516666666666666
+  },
+  "uid-0027": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 4.283333333333333
+  },
+  "uid-0028": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 4.266666666666667
+  },
+  "uid-0029": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 43.75
+  },
+  "uid-0030": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 3,
+   "age": 57.06666666666667
+  },
+  "uid-0031": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 51.55
+  },
+  "uid-edge-1": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 0,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-2": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 4,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 1,
+   "age": null
+  },
+  "uid-tie-00": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "roleRef": null,
+   "subjects": 2,
+   "age": 50
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-0029","uid-edge-2","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-edge-3","uid-0031","uid-edge-1","uid-0026","uid-0027","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-0027","uid-0026","uid-edge-1","uid-0031","uid-edge-3","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-edge-2","uid-0029","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "roleRef": {
+   "asc": ["uid-edge-2","uid-0027","uid-0020","uid-0022","uid-0012","uid-0029","uid-edge-1","uid-0017","uid-0024","uid-0011","uid-0013","uid-0019","uid-edge-3","uid-0006","uid-0005","uid-0018","uid-0003","uid-0004","uid-0010","uid-0001","uid-0023","uid-0015","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0031","uid-0030","uid-0016","uid-0008","uid-0025","uid-0026","uid-0028","uid-0002","uid-0021","uid-0014","uid-0007","uid-0009","uid-0000"],
+   "desc": ["uid-0021","uid-0014","uid-0007","uid-0009","uid-0000","uid-0028","uid-0002","uid-0016","uid-0008","uid-0025","uid-0026","uid-0015","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0031","uid-0030","uid-0004","uid-0010","uid-0001","uid-0023","uid-0019","uid-edge-3","uid-0006","uid-0005","uid-0018","uid-0003","uid-0013","uid-edge-1","uid-0017","uid-0024","uid-0011","uid-0022","uid-0012","uid-0029","uid-0027","uid-0020","uid-edge-2"]
+  },
+  "subjects": {
+   "asc": ["uid-0019","uid-edge-1","uid-0028","uid-0004","uid-0006","uid-0010","uid-0001","uid-0011","uid-0003","uid-edge-2","uid-0027","uid-0021","uid-0016","uid-0017","uid-0012","uid-0029","uid-0005","uid-0008","uid-0018","uid-0014","uid-0007","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0031","uid-0025","uid-0002","uid-0026","uid-0015","uid-0013","uid-0022","uid-0024","uid-0023","uid-0009","uid-0000","uid-0030","uid-0020","uid-edge-3"],
+   "desc": ["uid-edge-3","uid-0015","uid-0013","uid-0022","uid-0024","uid-0023","uid-0009","uid-0000","uid-0030","uid-0020","uid-0014","uid-0007","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0031","uid-0025","uid-0002","uid-0026","uid-edge-2","uid-0027","uid-0021","uid-0016","uid-0017","uid-0012","uid-0029","uid-0005","uid-0008","uid-0018","uid-0019","uid-edge-1","uid-0028","uid-0004","uid-0006","uid-0010","uid-0001","uid-0011","uid-0003"]
+  },
+  "age": {
+   "asc": ["uid-0020","uid-0003","uid-0026","uid-0002","uid-0030","uid-0011","uid-0025","uid-0000","uid-0031","uid-0009","uid-0023","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0018","uid-0007","uid-0008","uid-0005","uid-0029","uid-0024","uid-0012","uid-0001","uid-0017","uid-0010","uid-0022","uid-0013","uid-0016","uid-0014","uid-0006","uid-0015","uid-0004","uid-0021","uid-0027","uid-0028","uid-edge-3","uid-edge-2","uid-edge-1","uid-0019"],
+   "desc": ["uid-0019","uid-edge-1","uid-edge-2","uid-edge-3","uid-0028","uid-0027","uid-0021","uid-0004","uid-0015","uid-0006","uid-0014","uid-0016","uid-0013","uid-0022","uid-0010","uid-0017","uid-0001","uid-0012","uid-0024","uid-0029","uid-0005","uid-0008","uid-0007","uid-0018","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0023","uid-0009","uid-0031","uid-0000","uid-0025","uid-0011","uid-0030","uid-0002","uid-0026","uid-0003","uid-0020"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006","uid-0016","uid-0017","uid-0018","uid-0019"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015","uid-edge-3"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0005","uid-0007","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0020","uid-0021","uid-0022"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0021","uid-0022"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0008","uid-0009","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0005","uid-0006"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0001","uid-0003","uid-0009","uid-0016","uid-0023","uid-tie-00"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0014","uid-0015","uid-0016","uid-edge-3"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0001","uid-0002","uid-0006","uid-0007","uid-0009","uid-0010","uid-0021","uid-0026","uid-0029","uid-0030","uid-0031"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0001","uid-0002","uid-0006","uid-0007","uid-0009","uid-0010","uid-0021","uid-0026","uid-0029","uid-0030","uid-0031"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": []
+  },
+  {
+   "query": "a:a/b",
+   "matches": []
+  },
+  {
+   "query": "ns:prod",
+   "matches": []
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": []
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": []
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": []
+  },
+  {
+   "query": "NS:default",
+   "matches": []
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0004","uid-0005","uid-0006","uid-tie-09","uid-tie-10"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "roleref:clusterrole/admin",
+   "matches": ["uid-0012","uid-0022","uid-0029","uid-edge-4"]
+  },
+  {
+   "query": "role:view",
+   "matches": ["uid-0000","uid-0003","uid-0005","uid-0006","uid-0007","uid-0009","uid-0014","uid-0018","uid-0019","uid-0021","uid-edge-3"]
+  },
+  {
+   "query": "ref:/^Role\\//",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0004","uid-0007","uid-0008","uid-0009","uid-0010","uid-0014","uid-0015","uid-0016","uid-0021","uid-0023","uid-0025","uid-0026","uid-0028","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "rolerefkind:role",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "refkind:ClusterRole",
+   "matches": ["uid-0003","uid-0005","uid-0006","uid-0011","uid-0012","uid-0013","uid-0017","uid-0018","uid-0019","uid-0020","uid-0022","uid-0024","uid-0027","uid-0029","uid-edge-1","uid-edge-3","uid-edge-4"]
+  },
+  {
+   "query": "rolerefname:admin",
+   "matches": ["uid-0008","uid-0011","uid-0012","uid-0015","uid-0016","uid-0017","uid-0022","uid-0024","uid-0025","uid-0026","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "refname:view",
+   "matches": ["uid-0000","uid-0003","uid-0005","uid-0006","uid-0007","uid-0009","uid-0014","uid-0018","uid-0019","uid-0021","uid-edge-3"]
+  },
+  {
+   "query": "rolename:/^Z/",
+   "matches": ["uid-0001","uid-0004","uid-0010","uid-0020","uid-0023","uid-0027"]
+  },
+  {
+   "query": "subjects:user/alice",
+   "matches": ["uid-0030"]
+  },
+  {
+   "query": "subject:/^Group/",
+   "matches": ["uid-0000","uid-0005","uid-0012","uid-0013","uid-0014","uid-0016","uid-0020","uid-0022","uid-0023","uid-0025","uid-0026","uid-0029","uid-0030","uid-edge-4"]
+  },
+  {
+   "query": "subjectcount:2",
+   "matches": ["uid-0002","uid-0007","uid-0014","uid-0025","uid-0026","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "subjectscount:0",
+   "matches": ["uid-0001","uid-0003","uid-0004","uid-0006","uid-0010","uid-0011","uid-0019","uid-0028","uid-edge-1"]
+  },
+  {
+   "query": "numsubjects:1",
+   "matches": ["uid-0005","uid-0008","uid-0012","uid-0016","uid-0017","uid-0018","uid-0021","uid-0027","uid-0029","uid-edge-2","uid-edge-4"]
+  },
+  {
+   "query": "subjectkind:serviceaccount",
+   "matches": ["uid-0002","uid-0009","uid-0013","uid-0017","uid-0018","uid-0020","uid-0021","uid-0022","uid-0024","uid-0027","uid-0030","uid-0031","uid-edge-3","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "subjectkinds:\"User Group\"",
+   "matches": ["uid-0015"]
+  },
+  {
+   "query": "subjectnames:alice",
+   "matches": ["uid-0000","uid-0009","uid-0012","uid-0015","uid-0020","uid-0022","uid-0024","uid-0029","uid-0030"]
+  },
+  {
+   "query": "subjectname:/sa/",
+   "matches": ["uid-edge-3"]
+  },
+  {
+   "query": "users:bob",
+   "matches": ["uid-0015","uid-0024","uid-0025","uid-0026"]
+  },
+  {
+   "query": "user:sa",
+   "matches": ["uid-edge-3"]
+  },
+  {
+   "query": "groups:devs",
+   "matches": ["uid-0016","uid-0030"]
+  },
+  {
+   "query": "group:g1",
+   "matches": ["uid-edge-4"]
+  },
+  {
+   "query": "serviceaccounts:a/sa",
+   "matches": ["uid-edge-3"]
+  },
+  {
+   "query": "serviceaccount:default/",
+   "matches": ["uid-0002","uid-0009","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "sa:/^sb$/",
+   "matches": []
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0013","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0023","uid-0031","uid-edge-4","uid-tie-00","uid-tie-01"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0005","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0017","uid-0018","uid-0020","uid-0023","uid-0024","uid-0025","uid-0026","uid-0029","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0004","uid-0006","uid-0010","uid-0013","uid-0014","uid-0015","uid-0016","uid-0021","uid-0022","uid-0027","uid-0028"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0003","uid-0020"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0004","uid-0006","uid-0014","uid-0015","uid-0019","uid-0021","uid-0027","uid-0028","uid-edge-1","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "roleRef select ClusterRole/admin",
+   "filters": {
+    "roleRef": {
+     "type": "select",
+     "values": ["ClusterRole/admin"]
+    }
+   },
+   "matches": ["uid-0012","uid-0022","uid-0029","uid-edge-4"]
+  },
+  {
+   "name": "roleRef select ClusterRole/view|ClusterRole/admin",
+   "filters": {
+    "roleRef": {
+     "type": "select",
+     "values": ["ClusterRole/view","ClusterRole/admin"]
+    }
+   },
+   "matches": ["uid-0003","uid-0005","uid-0006","uid-0012","uid-0018","uid-0019","uid-0022","uid-0029","uid-edge-3","uid-edge-4"]
+  },
+  {
+   "name": "subjects select 1",
+   "filters": {
+    "subjects": {
+     "type": "select",
+     "values": ["1"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "subjects numeric",
+   "filters": {
+    "subjects": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0001","uid-0003","uid-0004","uid-0006","uid-0010","uid-0011","uid-0019","uid-0028","uid-edge-1"]
+  },
+  {
+   "name": "roleRef regex",
+   "filters": {
+    "roleRef": {
+     "type": "regex",
+     "conditions": ["^ClusterRole/a"]
+    }
+   },
+   "matches": ["uid-0012","uid-0022","uid-0029","uid-edge-4"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0013","uid-0016","uid-0017","uid-0018","uid-0020","uid-0022","uid-0023","uid-0024","uid-0025","uid-0031","uid-tie-00","uid-tie-01"]
+  }
+ ],
+ "uniqueValues": {
+  "roleRef": {
+   "values": ["/","ClusterRole/admin","ClusterRole/cluster-admin","ClusterRole/edit","ClusterRole/view","ClusterRole/Zeta","Role/admin","Role/cluster-admin","Role/edit","Role/view","Role/Zeta"],
+   "counts": {
+    "Role/view": 5,
+    "Role/Zeta": 4,
+    "Role/edit": 2,
+    "ClusterRole/view": 6,
+    "Role/cluster-admin": 4,
+    "ClusterRole/cluster-admin": 4,
+    "ClusterRole/admin": 4,
+    "ClusterRole/edit": 1,
+    "Role/admin": 16,
+    "ClusterRole/Zeta": 2,
+    "/": 1
+   }
+  },
+  "subjects": null
+ }
+}

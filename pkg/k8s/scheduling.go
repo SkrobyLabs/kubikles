@@ -32,6 +32,7 @@ func (c *Client) ListPriorityClassesWithContext(ctx context.Context, onProgress 
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -113,6 +114,7 @@ func (c *Client) ListLeasesWithContext(ctx context.Context, contextName, namespa
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {

@@ -13,6 +13,11 @@ describe('resource loading feedback', () => {
         expect(html).toContain('12 displayed');
         expect(html).toContain('select-all apply to displayed resources');
     });
+    it('renders an opaque-enough surface without a backdrop blur over the table', () => {
+        const html = render({});
+        expect(html).toContain('bg-surface/95');
+        expect(html).not.toContain('backdrop-blur');
+    });
     it('does not invent a total for an unknown-size list', () => {
         const html = render({ progress: { loaded: 100, total: 0 } });
         expect(html).toContain('100 fetched');

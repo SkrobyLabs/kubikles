@@ -32,6 +32,7 @@ func (c *Client) ListNamespacesWithContext(ctx context.Context, onProgress ...fu
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -56,6 +57,7 @@ func (c *Client) ListNamespacesForContext(contextName string) ([]v1.Namespace, e
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -80,6 +82,42 @@ type NamespaceResourceCounts struct {
 	PVCs         int `json:"pvcs"`
 }
 
+// warmCount returns the size of a warm store shard for the current context without a LIST. A
+// namespace's resource counts are not freshness critical, and a warm shard is live.
+func (c *Client) warmCount(resourceType, namespace string) (int, bool) {
+	r, ok := c.readerOrNil().(StoreCounter)
+	if !ok || r == nil {
+		return 0, false
+	}
+	c.mu.RLock()
+	ctxName := c.currentContext
+	c.mu.RUnlock()
+	return r.CountObjects(ctxName, resourceType, namespace)
+}
+
+// warmPodCount counts the pods of a namespace that are not in a terminal phase, from a warm pod
+// shard (the same predicate as the field selector of the live request).
+func (c *Client) warmPodCount(namespace string) (int, bool) {
+	r := c.readerOrNil()
+	if r == nil {
+		return 0, false
+	}
+	c.mu.RLock()
+	ctxName := c.currentContext
+	c.mu.RUnlock()
+	pods, ok := storeListFrom[v1.Pod](r, ctxName, "pods", namespace)
+	if !ok {
+		return 0, false
+	}
+	n := 0
+	for i := range pods {
+		if ph := pods[i].Status.Phase; ph != v1.PodSucceeded && ph != v1.PodFailed {
+			n++
+		}
+	}
+	return n, true
+}
+
 // GetNamespaceResourceCounts returns counts of various resource types in a namespace
 func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourceCounts, error) {
 	cs, err := c.getClientset()
@@ -100,6 +138,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmPodCount(namespace); ok {
+			mu.Lock()
+			counts.Pods = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 			FieldSelector: "status.phase!=Succeeded,status.phase!=Failed",
 		})
@@ -116,6 +160,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("deployments", namespace); ok {
+			mu.Lock()
+			counts.Deployments = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -130,6 +180,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("statefulsets", namespace); ok {
+			mu.Lock()
+			counts.StatefulSets = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -144,6 +200,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("daemonsets", namespace); ok {
+			mu.Lock()
+			counts.DaemonSets = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -158,6 +220,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("replicasets", namespace); ok {
+			mu.Lock()
+			counts.ReplicaSets = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -172,6 +240,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("jobs", namespace); ok {
+			mu.Lock()
+			counts.Jobs = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -186,6 +260,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("cronjobs", namespace); ok {
+			mu.Lock()
+			counts.CronJobs = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.BatchV1().CronJobs(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -200,6 +280,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("services", namespace); ok {
+			mu.Lock()
+			counts.Services = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -214,6 +300,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("ingresses", namespace); ok {
+			mu.Lock()
+			counts.Ingresses = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -228,6 +320,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("configmaps", namespace); ok {
+			mu.Lock()
+			counts.ConfigMaps = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -242,6 +340,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("secrets", namespace); ok {
+			mu.Lock()
+			counts.Secrets = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err
@@ -256,6 +360,12 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if n, ok := c.warmCount("persistentvolumeclaims", namespace); ok {
+			mu.Lock()
+			counts.PVCs = n
+			mu.Unlock()
+			return
+		}
 		list, err := cs.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			errChan <- err

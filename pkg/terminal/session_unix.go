@@ -21,6 +21,7 @@ type Session struct {
 	done     chan struct{}
 	emitFunc func(TerminalEvent)
 	stopOnce sync.Once
+	out      *outputCoalescer
 }
 
 // newSession creates and starts a new terminal session
@@ -42,6 +43,9 @@ func newSession(id string, opts SessionOptions, emitFunc func(TerminalEvent)) (*
 		done:     make(chan struct{}),
 		emitFunc: emitFunc,
 	}
+	s.out = newOutputCoalescer(func(data string) {
+		s.emitFunc(TerminalEvent{SessionID: s.ID, Data: data})
+	})
 
 	// Start read loop
 	go s.readLoop()
@@ -57,7 +61,7 @@ func (s *Session) readLoop() {
 		}
 	}()
 
-	buf := make([]byte, 4096)
+	buf := make([]byte, 32*1024)
 	for {
 		n, err := s.pty.Read(buf)
 		if err != nil {
@@ -74,12 +78,11 @@ func (s *Session) readLoop() {
 		default:
 		}
 
-		// Emit output event - convert bytes to string for JSON serialization
-		s.emitFunc(TerminalEvent{
-			SessionID: s.ID,
-			Data:      string(buf[:n]),
-		})
+		s.out.Write(buf[:n])
 	}
+
+	// Deliver whatever is still buffered before reporting completion.
+	s.out.Close()
 
 	// Send done event (only if main loop hasn't closed us)
 	select {
@@ -132,6 +135,7 @@ func (s *Session) Resize(cols, rows int) error {
 func (s *Session) Close() {
 	s.stopOnce.Do(func() {
 		close(s.done)
+		s.out.Discard()
 		if s.pty != nil {
 			_ = s.pty.Close()
 		}

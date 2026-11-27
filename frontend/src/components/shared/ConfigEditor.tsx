@@ -351,6 +351,28 @@ export default function ConfigEditor() {
                                     description: 'Use HTTP/1.1 instead of HTTP/2. Opens multiple connections for parallel requests. Requires context switch.',
                                     default: false
                                 },
+                                bulkTransport: {
+                                    type: 'string',
+                                    enum: ['auto', 'off'],
+                                    description: 'Fetch large read results over a same-origin HTTP route instead of the bridge. "auto" uses it where the in-app probe passes; "off" always uses the bridge.',
+                                    default: 'auto'
+                                },
+                                viewStore: {
+                                    type: 'boolean',
+                                    description: 'Render supported lists, including custom resources, from backend row views (experimental). The backend sorts, filters and windows the list.',
+                                    default: false
+                                },
+                                viewWorker: {
+                                    type: 'string',
+                                    enum: ['auto', 'off'],
+                                    description: 'Run windowed-list fetching and decoding in a Web Worker where the in-app probe shows it works. "off" keeps the engine on the main thread.',
+                                    default: 'auto'
+                                },
+                                legacyEventDedupe: {
+                                    type: 'boolean',
+                                    description: 'Drop watch updates that change nothing but the resource version on lists that do not use windowed views.',
+                                    default: false
+                                },
                                 clientPoolSize: {
                                     type: 'number',
                                     description: 'Additional K8s client connections for parallelism (0 = just main connection). Requires context switch.',

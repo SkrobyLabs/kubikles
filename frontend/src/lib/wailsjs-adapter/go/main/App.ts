@@ -15,6 +15,9 @@
 //   diff <(grep "^export function" frontend/wailsjs/go/main/App.js | sort) \
 //        <(grep "^export function" frontend/src/lib/wailsjs-adapter/go/main/App.js | sort)
 
+import { isBulkMethod } from '../../../bulk/bulkMethods';
+import { setBulkInfoLoader, tryBulkCall } from '../../../bulk/transport';
+
 const isServerMode = () => typeof window.go === 'undefined';
 
 // HTTP API caller for server mode
@@ -58,6 +61,13 @@ const handler = {
     get(target, prop) {
         // Return a function that routes based on mode
         return async function(...args) {
+            // Heavy read methods go over the same-origin bulk route when the
+            // probe says it works. Any transport failure falls through to the
+            // binding for this call; other methods never enter this branch.
+            if (isBulkMethod(prop)) {
+                const bulk = await tryBulkCall(prop, args);
+                if (bulk.used) return bulk.value;
+            }
             if (isServerMode()) {
                 return callAPI(prop, ...args);
             } else {
@@ -72,6 +82,9 @@ const handler = {
 };
 
 const AppProxy = new Proxy({}, handler);
+
+// The bulk transport asks for its descriptor through the regular binding path.
+setBulkInfoLoader(() => AppProxy.GetBulkInfo());
 
 // Export each function individually for tree-shaking compatibility
 // The Proxy handles the actual implementation, but we need named exports
@@ -179,6 +192,7 @@ export function GetConfigMapData(...args) { return AppProxy.GetConfigMapData(...
 export function GetConfigMapYaml(...args) { return AppProxy.GetConfigMapYaml(...args); }
 export function GetContextDetails(...args) { return AppProxy.GetContextDetails(...args); }
 export function GetFullContextDetail(...args) { return AppProxy.GetFullContextDetail(...args); }
+export function SetMetricsOverlayConfig(...args) { return AppProxy.SetMetricsOverlayConfig(...args); }
 export function UpdateContextDetail(...args) { return AppProxy.UpdateContextDetail(...args); }
 export function GetControllerMetricsHistory(...args) { return AppProxy.GetControllerMetricsHistory(...args); }
 export function GetControllerMetricsHistoryRange(...args) { return AppProxy.GetControllerMetricsHistoryRange(...args); }
@@ -211,6 +225,7 @@ export function GetJobYaml(...args) { return AppProxy.GetJobYaml(...args); }
 export function GetK8sInitError(...args) { return AppProxy.GetK8sInitError(...args); }
 export function GetLeaseYaml(...args) { return AppProxy.GetLeaseYaml(...args); }
 export function GetLimitRangeYaml(...args) { return AppProxy.GetLimitRangeYaml(...args); }
+export function GetListOutcome(...args) { return AppProxy.GetListOutcome(...args); }
 export function GetListRequestStats(...args) { return AppProxy.GetListRequestStats(...args); }
 export function GetManagedHosts(...args) { return AppProxy.GetManagedHosts(...args); }
 export function GetMetricsEventMarkers(...args) { return AppProxy.GetMetricsEventMarkers(...args); }
@@ -375,6 +390,7 @@ export function SetNodeSchedulable(...args) { return AppProxy.SetNodeSchedulable
 export function SetOCIRegistryPriority(...args) { return AppProxy.SetOCIRegistryPriority(...args); }
 export function SetRequestCancellationEnabled(...args) { return AppProxy.SetRequestCancellationEnabled(...args); }
 export function SetTheme(...args) { return AppProxy.SetTheme(...args); }
+export function SetWindowVisible(...args) { return AppProxy.SetWindowVisible(...args); }
 export function StartAISession(...args) { return AppProxy.StartAISession(...args); }
 export function StartAllContainersLogStream(...args) { return AppProxy.StartAllContainersLogStream(...args); }
 export function StartAllPodsLogStream(...args) { return AppProxy.StartAllPodsLogStream(...args); }
@@ -392,7 +408,9 @@ export function StopIngressForward(...args) { return AppProxy.StopIngressForward
 export function StopLogStream(...args) { return AppProxy.StopLogStream(...args); }
 export function StopPortForward(...args) { return AppProxy.StopPortForward(...args); }
 export function SubscribeCRDWatcher(...args) { return AppProxy.SubscribeCRDWatcher(...args); }
+export function SubscribeCRDWatcherFrom(...args) { return AppProxy.SubscribeCRDWatcherFrom(...args); }
 export function SubscribeResourceWatcher(...args) { return AppProxy.SubscribeResourceWatcher(...args); }
+export function SubscribeResourceWatcherFrom(...args) { return AppProxy.SubscribeResourceWatcherFrom(...args); }
 export function SuspendCronJob(...args) { return AppProxy.SuspendCronJob(...args); }
 export function SwitchContext(...args) { return AppProxy.SwitchContext(...args); }
 export function TestConnection(...args) { return AppProxy.TestConnection(...args); }
@@ -448,6 +466,25 @@ export function UpdateValidatingWebhookConfigurationYaml(...args) { return AppPr
 export function UpgradeHelmRelease(...args) { return AppProxy.UpgradeHelmRelease(...args); }
 export function UploadFileToPod(...args) { return AppProxy.UploadFileToPod(...args); }
 export function UploadToPod(...args) { return AppProxy.UploadToPod(...args); }
+
+export function BulkBenchIPC(...args) { return AppProxy.BulkBenchIPC(...args); }
+export function GetBulkInfo(...args) { return AppProxy.GetBulkInfo(...args); }
+export function GetBulkProbeReport(...args) { return AppProxy.GetBulkProbeReport(...args); }
+export function ReportBulkProbe(...args) { return AppProxy.ReportBulkProbe(...args); }
+export function SetBulkTransport(...args) { return AppProxy.SetBulkTransport(...args); }
+export function SetLegacyEventDedupe(...args) { return AppProxy.SetLegacyEventDedupe(...args); }
+
+export function CloseView(...args) { return AppProxy.CloseView(...args); }
+export function GetResourceObject(...args) { return AppProxy.GetResourceObject(...args); }
+export function GetResourceObjects(...args) { return AppProxy.GetResourceObjects(...args); }
+export function GetViewFacet(...args) { return AppProxy.GetViewFacet(...args); }
+export function GetViewRefs(...args) { return AppProxy.GetViewRefs(...args); }
+export function GetViewWindow(...args) { return AppProxy.GetViewWindow(...args); }
+export function GetViewsInfo(...args) { return AppProxy.GetViewsInfo(...args); }
+export function OpenView(...args) { return AppProxy.OpenView(...args); }
+export function SetViewActive(...args) { return AppProxy.SetViewActive(...args); }
+export function SetViewSelection(...args) { return AppProxy.SetViewSelection(...args); }
+export function UpdateView(...args) { return AppProxy.UpdateView(...args); }
 
 // Also export the proxy itself for dynamic access
 export default AppProxy;

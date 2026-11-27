@@ -31,6 +31,7 @@ func (c *Client) ListValidatingWebhookConfigurationsWithContext(ctx context.Cont
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -109,6 +110,7 @@ func (c *Client) ListMutatingWebhookConfigurationsWithContext(ctx context.Contex
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {

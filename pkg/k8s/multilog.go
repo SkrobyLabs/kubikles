@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -415,11 +416,5 @@ func (c *Client) GetMultiPodLogsBatch(req MultiLogRequest) ([]MultiLogEntry, err
 
 // sortMultiLogEntries sorts log entries by timestamp (oldest first)
 func sortMultiLogEntries(entries []MultiLogEntry) {
-	for i := 0; i < len(entries)-1; i++ {
-		for j := i + 1; j < len(entries); j++ {
-			if entries[j].Timestamp.Before(entries[i].Timestamp) {
-				entries[i], entries[j] = entries[j], entries[i]
-			}
-		}
-	}
+	sort.SliceStable(entries, func(i, j int) bool { return entries[i].Timestamp.Before(entries[j].Timestamp) })
 }

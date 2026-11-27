@@ -2,14 +2,28 @@
 package tools
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 
 	"kubikles/pkg/k8s"
 
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 )
+
+// warmOr answers a read-only list from the warm store when a synced shard exists (a watching
+// shard is live) and runs the live list otherwise. Tools that need the API server's answer
+// (explicit refresh, logs, exec, secrets) do not use it.
+func warmOr[T any](client *k8s.Client, resourceType, namespace string, live func() ([]T, error)) ([]T, error) {
+	if items, ok := k8s.StoreList[T](k8s.WithStoreRead(context.Background()), client, client.GetCurrentContext(), resourceType, namespace); ok {
+		return items, nil
+	}
+	return live()
+}
 
 // --- Tool implementations ---
 
@@ -151,7 +165,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 
 	switch kind {
 	case "pod", "pods":
-		items, err := client.ListPods(ns)
+		items, err := warmOr(client, "pods", ns, func() ([]v1.Pod, error) { return client.ListPods(ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -163,7 +177,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "deployment", "deployments":
-		items, err := client.ListDeployments(ns)
+		items, err := warmOr(client, "deployments", ns, func() ([]appsv1.Deployment, error) { return client.ListDeployments(ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -180,7 +194,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "service", "services":
-		items, err := client.ListServices(ns)
+		items, err := warmOr(client, "services", ns, func() ([]v1.Service, error) { return client.ListServices(ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -192,7 +206,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "node", "nodes":
-		items, err := client.ListNodes()
+		items, err := warmOr(client, "nodes", "", func() ([]v1.Node, error) { return client.ListNodes() })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -210,7 +224,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "namespace", "namespaces":
-		items, err := client.ListNamespaces()
+		items, err := warmOr(client, "namespaces", "", func() ([]v1.Namespace, error) { return client.ListNamespaces() })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -222,7 +236,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "configmap", "configmaps":
-		items, err := client.ListConfigMaps(ns)
+		items, err := warmOr(client, "configmaps", ns, func() ([]v1.ConfigMap, error) { return client.ListConfigMaps(ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -246,7 +260,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "statefulset", "statefulsets":
-		items, err := client.ListStatefulSets("", ns)
+		items, err := warmOr(client, "statefulsets", ns, func() ([]appsv1.StatefulSet, error) { return client.ListStatefulSets("", ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -263,7 +277,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "daemonset", "daemonsets":
-		items, err := client.ListDaemonSets("", ns)
+		items, err := warmOr(client, "daemonsets", ns, func() ([]appsv1.DaemonSet, error) { return client.ListDaemonSets("", ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -276,7 +290,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "replicaset", "replicasets":
-		items, err := client.ListReplicaSets("", ns)
+		items, err := warmOr(client, "replicasets", ns, func() ([]appsv1.ReplicaSet, error) { return client.ListReplicaSets("", ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -293,7 +307,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "job", "jobs":
-		items, err := client.ListJobs("", ns)
+		items, err := warmOr(client, "jobs", ns, func() ([]batchv1.Job, error) { return client.ListJobs("", ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -311,7 +325,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "cronjob", "cronjobs":
-		items, err := client.ListCronJobs("", ns)
+		items, err := warmOr(client, "cronjobs", ns, func() ([]batchv1.CronJob, error) { return client.ListCronJobs("", ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -323,7 +337,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "ingress", "ingresses":
-		items, err := client.ListIngresses(ns)
+		items, err := warmOr(client, "ingresses", ns, func() ([]networkingv1.Ingress, error) { return client.ListIngresses(ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -345,7 +359,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "persistentvolumeclaim", "pvc", "pvcs":
-		items, err := client.ListPVCs("", ns)
+		items, err := warmOr(client, "persistentvolumeclaims", ns, func() ([]v1.PersistentVolumeClaim, error) { return client.ListPVCs("", ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -357,7 +371,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "persistentvolume", "pv", "pvs":
-		items, err := client.ListPVs("")
+		items, err := warmOr(client, "persistentvolumes", "", func() ([]v1.PersistentVolume, error) { return client.ListPVs("") })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}
@@ -386,7 +400,7 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		return strings.Join(lines, "\n"), false
 
 	case "serviceaccount", "serviceaccounts":
-		items, err := client.ListServiceAccounts(ns)
+		items, err := warmOr(client, "serviceaccounts", ns, func() ([]v1.ServiceAccount, error) { return client.ListServiceAccounts(ns) })
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), true
 		}

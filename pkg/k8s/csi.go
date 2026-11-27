@@ -30,6 +30,7 @@ func (c *Client) ListCSIDriversWithContext(ctx context.Context, contextName stri
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -110,6 +111,7 @@ func (c *Client) ListCSINodesWithContext(ctx context.Context, contextName string
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {

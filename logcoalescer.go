@@ -16,6 +16,11 @@ type LogCoalescer struct {
 	frameInterval time.Duration
 	streams       map[string]*logStreamBuffer
 	mu            sync.Mutex
+	// emitMu serializes take-then-emit so concurrent flushes of one stream
+	// (timer, FlushStream, SetBackground, EmitDone) cannot reorder lines.
+	// Lock order: emitMu before mu. EmitLine never takes it.
+	emitMu     sync.Mutex
+	background bool // window hidden: use backgroundFrameInterval
 }
 
 // logStreamBuffer holds pending lines for a single log stream
@@ -36,6 +41,37 @@ func NewLogCoalescer(app *App, frameInterval time.Duration) *LogCoalescer {
 		app:           app,
 		frameInterval: frameInterval,
 		streams:       make(map[string]*logStreamBuffer),
+	}
+}
+
+// intervalLocked is the flush delay for new timers. Caller holds mu.
+func (c *LogCoalescer) intervalLocked() time.Duration {
+	if c.background && c.frameInterval < backgroundFrameInterval {
+		return backgroundFrameInterval
+	}
+	return c.frameInterval
+}
+
+// SetBackground slows flushing while the window is hidden and, on return to
+// the foreground, flushes every stream's buffered lines immediately.
+func (c *LogCoalescer) SetBackground(on bool) {
+	c.mu.Lock()
+	if c.background == on {
+		c.mu.Unlock()
+		return
+	}
+	c.background = on
+	var ids []string
+	if !on {
+		ids = make([]string, 0, len(c.streams))
+		for id := range c.streams {
+			ids = append(ids, id)
+		}
+	}
+	c.mu.Unlock()
+
+	for _, id := range ids {
+		c.FlushStream(id)
 	}
 }
 
@@ -60,7 +96,7 @@ func (c *LogCoalescer) EmitLine(streamID, line string) {
 	// Start timer if not already running
 	if !buf.pending {
 		buf.pending = true
-		buf.timer = time.AfterFunc(c.frameInterval, func() {
+		buf.timer = time.AfterFunc(c.intervalLocked(), func() {
 			c.flushStream(streamID)
 		})
 	}
@@ -70,35 +106,25 @@ func (c *LogCoalescer) EmitLine(streamID, line string) {
 
 // EmitDone emits a done event for a stream and cleans up.
 func (c *LogCoalescer) EmitDone(streamID string) {
-	c.mu.Lock()
+	// Held through the Done event so it cannot overtake a concurrent flush.
+	c.emitMu.Lock()
+	defer c.emitMu.Unlock()
 
-	// Flush any pending lines first
+	c.mu.Lock()
+	var lines []string
 	if buf, exists := c.streams[streamID]; exists {
 		if buf.timer != nil {
 			buf.timer.Stop()
 		}
-		// Flush outside lock
-		lines := buf.lines
+		lines = buf.lines
 		buf.lines = nil
 		delete(c.streams, streamID)
-		c.mu.Unlock()
-
-		// Emit any remaining lines
-		if len(lines) > 0 {
-			c.emitBatch(streamID, lines)
-		}
-
-		// Emit done
-		c.app.emitEvent("log-stream", LogStreamEvent{
-			StreamID: streamID,
-			Done:     true,
-		})
-		return
 	}
-
 	c.mu.Unlock()
 
-	// No buffer existed, just emit done
+	if len(lines) > 0 {
+		c.emitBatch(streamID, lines)
+	}
 	c.app.emitEvent("log-stream", LogStreamEvent{
 		StreamID: streamID,
 		Done:     true,
@@ -118,6 +144,8 @@ func (c *LogCoalescer) EmitError(streamID, errMsg string) {
 
 // flushStream flushes pending lines for a specific stream.
 func (c *LogCoalescer) flushStream(streamID string) {
+	c.emitMu.Lock()
+	defer c.emitMu.Unlock()
 	c.mu.Lock()
 
 	buf, exists := c.streams[streamID]
@@ -136,7 +164,7 @@ func (c *LogCoalescer) flushStream(streamID string) {
 
 	c.mu.Unlock()
 
-	// Emit outside lock
+	// Emit outside mu (producers keep appending) but inside emitMu (ordering).
 	c.emitBatch(streamID, lines)
 }
 

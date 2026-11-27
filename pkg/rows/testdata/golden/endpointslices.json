@@ -1,0 +1,4256 @@
+{
+ "type": "endpointslices",
+ "now": 1748779200000,
+ "columns": ["name","namespace","service","addressType","endpoints","ports","readyCount","age"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "service": "select",
+  "addressType": "select",
+  "endpoints": "select",
+  "ports": "select",
+  "readyCount": false,
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "name": "https",
+     "port": 443,
+     "protocol": "TCP"
+    },
+    {
+     "name": "metrics",
+     "port": 9090
+    }
+   ],
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T16:12:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "db"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T11:11:00Z",
+    "labels": {
+     "10": "ten",
+     "kubernetes.io/service-name": "db",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "FQDN",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"]
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "name": "https",
+     "port": 443,
+     "protocol": "TCP"
+    },
+    {
+     "name": "metrics",
+     "port": 9090
+    }
+   ],
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T05:46:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "default",
+    "creationTimestamp": "2025-06-01T11:20:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 53,
+     "protocol": "UDP"
+    },
+    {
+     "port": 53,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T13:33:00Z",
+    "labels": {
+     "10": "ten",
+     "kubernetes.io/service-name": "web",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T17:13:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "metadata": {
+    "name": "bare",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 80
+    }
+   ],
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-10",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "addressType": "",
+   "metadata": {
+    "name": "empty-type",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 80
+    }
+   ],
+   "metadata": {
+    "name": "two-ready",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "addressType": "IPv6",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "ports": [
+    {
+     "name": "noport"
+    },
+    {
+     "name": "x",
+     "protocol": ""
+    }
+   ],
+   "metadata": {
+    "name": "no-conditions",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "port-overflow",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 80,
+     "protocol": "TCP"
+    },
+    {
+     "port": 80,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "dup-ports",
+    "namespace": "default",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z"
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 80
+    }
+   ],
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "addressType": "FQDN",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "name": "https",
+     "port": 443,
+     "protocol": "TCP"
+    },
+    {
+     "name": "metrics",
+     "port": 9090
+    }
+   ],
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T03:38:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "web"
+    }
+   }
+  },
+  {
+   "addressType": "IPv6",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 53,
+     "protocol": "UDP"
+    },
+    {
+     "port": 53,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T04:01:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "web"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "ports": [
+    {
+     "name": "https",
+     "port": 443,
+     "protocol": "TCP"
+    },
+    {
+     "name": "metrics",
+     "port": 9090
+    }
+   ],
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T14:36:00Z"
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "name": "https",
+     "port": 443,
+     "protocol": "TCP"
+    },
+    {
+     "name": "metrics",
+     "port": 9090
+    }
+   ],
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T17:21:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv6",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    }
+   ],
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T10:05:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "web"
+    }
+   }
+  },
+  {
+   "addressType": "IPv6",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    }
+   ],
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T23:58:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "web"
+    }
+   }
+  },
+  {
+   "addressType": "FQDN",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 53,
+     "protocol": "UDP"
+    },
+    {
+     "port": 53,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T10:12:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "web"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T23:26:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "web"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"]
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T16:05:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv6",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T19:32:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "ports": [
+    {
+     "name": "https",
+     "port": 443,
+     "protocol": "TCP"
+    },
+    {
+     "name": "metrics",
+     "port": 9090
+    }
+   ],
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T17:13:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 53,
+     "protocol": "UDP"
+    },
+    {
+     "port": 53,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-06-01T03:05:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "db"
+    }
+   }
+  },
+  {
+   "addressType": "FQDN",
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T14:31:00Z"
+   }
+  },
+  {
+   "addressType": "FQDN",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T13:46:00Z",
+    "labels": {
+     "10": "ten",
+     "kubernetes.io/service-name": "db",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 80
+    }
+   ],
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-8",
+    "creationTimestamp": "2025-06-01T10:33:00Z"
+   }
+  },
+  {
+   "addressType": "IPv6",
+   "ports": [
+    {
+     "port": 53,
+     "protocol": "UDP"
+    },
+    {
+     "port": 53,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T14:19:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "web"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 53,
+     "protocol": "UDP"
+    },
+    {
+     "port": 53,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T05:36:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"]
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    }
+   ],
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T01:01:00Z",
+    "labels": {
+     "10": "ten",
+     "kubernetes.io/service-name": "db",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "ports": [
+    {
+     "name": "https",
+     "port": 443,
+     "protocol": "TCP"
+    },
+    {
+     "name": "metrics",
+     "port": 9090
+    }
+   ],
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T19:05:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 80
+    }
+   ],
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-9",
+    "creationTimestamp": "2025-06-01T10:32:00Z"
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T06:34:00Z",
+    "labels": {
+     "10": "ten",
+     "kubernetes.io/service-name": "web",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "FQDN",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    }
+   ],
+   "ports": [
+    {
+     "port": 80,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T05:05:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"]
+    }
+   ],
+   "ports": [
+    {
+     "port": 80,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "étude",
+    "creationTimestamp": "2025-06-01T01:20:00Z",
+    "labels": {
+     "10": "ten",
+     "kubernetes.io/service-name": "Zeta",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "FQDN",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    }
+   ],
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T23:25:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "db"
+    }
+   }
+  },
+  {
+   "addressType": "IPv4",
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T01:39:00Z",
+    "labels": {
+     "10": "ten",
+     "kubernetes.io/service-name": "web",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "IPv6",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"]
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": true
+     }
+    },
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {
+      "ready": false
+     }
+    }
+   ],
+   "ports": [
+    {
+     "name": "https",
+     "port": 443,
+     "protocol": "TCP"
+    },
+    {
+     "name": "metrics",
+     "port": 9090
+    }
+   ],
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T01:17:00Z",
+    "labels": {
+     "10": "ten",
+     "kubernetes.io/service-name": "web",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "addressType": "FQDN",
+   "endpoints": [
+    {
+     "addresses": ["10.1.1.1"],
+     "conditions": {}
+    }
+   ],
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T08:03:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "Zeta"
+    }
+   }
+  },
+  {
+   "addressType": "IPv6",
+   "ports": [
+    {
+     "port": 1,
+     "protocol": "TCP"
+    },
+    {
+     "port": 2,
+     "protocol": "TCP"
+    },
+    {
+     "port": 3,
+     "protocol": "TCP"
+    },
+    {
+     "port": 4,
+     "protocol": "TCP"
+    }
+   ],
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T14:24:00Z",
+    "labels": {
+     "kubernetes.io/service-name": "db"
+    }
+   }
+  }
+ ],
+ "noSort": ["uid-edge-10"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "service": "db",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": 1,
+   "age": "2025-05-31T16:12:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "Prod",
+   "service": "db",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 1,
+   "age": "2025-05-31T11:11:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "FQDN",
+   "endpoints": 2,
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": 1,
+   "age": "2025-05-31T05:46:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "default",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 2,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-06-01T11:20:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "default",
+   "service": "web",
+   "addressType": "IPv4",
+   "endpoints": 2,
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": 2,
+   "age": "2025-05-30T13:33:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "default",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T17:13:00Z"
+  },
+  "uid-edge-1": {
+   "name": "bare",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 0,
+   "ports": "-",
+   "readyCount": 0,
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-10": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "80/TCP",
+   "readyCount": 1,
+   "age": null
+  },
+  "uid-edge-2": {
+   "name": "empty-type",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "",
+   "endpoints": 0,
+   "ports": "-",
+   "readyCount": 0,
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "two-ready",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "80/TCP",
+   "readyCount": 2,
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-conditions",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv6",
+   "endpoints": 2,
+   "ports": "undefined/TCP, undefined/TCP",
+   "readyCount": 0,
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "port-overflow",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 1,
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "dup-ports",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "80/TCP, 80/TCP",
+   "readyCount": 1,
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-7": {
+   "name": "annotated",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "80/TCP",
+   "readyCount": 1,
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "FQDN",
+   "endpoints": 1,
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": 1,
+   "age": "2025-06-01T03:38:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": 3,
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": 1,
+   "age": "2025-05-31T04:01:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "kube-system",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 0,
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": 0,
+   "age": "2025-05-31T14:36:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "kube-system",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": 1,
+   "age": "2025-05-29T17:21:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": 1,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 0,
+   "age": "2025-05-30T10:05:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": 4,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-31T23:58:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "FQDN",
+   "endpoints": 2,
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": 1,
+   "age": "2025-05-30T10:12:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "prod",
+   "service": "web",
+   "addressType": "IPv4",
+   "endpoints": 0,
+   "ports": "-",
+   "readyCount": 0,
+   "age": "2025-05-31T23:26:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 1,
+   "age": "2025-05-30T16:05:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv6",
+   "endpoints": 4,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 2,
+   "age": "2025-05-31T19:32:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "team-a",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 2,
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": 0,
+   "age": "2025-05-31T17:13:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "team-a",
+   "service": "db",
+   "addressType": "IPv4",
+   "endpoints": 4,
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": 1,
+   "age": "2025-06-01T03:05:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "team-a",
+   "service": "-",
+   "addressType": "FQDN",
+   "endpoints": 0,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 0,
+   "age": "2025-05-31T14:31:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "team-a",
+   "service": "db",
+   "addressType": "FQDN",
+   "endpoints": 1,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 0,
+   "age": "2025-05-31T13:46:00Z"
+  },
+  "uid-edge-8": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "80/TCP",
+   "readyCount": 1,
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "team-b",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": 0,
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": 0,
+   "age": "2025-05-30T14:19:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-b",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": 2,
+   "age": "2025-05-31T05:36:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "team-b",
+   "service": "db",
+   "addressType": "IPv4",
+   "endpoints": 4,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 0,
+   "age": "2025-05-30T01:01:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "team-b",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 0,
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": 0,
+   "age": "2025-05-31T19:05:00Z"
+  },
+  "uid-edge-9": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": 1,
+   "ports": "80/TCP",
+   "readyCount": 1,
+   "age": "2025-06-01T10:32:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "étude",
+   "service": "web",
+   "addressType": "IPv4",
+   "endpoints": 0,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 0,
+   "age": "2025-05-30T06:34:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "étude",
+   "service": "Zeta",
+   "addressType": "FQDN",
+   "endpoints": 3,
+   "ports": "80/TCP",
+   "readyCount": 0,
+   "age": "2025-05-30T05:05:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "étude",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": 3,
+   "ports": "80/TCP",
+   "readyCount": 2,
+   "age": "2025-06-01T01:20:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "étude",
+   "service": "db",
+   "addressType": "FQDN",
+   "endpoints": 2,
+   "ports": "-",
+   "readyCount": 1,
+   "age": "2025-05-30T23:25:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "étude",
+   "service": "web",
+   "addressType": "IPv4",
+   "endpoints": 0,
+   "ports": "-",
+   "readyCount": 0,
+   "age": "2025-05-31T01:39:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "étude",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": 3,
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": 1,
+   "age": "2025-05-30T01:17:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "étude",
+   "service": "Zeta",
+   "addressType": "FQDN",
+   "endpoints": 1,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 0,
+   "age": "2025-05-30T08:03:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "étude",
+   "service": "db",
+   "addressType": "IPv6",
+   "endpoints": 0,
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": 0,
+   "age": "2025-05-30T14:24:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "service": "db",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": "",
+   "age": "2025-05-31T16:12:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "Prod",
+   "service": "db",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-31T11:11:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "FQDN",
+   "endpoints": "",
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": "",
+   "age": "2025-05-31T05:46:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "default",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-06-01T11:20:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "default",
+   "service": "web",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": "",
+   "age": "2025-05-30T13:33:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "default",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T17:13:00Z"
+  },
+  "uid-edge-1": {
+   "name": "bare",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-10": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "80/TCP",
+   "readyCount": "",
+   "age": ""
+  },
+  "uid-edge-2": {
+   "name": "empty-type",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "two-ready",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "80/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-conditions",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv6",
+   "endpoints": "",
+   "ports": "undefined/TCP, undefined/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "port-overflow",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "dup-ports",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "80/TCP, 80/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-7": {
+   "name": "annotated",
+   "namespace": "default",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "80/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "FQDN",
+   "endpoints": "",
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T03:38:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": "",
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": "",
+   "age": "2025-05-31T04:01:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "kube-system",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": "",
+   "age": "2025-05-31T14:36:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "kube-system",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": "",
+   "age": "2025-05-29T17:21:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-30T10:05:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-31T23:58:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "kube-system",
+   "service": "web",
+   "addressType": "FQDN",
+   "endpoints": "",
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": "",
+   "age": "2025-05-30T10:12:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "prod",
+   "service": "web",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-31T23:26:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-30T16:05:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv6",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-31T19:32:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "team-a",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": "",
+   "age": "2025-05-31T17:13:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "team-a",
+   "service": "db",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T03:05:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "team-a",
+   "service": "-",
+   "addressType": "FQDN",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-31T14:31:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "team-a",
+   "service": "db",
+   "addressType": "FQDN",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-31T13:46:00Z"
+  },
+  "uid-edge-8": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "80/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "team-b",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": "",
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": "",
+   "age": "2025-05-30T14:19:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-b",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "53/UDP, 53/TCP",
+   "readyCount": "",
+   "age": "2025-05-31T05:36:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "team-b",
+   "service": "db",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-30T01:01:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "team-b",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": "",
+   "age": "2025-05-31T19:05:00Z"
+  },
+  "uid-edge-9": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "service": "-",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "80/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T10:32:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "étude",
+   "service": "web",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-30T06:34:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "étude",
+   "service": "Zeta",
+   "addressType": "FQDN",
+   "endpoints": "",
+   "ports": "80/TCP",
+   "readyCount": "",
+   "age": "2025-05-30T05:05:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "étude",
+   "service": "Zeta",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "80/TCP",
+   "readyCount": "",
+   "age": "2025-06-01T01:20:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "étude",
+   "service": "db",
+   "addressType": "FQDN",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-30T23:25:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "étude",
+   "service": "web",
+   "addressType": "IPv4",
+   "endpoints": "",
+   "ports": "-",
+   "readyCount": "",
+   "age": "2025-05-31T01:39:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "étude",
+   "service": "web",
+   "addressType": "IPv6",
+   "endpoints": "",
+   "ports": "443/TCP, 9090/TCP",
+   "readyCount": "",
+   "age": "2025-05-30T01:17:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "étude",
+   "service": "Zeta",
+   "addressType": "FQDN",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-30T08:03:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "étude",
+   "service": "db",
+   "addressType": "IPv6",
+   "endpoints": "",
+   "ports": "1/TCP, 2/TCP, 3/TCP +1",
+   "readyCount": "",
+   "age": "2025-05-30T14:24:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 19.8
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 24.816666666666666
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 2,
+   "ports": null,
+   "readyCount": 1,
+   "age": 30.233333333333334
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 2,
+   "ports": null,
+   "readyCount": 1,
+   "age": 0.6666666666666666
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 2,
+   "ports": null,
+   "readyCount": 2,
+   "age": 46.45
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 42.78333333333333
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-10": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": null
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 2,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 2,
+   "ports": null,
+   "readyCount": 0,
+   "age": 1.3833333333333333
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 1.4
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 1.4166666666666667
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 1.4333333333333333
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 8.366666666666667
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 31.983333333333334
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 21.4
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 66.65
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 0,
+   "age": 49.916666666666664
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 4,
+   "ports": null,
+   "readyCount": 1,
+   "age": 12.033333333333333
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 2,
+   "ports": null,
+   "readyCount": 1,
+   "age": 49.8
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 12.566666666666666
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 43.916666666666664
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 4,
+   "ports": null,
+   "readyCount": 2,
+   "age": 16.466666666666665
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 50
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 2,
+   "ports": null,
+   "readyCount": 0,
+   "age": 18.783333333333335
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 4,
+   "ports": null,
+   "readyCount": 1,
+   "age": 8.916666666666666
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 21.483333333333334
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 0,
+   "age": 22.233333333333334
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 1.45
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 45.68333333333333
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 2,
+   "age": 30.4
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 4,
+   "ports": null,
+   "readyCount": 0,
+   "age": 58.983333333333334
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 16.916666666666668
+  },
+  "uid-edge-9": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 1,
+   "age": 1.4666666666666666
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 53.43333333333333
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 0,
+   "age": 54.916666666666664
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 2,
+   "age": 10.666666666666666
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 2,
+   "ports": null,
+   "readyCount": 1,
+   "age": 36.583333333333336
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 34.35
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 3,
+   "ports": null,
+   "readyCount": 1,
+   "age": 58.71666666666667
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 1,
+   "ports": null,
+   "readyCount": 0,
+   "age": 51.95
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "service": null,
+   "addressType": null,
+   "endpoints": 0,
+   "ports": null,
+   "readyCount": 0,
+   "age": 45.6
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-edge-7","uid-edge-1","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-edge-6","uid-0029","uid-edge-2","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-0031","uid-edge-4","uid-edge-5","uid-0026","uid-0027","uid-edge-8","uid-edge-9","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-edge-3","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-edge-3","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-8","uid-edge-9","uid-0027","uid-0026","uid-edge-5","uid-edge-4","uid-0031","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-edge-2","uid-0029","uid-edge-6","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-edge-1","uid-edge-7","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0000","uid-0022","uid-0003","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0002","uid-0029","uid-0012","uid-0006","uid-0018","uid-0014","uid-0008","uid-0026","uid-0017","uid-0016","uid-0001","uid-0027","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-8","uid-0011","uid-0007","uid-0030","uid-0031","uid-edge-9","uid-0024","uid-0013","uid-0009","uid-0019","uid-0015","uid-0021","uid-0020","uid-0028","uid-0025","uid-0004","uid-0005","uid-0023"],
+   "desc": ["uid-0015","uid-0021","uid-0020","uid-0028","uid-0025","uid-0004","uid-0005","uid-0023","uid-edge-9","uid-0024","uid-0013","uid-0009","uid-0019","uid-edge-8","uid-0011","uid-0007","uid-0030","uid-0031","uid-0001","uid-0027","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0006","uid-0018","uid-0014","uid-0008","uid-0026","uid-0017","uid-0016","uid-0003","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0002","uid-0029","uid-0012","uid-0000","uid-0022"]
+  },
+  "service": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0024","uid-0007","uid-0014","uid-0030","uid-0002","uid-0013","uid-0003","uid-0015","uid-0027","uid-0029","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0025","uid-0005","uid-0016","uid-0011","uid-0000","uid-0031","uid-0022","uid-0020","uid-0028","uid-0019","uid-0006","uid-0018","uid-0001","uid-0008","uid-0021","uid-0009","uid-0012","uid-0026","uid-0017","uid-0004","uid-0023"],
+   "desc": ["uid-0006","uid-0018","uid-0001","uid-0008","uid-0021","uid-0009","uid-0012","uid-0026","uid-0017","uid-0004","uid-0023","uid-0011","uid-0000","uid-0031","uid-0022","uid-0020","uid-0028","uid-0019","uid-0003","uid-0015","uid-0027","uid-0029","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0025","uid-0005","uid-0016","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0024","uid-0007","uid-0014","uid-0030","uid-0002","uid-0013"]
+  },
+  "addressType": {
+   "asc": ["uid-edge-2","uid-0006","uid-0030","uid-0031","uid-0002","uid-0020","uid-0026","uid-0025","uid-0005","uid-0003","uid-edge-1","uid-edge-3","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0015","uid-0001","uid-0024","uid-0007","uid-0000","uid-0014","uid-0022","uid-0013","uid-0021","uid-0029","uid-0010","uid-0012","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0019","uid-0016","uid-edge-4","uid-0018","uid-0027","uid-0008","uid-0028","uid-0009","uid-0017","uid-0023"],
+   "desc": ["uid-edge-4","uid-0018","uid-0027","uid-0008","uid-0028","uid-0009","uid-0017","uid-0023","uid-0003","uid-edge-1","uid-edge-3","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0011","uid-0015","uid-0001","uid-0024","uid-0007","uid-0000","uid-0014","uid-0022","uid-0013","uid-0021","uid-0029","uid-0010","uid-0012","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0019","uid-0016","uid-0006","uid-0030","uid-0031","uid-0002","uid-0020","uid-0026","uid-0025","uid-0005","uid-edge-2"]
+  },
+  "endpoints": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-0001","uid-0024","uid-0014","uid-0030","uid-0021","uid-0028","uid-0009","uid-0004","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0006","uid-0000","uid-0031","uid-0029","uid-0017","uid-0025","uid-0016","uid-0003","uid-edge-4","uid-0007","uid-0002","uid-0020","uid-0012","uid-0026","uid-edge-3","uid-0015","uid-0022","uid-0013","uid-0008","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0023","uid-0011","uid-0018","uid-0027","uid-0019"],
+   "desc": ["uid-0011","uid-0018","uid-0027","uid-0019","uid-edge-3","uid-0015","uid-0022","uid-0013","uid-0008","uid-0010","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0023","uid-0003","uid-edge-4","uid-0007","uid-0002","uid-0020","uid-0012","uid-0026","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0006","uid-0000","uid-0031","uid-0029","uid-0017","uid-0025","uid-0016","uid-edge-1","uid-edge-2","uid-0001","uid-0024","uid-0014","uid-0030","uid-0021","uid-0028","uid-0009","uid-0004"]
+  },
+  "ports": {
+   "asc": ["uid-0003","uid-edge-1","uid-edge-2","uid-0018","uid-0001","uid-0021","uid-0020","uid-0029","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-5","uid-0027","uid-0030","uid-0031","uid-0022","uid-0010","uid-0028","uid-0017","uid-0025","uid-0004","uid-0019","uid-0006","uid-0024","uid-0007","uid-0000","uid-0014","uid-0002","uid-0023","uid-0016","uid-0011","uid-0013","uid-0008","uid-0009","uid-0012","uid-0026","uid-edge-3","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0005","uid-edge-6","uid-edge-4"],
+   "desc": ["uid-edge-4","uid-edge-6","uid-edge-3","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0005","uid-0011","uid-0013","uid-0008","uid-0009","uid-0012","uid-0026","uid-0006","uid-0024","uid-0007","uid-0000","uid-0014","uid-0002","uid-0023","uid-0016","uid-edge-5","uid-0027","uid-0030","uid-0031","uid-0022","uid-0010","uid-0028","uid-0017","uid-0025","uid-0004","uid-0019","uid-0003","uid-edge-1","uid-edge-2","uid-0018","uid-0001","uid-0021","uid-0020","uid-0029","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06"]
+  },
+  "readyCount": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-4","uid-0001","uid-0024","uid-0007","uid-0014","uid-0030","uid-0031","uid-0021","uid-0028","uid-0009","uid-0017","uid-0025","uid-0004","uid-0005","uid-0019","uid-0003","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0006","uid-0011","uid-0018","uid-0000","uid-0022","uid-0002","uid-0008","uid-0020","uid-0029","uid-0010","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0023","uid-0016","uid-edge-3","uid-0015","uid-0027","uid-0013","uid-0012"],
+   "desc": ["uid-edge-3","uid-0015","uid-0027","uid-0013","uid-0012","uid-0003","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0006","uid-0011","uid-0018","uid-0000","uid-0022","uid-0002","uid-0008","uid-0020","uid-0029","uid-0010","uid-0026","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0023","uid-0016","uid-edge-1","uid-edge-2","uid-edge-4","uid-0001","uid-0024","uid-0007","uid-0014","uid-0030","uid-0031","uid-0021","uid-0028","uid-0009","uid-0017","uid-0025","uid-0004","uid-0005","uid-0019"]
+  },
+  "age": {
+   "asc": ["uid-0016","uid-0019","uid-0023","uid-0005","uid-0004","uid-0025","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0017","uid-0026","uid-0012","uid-0009","uid-0028","uid-0010","uid-0029","uid-0020","uid-0021","uid-0008","uid-0013","uid-0002","uid-0022","uid-0031","uid-0030","uid-0014","uid-0000","uid-0007","uid-0024","uid-0027","uid-0001","uid-0018","uid-0015","uid-0011","uid-0006","uid-edge-9","uid-edge-8","uid-edge-7","uid-edge-6","uid-edge-5","uid-edge-4","uid-edge-3","uid-edge-2","uid-edge-1","uid-0003"],
+   "desc": ["uid-0003","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0006","uid-0011","uid-0015","uid-0018","uid-0001","uid-0027","uid-0024","uid-0007","uid-0000","uid-0014","uid-0030","uid-0031","uid-0022","uid-0002","uid-0013","uid-0008","uid-0021","uid-0020","uid-0029","uid-0010","uid-0028","uid-0009","uid-0012","uid-0026","uid-0017","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0025","uid-0004","uid-0005","uid-0023","uid-0019","uid-0016"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0006","uid-0004","uid-0005"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0003","uid-0006","uid-0016","uid-0017","uid-0018","uid-0019","uid-0004","uid-0005"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0012","uid-0011"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0008","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0008","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-tie-09","uid-0007","uid-0005"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0022","uid-0020","uid-0021"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0022","uid-0021"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0006","uid-0004","uid-0005"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0008","uid-0010","uid-0007","uid-0009"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000","uid-edge-7"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-0002","uid-edge-7","uid-0001"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0006","uid-0005"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0003","uid-0016","uid-0001","uid-tie-00","uid-0009","uid-0023"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-edge-1","uid-0006","uid-0005"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0002","uid-0016","uid-0001"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0002","uid-0014","uid-0016","uid-0001","uid-0015"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0002","uid-0016","uid-0001"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000","uid-edge-7"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0002","uid-0003","uid-0006","uid-0001","uid-0004","uid-0005"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0022","uid-0002","uid-0012","uid-0007","uid-0031","uid-0013","uid-0019","uid-0024","uid-0004","uid-0015","uid-0021","uid-0023"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0022","uid-0002","uid-0012","uid-0007","uid-0031","uid-0013","uid-0019","uid-0024","uid-0004","uid-0015","uid-0021","uid-0023"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-7"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-7"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0000","uid-0022","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0000","uid-0022","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-8"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0022","uid-0027","uid-tie-12","uid-0024","uid-0021","uid-0025"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0022","uid-0027","uid-tie-12","uid-0024","uid-0021","uid-0025"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0006","uid-tie-09","uid-tie-10","uid-0004","uid-0005"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0006","uid-0005"]
+  },
+  {
+   "query": "name:web",
+   "matches": []
+  },
+  {
+   "query": "label:kubernetes.io/service-name=web",
+   "matches": ["uid-0012","uid-0006","uid-0008","uid-0017","uid-0018","uid-0026","uid-0001","uid-0009","uid-0004","uid-0021","uid-0023"]
+  },
+  {
+   "query": "labels:service-name",
+   "matches": ["uid-0000","uid-0022","uid-0003","uid-0012","uid-0029","uid-0006","uid-0008","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0011","uid-0031","uid-0009","uid-0019","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0022","uid-0002","uid-0012","uid-0007","uid-0031","uid-0013","uid-0019","uid-0024","uid-0004","uid-0015","uid-0021","uid-0023"]
+  },
+  {
+   "query": "addresstype:ipv4",
+   "matches": []
+  },
+  {
+   "query": "endpoints:1",
+   "matches": []
+  },
+  {
+   "query": "ports:80",
+   "matches": []
+  },
+  {
+   "query": "service:web",
+   "matches": []
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-edge-7","uid-0001"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-edge-7","uid-0016","uid-0001"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0003","uid-edge-1","uid-edge-10","uid-edge-3","uid-edge-7","uid-0006","uid-0016","uid-0017","uid-0018","uid-tie-00","uid-tie-01","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-edge-9","uid-0004","uid-0005","uid-0020","uid-0023"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0008","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0008","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0008","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0003","uid-edge-1","uid-0006","uid-0004","uid-0005"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0022","uid-0027","uid-tie-12","uid-0024","uid-0021","uid-0025"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0008","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0022","uid-0002","uid-0012","uid-0029","uid-0008","uid-0016","uid-0017","uid-0026","uid-0010","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0009","uid-0013","uid-0019","uid-0004","uid-0005","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0006","uid-0014","uid-0018","uid-0001","uid-0027","uid-0007","uid-0011","uid-0030","uid-0031","uid-0024","uid-0015"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0003","uid-0016"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0008","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0003","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0011","uid-edge-8","uid-edge-9","uid-0015"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0006","uid-0008","uid-0014","uid-0016","uid-0017","uid-0018","uid-0026","uid-0001","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0015","uid-0020","uid-0021","uid-0023","uid-0025","uid-0028"]
+  },
+  {
+   "name": "service select web",
+   "filters": {
+    "service": {
+     "type": "select",
+     "values": ["web"]
+    }
+   },
+   "matches": ["uid-0012","uid-0006","uid-0008","uid-0017","uid-0018","uid-0026","uid-0001","uid-0009","uid-0004","uid-0021","uid-0023"]
+  },
+  {
+   "name": "service select -|db",
+   "filters": {
+    "service": {
+     "type": "select",
+     "values": ["-","db"]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0014","uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0020","uid-0028"]
+  },
+  {
+   "name": "addressType select IPv4",
+   "filters": {
+    "addressType": {
+     "type": "select",
+     "values": ["IPv4"]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0003","uid-0012","uid-0029","uid-edge-1","uid-edge-10","uid-edge-3","uid-edge-5","uid-edge-6","uid-edge-7","uid-0014","uid-0016","uid-0001","uid-0010","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-edge-8","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0015","uid-0021"]
+  },
+  {
+   "name": "addressType select IPv6|",
+   "filters": {
+    "addressType": {
+     "type": "select",
+     "values": ["IPv6",""]
+    }
+   },
+   "matches": ["uid-edge-2","uid-edge-4","uid-0008","uid-0017","uid-0018","uid-0027","uid-0009","uid-0023","uid-0028"]
+  },
+  {
+   "name": "ports select 80/TCP",
+   "filters": {
+    "ports": {
+     "type": "select",
+     "values": ["80/TCP"]
+    }
+   },
+   "matches": ["uid-edge-10","uid-edge-3","uid-edge-7","uid-edge-8","uid-edge-9","uid-0005","uid-0015"]
+  },
+  {
+   "name": "ports select -",
+   "filters": {
+    "ports": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": ["uid-0003","uid-0029","uid-edge-1","uid-edge-2","uid-0018","uid-0001","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0020","uid-0021"]
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0007","uid-0011","uid-0030","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0003","uid-edge-1","uid-edge-10","uid-edge-3","uid-edge-7","uid-0006","uid-0016","uid-0017","uid-0018","uid-0001","uid-tie-00","uid-tie-01","uid-0031","uid-edge-8","uid-0009","uid-0013","uid-0019","uid-0024","uid-edge-9","uid-0004","uid-0005","uid-0020","uid-0021","uid-0023","uid-0025"]
+  },
+  {
+   "name": "endpoints numeric",
+   "filters": {
+    "endpoints": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0022","uid-0002","uid-0003","uid-0012","uid-edge-3","uid-edge-4","uid-0008","uid-0018","uid-0026","uid-0010","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0007","uid-0011","uid-0013","uid-0019","uid-0005","uid-0015","uid-0020","uid-0023"]
+  },
+  {
+   "name": "service regex",
+   "filters": {
+    "service": {
+     "type": "regex",
+     "conditions": ["^w"]
+    }
+   },
+   "matches": ["uid-0012","uid-0006","uid-0008","uid-0017","uid-0018","uid-0026","uid-0001","uid-0009","uid-0004","uid-0021","uid-0023"]
+  },
+  {
+   "name": "ports regex",
+   "filters": {
+    "ports": {
+     "type": "regex",
+     "conditions": ["undefined"]
+    }
+   },
+   "matches": ["uid-edge-4"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0002","uid-0006","uid-0016","uid-0017","uid-0018","uid-0001","uid-tie-00","uid-tie-01","uid-0031","uid-0009","uid-0013","uid-0019","uid-0024","uid-0004","uid-0005","uid-0020","uid-0021","uid-0023","uid-0025"]
+  }
+ ],
+ "uniqueValues": {
+  "service": {
+   "values": ["-","db","web","Zeta"],
+   "counts": {
+    "db": 7,
+    "-": 16,
+    "Zeta": 21,
+    "web": 11
+   }
+  },
+  "addressType": {
+   "values": ["FQDN","IPv4","IPv6"],
+   "counts": {
+    "IPv4": 38,
+    "FQDN": 8,
+    "IPv6": 8
+   }
+  },
+  "endpoints": null,
+  "ports": {
+   "values": ["-","1/TCP, 2/TCP, 3/TCP +1","443/TCP, 9090/TCP","53/UDP, 53/TCP","80/TCP","80/TCP, 80/TCP","undefined/TCP, undefined/TCP"],
+   "counts": {
+    "443/TCP, 9090/TCP": 8,
+    "1/TCP, 2/TCP, 3/TCP +1": 11,
+    "-": 21,
+    "53/UDP, 53/TCP": 6,
+    "80/TCP": 7,
+    "undefined/TCP, undefined/TCP": 1,
+    "80/TCP, 80/TCP": 1
+   }
+  }
+ }
+}

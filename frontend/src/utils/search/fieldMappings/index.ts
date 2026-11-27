@@ -5,6 +5,7 @@
  * Handles field lookup by name or alias.
  */
 
+import { schemaSearchFields } from '~/lib/views/schema';
 import { podFields } from './pods';
 import { deploymentFields } from './deployments';
 import { statefulSetFields } from './statefulsets';
@@ -79,6 +80,27 @@ export function getFieldsForResource(resourceType: string): Record<string, any> 
     return (registry as Record<string, any>)[resourceType] || commonFields;
 }
 
+// Field lookup tables, built once per fields object. A field name resolves to a direct key
+// first, then to the first registry entry that lists it as an alias.
+const lookupCache = new WeakMap<object, Map<string, any>>();
+
+function getLookup(fields: Record<string, any>): Map<string, any> {
+    let lookup = lookupCache.get(fields);
+    if (!lookup) {
+        lookup = new Map();
+        for (const [key, field] of Object.entries(fields) as [string, any][]) {
+            lookup.set(key, field);
+        }
+        for (const field of Object.values(fields) as any[]) {
+            for (const alias of field.aliases || []) {
+                if (!lookup.has(alias)) lookup.set(alias, field);
+            }
+        }
+        lookupCache.set(fields, lookup);
+    }
+    return lookup;
+}
+
 /**
  * Get a specific field definition by name or alias.
  *
@@ -87,22 +109,7 @@ export function getFieldsForResource(resourceType: string): Record<string, any> 
  * @returns {object|null} Field definition or null if not found
  */
 export function getFieldByName(resourceType: string, fieldName: string): any {
-    const fields = getFieldsForResource(resourceType);
-    const normalizedName = fieldName.toLowerCase();
-
-    // Direct match
-    if (fields[normalizedName]) {
-        return fields[normalizedName];
-    }
-
-    // Alias match
-    for (const [key, field] of Object.entries(fields) as [string, any][]) {
-        if (field.aliases && field.aliases.includes(normalizedName)) {
-            return field;
-        }
-    }
-
-    return null;
+    return getLookup(getFieldsForResource(resourceType)).get(fieldName.toLowerCase()) ?? null;
 }
 
 /**
@@ -130,9 +137,16 @@ export function getAvailableFieldNames(resourceType: string): string[] {
  * Get field definitions with metadata for autocomplete.
  *
  * @param {string} resourceType - The resource type
+ * @param {boolean} viewMode - True when the list is served by a Go view
  * @returns {Array<{name: string, aliases: string[]}>}
  */
-export function getFieldsMetadata(resourceType: string): Array<{name: string, aliases: string[]}> {
+export function getFieldsMetadata(resourceType: string, viewMode = false): Array<{name: string, aliases: string[]}> {
+    // A list served by a Go view is searched by the Go field table, so its autocomplete reads
+    // the schema generated from that table.
+    if (viewMode) {
+        const generated = schemaSearchFields(resourceType);
+        if (generated) return generated;
+    }
     const fields = getFieldsForResource(resourceType);
 
     return (Object.entries(fields) as [string, any][]).map(([name, field]) => ({

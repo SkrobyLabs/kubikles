@@ -15,6 +15,9 @@ import BottomPanel from '~/components/layout/BottomPanel';
 import AIPanel from '~/components/layout/AIPanel';
 import ToastContainer from '~/components/shared/ToastContainer';
 // Feature imports - organized by category
+// Pulls in Monaco, so it must not be part of the startup chunk graph.
+const ConfigEditorDialog = lazy(() => import('~/components/shared/ConfigEditorDialog'));
+const CreateResourceModal = lazy(() => import('~/components/shared/CreateResourceModal'));
 const PodList = lazy(() => import('~/features/workloads/pods/PodList'));
 const DeploymentList = lazy(() => import('~/features/workloads/deployments/DeploymentList'));
 const StatefulSetList = lazy(() => import('~/features/workloads/statefulsets/StatefulSetList'));
@@ -69,9 +72,7 @@ import { usePerformancePanel } from '~/hooks/usePerformancePanel';
 import { LogMessage, SetEventCoalescerFrameInterval, SetExtraKubeconfigPaths, SetK8sAPITimeout } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import ConfirmModal from '~/components/shared/ConfirmModal';
-import ConfigEditorDialog from '~/components/shared/ConfigEditorDialog';
 import CommandPalette from '~/components/shared/CommandPalette';
-import CreateResourceModal from '~/components/shared/CreateResourceModal';
 import ConnectionError from '~/components/shared/ConnectionError';
 
 // Resource templates by view
@@ -460,7 +461,7 @@ function MainLayout() {
         retryConnection
     } = useK8s();
 
-    const { getConfig } = useConfig();
+    const { getConfig, showConfigEditor } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
     const { isOpen: aiIsOpen, togglePanel: toggleAI } = useAIChat();
     const isDragging = useRef(false);
@@ -808,20 +809,28 @@ function MainLayout() {
                 {aiIsOpen && <AIPanel />}
             </div>
             <ConfirmModal />
-            <ConfigEditorDialog />
+            {showConfigEditor && (
+                <Suspense fallback={null}>
+                    <ConfigEditorDialog />
+                </Suspense>
+            )}
             <CommandPalette
                 isOpen={commandPaletteOpen}
                 onClose={() => setCommandPaletteOpen(false)}
                 onCreateResource={() => setShowGenericCreateModal(true)}
                 onToggleAI={toggleAI}
             />
-            <CreateResourceModal
-                isOpen={showGenericCreateModal}
-                onClose={() => setShowGenericCreateModal(false)}
-                onSuccess={triggerRefresh}
-                title={getCreateModalTitle(activeView)}
-                template={getResourceTemplate(activeView, currentNamespace)}
-            />
+            {showGenericCreateModal && (
+                <Suspense fallback={null}>
+                    <CreateResourceModal
+                        isOpen={showGenericCreateModal}
+                        onClose={() => setShowGenericCreateModal(false)}
+                        onSuccess={triggerRefresh}
+                        title={getCreateModalTitle(activeView)}
+                        template={getResourceTemplate(activeView, currentNamespace)}
+                    />
+                </Suspense>
+            )}
         </>
     );
 }

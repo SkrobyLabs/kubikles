@@ -33,6 +33,7 @@ func (c *Client) ListNetworkPoliciesForContext(contextName, namespace string) ([
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -55,6 +56,7 @@ func (c *Client) ListNetworkPoliciesWithContext(ctx context.Context, namespace s
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -132,6 +134,7 @@ func (c *Client) ListHPAsWithContext(ctx context.Context, namespace string, onPr
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -156,6 +159,7 @@ func (c *Client) ListHPAsForContext(contextName, namespace string) ([]autoscalin
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -230,6 +234,7 @@ func (c *Client) ListPDBsWithContext(ctx context.Context, namespace string, onPr
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -307,6 +312,7 @@ func (c *Client) ListResourceQuotasWithContext(ctx context.Context, namespace st
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -384,6 +390,7 @@ func (c *Client) ListLimitRangesWithContext(ctx context.Context, namespace strin
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -461,6 +468,7 @@ func (c *Client) ListEndpointsWithContext(ctx context.Context, namespace string,
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -538,6 +546,7 @@ func (c *Client) ListEndpointSlicesWithContext(ctx context.Context, namespace st
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {

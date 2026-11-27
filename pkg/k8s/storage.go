@@ -33,6 +33,7 @@ func (c *Client) ListPVCsWithContext(ctx context.Context, contextName, namespace
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -150,6 +151,7 @@ func (c *Client) ListPVsWithContext(ctx context.Context, contextName string, onP
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -244,6 +246,7 @@ func (c *Client) ListStorageClassesWithContext(ctx context.Context, contextName 
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {

@@ -1,6 +1,8 @@
 import { useOperatorActions } from '../actions/useOperatorActions';
 import React, { useMemo, useCallback } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useCustomResources } from '~/hooks/useCustomResources';
 import { useCRDPrinterColumns } from '~/hooks/useCRDPrinterColumns';
@@ -9,10 +11,16 @@ import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteCustomResource, GetCustomResourceYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
-import { EllipsisVerticalIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import CustomResourceActionsMenu from './CustomResourceActionsMenu';
 import { useCustomResourceActions } from './useCustomResourceActions';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { renderColumnValue } from './renderColumnValue';
+import { buildCustomResourceViewColumns } from './viewColumns';
+import { useRemoteOrLegacy } from '~/hooks/useRemoteOrLegacy';
+import { useWithFullObject } from '~/hooks/useViewObject';
+
+const CRD_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const NO_DATA: any[] = [];
 
 /**
  * Evaluates a JSONPath expression against an object.
@@ -56,41 +64,6 @@ const evaluateJSONPath = (obj: any, jsonPath: any): any => {
 };
 
 /**
- * Renders a value based on its type from the CRD column definition
- */
-const renderColumnValue = (value: any, type: any) => {
-    if (value === undefined || value === null) return '-';
-
-    switch (type) {
-        case 'date':
-            return formatAge(value);
-        case 'boolean':
-            // Show a colored indicator for boolean values
-            if (value === true || value === 'True' || value === 'true') {
-                return <CheckCircleIcon className="h-5 w-5 text-green-400" />;
-            } else if (value === false || value === 'False' || value === 'false') {
-                return <XCircleIcon className="h-5 w-5 text-red-400" />;
-            }
-            return String(value);
-        case 'integer':
-        case 'number':
-            return String(value);
-        default:
-            // For status-like values, add color coding
-            if (typeof value === 'string') {
-                if (value === 'True' || value === 'Ready' || value === 'Active' || value === 'Bound' || value === 'Running') {
-                    return <span className="text-green-400">{value}</span>;
-                } else if (value === 'False' || value === 'Failed' || value === 'Error') {
-                    return <span className="text-red-400">{value}</span>;
-                } else if (value === 'Pending' || value === 'Unknown' || value === 'Progressing') {
-                    return <span className="text-yellow-400">{value}</span>;
-                }
-            }
-            return String(value);
-    }
-};
-
-/**
  * Generic list component for custom resource instances
  * @param {Object} props
  * @param {Object} props.crdInfo - CRD information: { group, version, resource, kind, namespaced, plural }
@@ -98,8 +71,7 @@ const renderColumnValue = (value: any, type: any) => {
  */
 export default function CustomResourceList({ crdInfo, isVisible }: any) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { handleShowDetails, handleEditYaml } = useCustomResourceActions(crdInfo);
+    const { handleShowDetails, handleEditYaml } = useStableCallbacks(useCustomResourceActions(crdInfo));
     const selection = useSelection();
     const operator = useOperatorActions(crdInfo, currentContext);
 
@@ -139,18 +111,45 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
     // Fetch CRD printer columns
     const { columns: printerColumns } = useCRDPrinterColumns(crdInfo.group, crdInfo.resource, isVisible);
 
-    const { resources, loading, error, loadState } = useCustomResources(
-        currentContext,
-        crdInfo.group,
-        crdInfo.version,
-        crdInfo.resource,
-        selectedNamespaces,
-        isVisible,
-        crdInfo.namespaced
+    // Windowed list when the viewStore setting is on: the backend builds the row schema from the
+    // CRD's printer columns. Otherwise (or when it fails) the legacy hook feeds the list.
+    const crdType = `crd:${crdInfo.group}/${crdInfo.version}/${crdInfo.resource}`;
+    const crdDescriptor = useMemo(() => ({
+        group: crdInfo.group, version: crdInfo.version, resource: crdInfo.resource, namespaced: !!crdInfo.namespaced,
+    }), [crdInfo.group, crdInfo.version, crdInfo.resource, crdInfo.namespaced]);
+    const viewOptions = useMemo(() => ({ sort: CRD_INITIAL_SORT, crd: crdDescriptor }), [crdDescriptor]);
+    const { resources, loading, loadState, view, viewSnapshot } = useRemoteOrLegacy(
+        crdType,
+        'resources',
+        (visible: boolean) => useCustomResources(
+            currentContext,
+            crdInfo.group,
+            crdInfo.version,
+            crdInfo.resource,
+            selectedNamespaces,
+            visible,
+            crdInfo.namespaced
+        ),
+        {
+            context: currentContext,
+            namespaces: crdInfo.namespaced ? selectedNamespaces : ['*'],
+            isVisible: !!isVisible,
+            ...viewOptions,
+        },
     ) as any;
-
     // Show namespace column when viewing all namespaces or multiple namespaces (not exactly 1)
-    const showNamespaceColumn = crdInfo.namespaced && (selectedNamespaces?.length !== 1);
+    const showNamespaceColumn = crdInfo.namespaced && (selectedNamespaces?.length !== 1 || selectedNamespaces[0] === '*');
+    const withObject = useWithFullObject(view ?? null);
+    // Details and YAML editing read the whole resource; rows of a windowed list fetch it at click time.
+    const showDetailsFull = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
+    const editYamlFull = useMemo(() => withObject(handleEditYaml), [withObject, handleEditYaml]);
+    const viewColumns = useMemo(
+        () => buildCustomResourceViewColumns(viewSnapshot?.schema, {
+            onShowDetails: showDetailsFull, onEditYaml: editYamlFull, onDelete: (resource: any) => openBulkDelete([resource]),
+            operatorActions: operator.actions, onOperatorAction: operator.openAction,
+        }).filter((c: any) => c.key !== 'namespace' || showNamespaceColumn),
+        [viewSnapshot?.schema, showDetailsFull, editYamlFull, openBulkDelete, operator.actions, operator.openAction, showNamespaceColumn]);
+
 
     const columns = useMemo(() => {
         const cols: any[] = [
@@ -214,13 +213,12 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <CustomResourceActionsMenu
+                <MenuBound
+                    as={CustomResourceActionsMenu}
+                    menuId={`cr-${item.metadata?.uid}`}
                     resource={item}
                     operatorActions={operator.actions}
                     onOperatorAction={operator.openAction}
-                    isOpen={activeMenuId === `cr-${item.metadata?.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `cr-${item.metadata?.uid}`, buttonElement)}
                     onShowDetails={handleShowDetails}
                     onEditYaml={handleEditYaml}
                     onDelete={(resource: any) => openBulkDelete([resource])}
@@ -232,23 +230,25 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
         });
 
         return cols;
-    }, [activeMenuId, menuPosition, handleMenuOpenChange, handleShowDetails, handleEditYaml, openBulkDelete, showNamespaceColumn, printerColumns, operator.actions, operator.openAction]);
+    }, [handleShowDetails, handleEditYaml, openBulkDelete, showNamespaceColumn, printerColumns, operator.actions, operator.openAction]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title={crdInfo.kind}
-                columns={columns}
-                data={resources}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : resources}
                 isLoading={loading}
                 namespaces={crdInfo.namespaced ? namespaces : []}
                 currentNamespace={crdInfo.namespaced ? selectedNamespaces : []}
                 onNamespaceChange={crdInfo.namespaced ? setSelectedNamespaces : undefined}
                 showNamespaceSelector={crdInfo.namespaced}
                 multiSelectNamespaces={true}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={CRD_INITIAL_SORT}
                 resourceType={`cr-${crdInfo.group}-${crdInfo.resource}`}
-                onRowClick={handleShowDetails}
+                selectionLabel={crdInfo.resource}
+                onRowClick={view ? showDetailsFull : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

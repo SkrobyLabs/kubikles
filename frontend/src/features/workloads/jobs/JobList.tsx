@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useJobs } from '~/hooks/resources';
 import { useJobActions } from './useJobActions';
@@ -12,16 +14,18 @@ import { DeleteJob, GetJobYaml } from 'wailsjs/go/main/App';
 import JobActionsMenu from './JobActionsMenu';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { formatAge } from '~/utils/formatting';
-import { getOwnerViewId } from '~/utils/owner-navigation';
 import { getJobConditionColor } from '~/utils/k8s-helpers';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-// Get controller from owner references
-function getController(item: any) {
-    const owners = item.metadata?.ownerReferences || [];
-    const controller = owners.find((owner: any) => owner.controller);
-    return controller ? { kind: controller.kind, name: controller.name, uid: controller.uid, apiVersion: controller.apiVersion } : null;
-}
+import { jobSemantics, jobCompletions, jobCondition, formatJobDuration } from './semantics';
+import { getController } from '../workloadSemantics';
+import { renderControlledBy } from '../ControlledBy';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildJobViewColumns, JOB_HIDDEN_BY_DEFAULT, JOB_PINNED_COLUMNS, JOB_CARRIER_COLUMNS } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
+
+const JOB_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const JOB_VIEW_OPTIONS = { sort: JOB_INITIAL_SORT, columns: defaultViewColumns('jobs', JOB_HIDDEN_BY_DEFAULT) };
+const NO_DATA: any[] = [];
 
 export default function JobList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, namespaces, setSelectedNamespaces, crds, ensureCRDsLoaded } = useK8s();
@@ -33,7 +37,6 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
             ensureCRDsLoaded();
         }
     }, [isVisible, ensureCRDsLoaded]);
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     const {
@@ -48,21 +51,12 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetJobYaml,
 
     });
-    const { jobs, loading, loadState } = useJobs(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useJobActions();
+    const { jobs, loading, loadState, view } = useJobs(currentContext, selectedNamespaces, isVisible, JOB_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useStableCallbacks(useJobActions());
 
-    const getCompletions = (job: any) => {
-        const succeeded = job.status?.succeeded || 0;
-        const completions = job.spec?.completions || '?';
-        return `${succeeded}/${completions}`;
-    };
-
-    const getCondition = (job: any) => {
-        const conditions = job.status?.conditions || [];
-        if (conditions.length === 0) return '-';
-        const lastCondition = conditions[conditions.length - 1];
-        return lastCondition.type || '-';
-    };
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     const columns = useMemo(() => [
         {
@@ -80,14 +74,14 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
             key: 'completions',
             label: 'Completions',
             width: '20%',
-            render: (job: any) => getCompletions(job)
+            render: (job: any) => jobCompletions(job)
         },
         {
             key: 'condition',
             label: 'Condition',
             width: '20%',
             render: (job: any) => {
-                const condition = getCondition(job);
+                const condition = jobCondition(job);
                 return <span className={getJobConditionColor(condition)}>{condition}</span>;
             }
         },
@@ -95,41 +89,13 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
             key: 'age',
             label: 'Age',
             render: (job: any) => formatAge(job.metadata?.creationTimestamp),
-            getValue: (job: any) => job.metadata?.creationTimestamp
+            getValue: jobSemantics.age.getValue
         },
         {
             key: 'controlledBy',
             label: 'Controlled By',
-            render: (item: any) => {
-                const controller = getController(item);
-                if (!controller) {
-                    return <span className="text-gray-600">-</span>;
-                }
-
-                const viewId = getOwnerViewId(controller, crds);
-
-                if (viewId) {
-                    return (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigateWithSearch(viewId, `uid:"${controller.uid}"`);
-                            }}
-                            className="text-primary hover:text-primary/80 hover:underline transition-colors"
-                            title={`Go to ${controller.kind}: ${controller.name}`}
-                        >
-                            {controller.kind}
-                        </button>
-                    );
-                }
-
-                return (
-                    <span className="text-gray-400" title={controller.name}>
-                        {controller.kind}
-                    </span>
-                );
-            },
-            getValue: (item: any) => getController(item)?.kind || ''
+            render: (item: any) => renderControlledBy(getController(item), crds, navigateWithSearch),
+            getValue: jobSemantics.controlledBy.getValue
         },
         // Hidden by default columns
         {
@@ -137,49 +103,35 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
             label: 'Parallelism',
             defaultHidden: true,
             render: (job: any) => job.spec?.parallelism ?? 1,
-            getValue: (job: any) => job.spec?.parallelism ?? 1,
+            getValue: jobSemantics.parallelism.getValue,
         },
         {
             key: 'backoffLimit',
             label: 'Backoff Limit',
             defaultHidden: true,
             render: (job: any) => job.spec?.backoffLimit ?? 6,
-            getValue: (job: any) => job.spec?.backoffLimit ?? 6,
+            getValue: jobSemantics.backoffLimit.getValue,
         },
         {
             key: 'activeDeadline',
             label: 'Deadline (s)',
             defaultHidden: true,
             render: (job: any) => job.spec?.activeDeadlineSeconds ?? <span className="text-gray-500">-</span>,
-            getValue: (job: any) => job.spec?.activeDeadlineSeconds ?? 0,
+            getValue: jobSemantics.activeDeadline.getValue,
         },
         {
             key: 'startTime',
             label: 'Start Time',
             defaultHidden: true,
             render: (job: any) => job.status?.startTime ? formatAge(job.status.startTime) + ' ago' : <span className="text-gray-500">-</span>,
-            getValue: (job: any) => job.status?.startTime || '',
+            getValue: jobSemantics.startTime.getValue,
         },
         {
             key: 'duration',
             label: 'Duration',
             defaultHidden: true,
-            render: (job: any) => {
-                const start = job.status?.startTime;
-                const end = job.status?.completionTime;
-                if (!start) return <span className="text-gray-500">-</span>;
-                const endTime = end ? new Date(end) : new Date();
-                const duration = Math.floor((endTime.getTime() - new Date(start).getTime()) / 1000);
-                if (duration < 60) return `${duration}s`;
-                if (duration < 3600) return `${Math.floor(duration / 60)}m ${duration % 60}s`;
-                return `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`;
-            },
-            getValue: (job: any) => {
-                const start = job.status?.startTime;
-                const end = job.status?.completionTime;
-                if (!start) return 0;
-                return (end ? new Date(end) : new Date()).getTime() - new Date(start).getTime();
-            },
+            render: (job: any) => formatJobDuration(job.status?.startTime, job.status?.completionTime) ?? <span className="text-gray-500">-</span>,
+            getValue: jobSemantics.duration.getValue,
         },
         {
             key: 'image',
@@ -191,18 +143,17 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
                 if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
                 return <span title={containers.map((c: any) => c.image).join('\n')}>{containers.length} images</span>;
             },
-            getValue: (job: any) => job.spec?.template?.spec?.containers?.[0]?.image || '',
+            getValue: jobSemantics.image.getValue,
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (job: any) => (
-                <JobActionsMenu
+                <MenuBound
+                    as={JobActionsMenu}
+                    menuId={`job-${job.metadata.uid}`}
                     job={job}
-                    isOpen={activeMenuId === `job-${job.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `job-${job.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                     onDelete={(job: any) => openBulkDelete([job])}
@@ -212,23 +163,37 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, openBulkDelete, handleViewLogs, navigateWithSearch, crds]);
+    ], [handleEditYaml, handleShowDependencies, openBulkDelete, handleViewLogs, navigateWithSearch, crds]);
+
+    const viewColumns = useMemo(
+        () => buildJobViewColumns({
+            crds,
+            navigateWithSearch,
+            onEditYaml: handleEditYaml as (item: any) => void,
+            onShowDependencies: handleShowDependencies as (item: any) => void,
+            onDelete: item => openBulkDelete([item]),
+            onViewLogs: handleViewLogs as (item: any) => void,
+        }),
+        [crds, navigateWithSearch, handleEditYaml, handleShowDependencies, openBulkDelete, handleViewLogs]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="Jobs"
-                columns={columns}
-                data={jobs}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                viewPinnedColumns={JOB_PINNED_COLUMNS}
+                viewCarrierColumns={JOB_CARRIER_COLUMNS}
+                data={view ? NO_DATA : jobs}
                 isLoading={loading}
                 namespaces={namespaces}
                 currentNamespace={selectedNamespaces}
                 onNamespaceChange={setSelectedNamespaces}
                 showNamespaceSelector={true}
                 multiSelectNamespaces={true}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={JOB_INITIAL_SORT}
                 resourceType="jobs"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

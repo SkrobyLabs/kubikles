@@ -1,0 +1,3060 @@
+{
+ "type": "leases",
+ "now": 1748779200000,
+ "columns": ["name","namespace","holder","duration","renewTime","age"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "holder": "select",
+  "duration": "select",
+  "renewTime": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "holderIdentity": "9",
+    "leaseDurationSeconds": 137,
+    "renewTime": "2025-06-01T11:39:26.602000Z"
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T06:20:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "node-1_5f1e9c",
+    "leaseDurationSeconds": 15,
+    "renewTime": "2025-06-01T11:09:17.551000Z",
+    "acquireTime": "2025-06-01T10:03:13.312000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T06:31:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "node-1_5f1e9c",
+    "leaseDurationSeconds": 1,
+    "renewTime": "2025-06-01T11:55:20.672000Z"
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T19:04:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "kube-controller-manager-abc_1234",
+    "leaseDurationSeconds": 15,
+    "renewTime": "2025-06-01T11:01:01.295000Z",
+    "leaseTransitions": 1
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-29T21:47:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:20:47.611000Z"
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T11:15:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "leaseDurationSeconds": 15,
+    "renewTime": "2025-06-01T11:22:24.861000Z",
+    "leaseTransitions": 12
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T02:28:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "ip-10-0-0-1.ec2.internal_8b9a",
+    "leaseDurationSeconds": 1,
+    "renewTime": "2025-06-01T11:31:32.053000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T14:23:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "leaseDurationSeconds": 137,
+    "renewTime": "2025-06-01T11:11:10.377000Z",
+    "leaseTransitions": 12
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "default",
+    "creationTimestamp": "2025-06-01T01:08:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "ip-10-0-0-1.ec2.internal_8b9a",
+    "leaseDurationSeconds": 30,
+    "renewTime": "2025-06-01T11:41:41.559000Z"
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T16:49:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "metadata": {
+    "name": "empty-spec",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "x",
+    "leaseDurationSeconds": 30,
+    "renewTime": "2025-06-01T11:59:59.900000Z"
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-10",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "a",
+    "leaseDurationSeconds": 0,
+    "renewTime": "2025-06-01T11:59:58.500000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "zeros",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "a",
+    "leaseDurationSeconds": 15,
+    "renewTime": null
+   },
+   "metadata": {
+    "name": "null-renew",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "",
+    "leaseDurationSeconds": 15,
+    "renewTime": "2025-06-01T11:59:57.500000Z"
+   },
+   "metadata": {
+    "name": "empty-holder",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "same-renew",
+    "leaseDurationSeconds": 15,
+    "renewTime": "2025-06-01T11:59:56.000000Z"
+   },
+   "metadata": {
+    "name": "renew-tie-a",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "same-renew",
+    "leaseDurationSeconds": 15,
+    "renewTime": "2025-06-01T11:59:56.000000Z"
+   },
+   "metadata": {
+    "name": "renew-tie-b",
+    "namespace": "default",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "x",
+    "leaseDurationSeconds": 30,
+    "renewTime": "2025-06-01T11:59:59.900000Z"
+   },
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "9",
+    "leaseDurationSeconds": 137,
+    "renewTime": "2025-06-01T11:17:45.410000Z",
+    "leaseTransitions": 1
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T18:53:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "node-1_5f1e9c",
+    "leaseDurationSeconds": 15,
+    "renewTime": "2025-06-01T11:40:38.091000Z",
+    "acquireTime": "2025-06-01T08:21:58.151000Z"
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T09:07:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "ip-10-0-0-1.ec2.internal_8b9a",
+    "leaseDurationSeconds": 137,
+    "renewTime": "2025-06-01T11:36:07.225000Z"
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T18:12:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "Zeta",
+    "renewTime": "2025-06-01T11:50:30.007000Z",
+    "leaseTransitions": 1
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T19:29:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "ip-10-0-0-1.ec2.internal_8b9a",
+    "leaseDurationSeconds": 60,
+    "renewTime": "2025-06-01T11:04:35.470000Z",
+    "acquireTime": "2025-06-01T05:32:21.454000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T09:45:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "Zeta",
+    "leaseDurationSeconds": 60,
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T02:32:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "ip-10-0-0-1.ec2.internal_8b9a",
+    "leaseDurationSeconds": 1,
+    "renewTime": "2025-06-01T11:59:11.876000Z",
+    "leaseTransitions": 12
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T01:27:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "node-1_5f1e9c",
+    "leaseDurationSeconds": 15,
+    "renewTime": "2025-06-01T11:58:34.827000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T12:20:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "9",
+    "acquireTime": "2025-06-01T08:24:23.039000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T07:59:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "kube-controller-manager-abc_1234",
+    "leaseDurationSeconds": 137,
+    "renewTime": "2025-06-01T11:35:29.961000Z",
+    "leaseTransitions": 12
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T22:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "10",
+    "renewTime": "2025-06-01T11:01:07.217000Z",
+    "acquireTime": "2025-06-01T08:11:20.274000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "",
+    "leaseDurationSeconds": 30,
+    "renewTime": "2025-06-01T11:03:19.931000Z",
+    "acquireTime": "2025-06-01T03:00:29.021000Z",
+    "leaseTransitions": 12
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T14:21:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "Zeta",
+    "leaseDurationSeconds": 137,
+    "renewTime": "2025-06-01T11:13:40.671000Z",
+    "acquireTime": "2025-06-01T02:25:32.554000Z"
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T16:16:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "café-holder",
+    "leaseDurationSeconds": 60,
+    "renewTime": "2025-06-01T11:50:42.275000Z",
+    "acquireTime": "2025-06-01T06:29:15.167000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T11:00:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "café-holder",
+    "leaseDurationSeconds": 15,
+    "acquireTime": "2025-06-01T09:30:10.231000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-06-01T05:45:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "9",
+    "leaseDurationSeconds": 137,
+    "renewTime": "2025-06-01T11:16:12.674000Z",
+    "acquireTime": "2025-06-01T01:19:15.201000Z"
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T16:32:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "node-1_5f1e9c",
+    "leaseDurationSeconds": 60,
+    "renewTime": "2025-06-01T11:22:35.564000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T18:28:00Z"
+   }
+  },
+  {
+   "spec": {
+    "acquireTime": "2025-06-01T08:55:04.945000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T03:50:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "x",
+    "leaseDurationSeconds": 30,
+    "renewTime": "2025-06-01T11:59:59.900000Z"
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-8",
+    "creationTimestamp": "2025-06-01T10:33:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "node-1_5f1e9c",
+    "leaseDurationSeconds": 1,
+    "renewTime": "2025-06-01T11:11:35.808000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T07:10:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "café-holder",
+    "leaseTransitions": 1
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-06-01T03:51:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "kube-controller-manager-abc_1234",
+    "renewTime": "2025-06-01T11:25:45.823000Z",
+    "acquireTime": "2025-06-01T03:36:10.755000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-29T23:02:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "9",
+    "leaseDurationSeconds": 30,
+    "renewTime": "2025-06-01T11:05:49.169000Z",
+    "acquireTime": "2025-06-01T03:35:01.339000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T09:36:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "x",
+    "leaseDurationSeconds": 30,
+    "renewTime": "2025-06-01T11:59:59.900000Z"
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-9",
+    "creationTimestamp": "2025-06-01T10:32:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "9",
+    "leaseDurationSeconds": 60,
+    "renewTime": "2025-06-01T11:02:35.598000Z",
+    "leaseTransitions": 5
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "étude",
+    "creationTimestamp": "2025-06-01T06:15:00Z"
+   }
+  },
+  {
+   "spec": {
+    "holderIdentity": "",
+    "leaseDurationSeconds": 30,
+    "renewTime": "2025-06-01T11:43:33.190000Z",
+    "leaseTransitions": 0
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-29T23:55:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-10"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "holder": "9",
+   "duration": 137,
+   "renewTime": "2025-06-01T11:39:26.602000Z",
+   "age": "2025-05-30T06:20:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "Prod",
+   "holder": "node-1_5f1e9c",
+   "duration": 15,
+   "renewTime": "2025-06-01T11:09:17.551000Z",
+   "age": "2025-05-30T06:31:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "Prod",
+   "holder": "node-1_5f1e9c",
+   "duration": 1,
+   "renewTime": "2025-06-01T11:55:20.672000Z",
+   "age": "2025-05-31T19:04:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "Prod",
+   "holder": "kube-controller-manager-abc_1234",
+   "duration": 15,
+   "renewTime": "2025-06-01T11:01:01.295000Z",
+   "age": "2025-05-29T21:47:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "Prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:20:47.611000Z",
+   "age": "2025-05-31T11:15:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "default",
+   "holder": "10",
+   "duration": 15,
+   "renewTime": "2025-06-01T11:22:24.861000Z",
+   "age": "2025-05-30T02:28:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "default",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": 1,
+   "renewTime": "2025-06-01T11:31:32.053000Z",
+   "age": "2025-05-31T14:23:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "default",
+   "holder": "-",
+   "duration": 137,
+   "renewTime": "2025-06-01T11:11:10.377000Z",
+   "age": "2025-06-01T01:08:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "default",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": 30,
+   "renewTime": "2025-06-01T11:41:41.559000Z",
+   "age": "2025-05-31T16:49:00Z"
+  },
+  "uid-edge-1": {
+   "name": "empty-spec",
+   "namespace": "default",
+   "holder": "-",
+   "duration": 0,
+   "renewTime": "",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-10": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "holder": "x",
+   "duration": 30,
+   "renewTime": "2025-06-01T11:59:59.900000Z",
+   "age": null
+  },
+  "uid-edge-2": {
+   "name": "zeros",
+   "namespace": "default",
+   "holder": "a",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:59:58.500000Z",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "null-renew",
+   "namespace": "default",
+   "holder": "a",
+   "duration": 15,
+   "renewTime": "",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "empty-holder",
+   "namespace": "default",
+   "holder": "-",
+   "duration": 15,
+   "renewTime": "2025-06-01T11:59:57.500000Z",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "renew-tie-a",
+   "namespace": "default",
+   "holder": "same-renew",
+   "duration": 15,
+   "renewTime": "2025-06-01T11:59:56.000000Z",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "renew-tie-b",
+   "namespace": "default",
+   "holder": "same-renew",
+   "duration": 15,
+   "renewTime": "2025-06-01T11:59:56.000000Z",
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-7": {
+   "name": "annotated",
+   "namespace": "default",
+   "holder": "x",
+   "duration": 30,
+   "renewTime": "2025-06-01T11:59:59.900000Z",
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "kube-system",
+   "holder": "9",
+   "duration": 137,
+   "renewTime": "2025-06-01T11:17:45.410000Z",
+   "age": "2025-05-29T18:53:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "kube-system",
+   "holder": "node-1_5f1e9c",
+   "duration": 15,
+   "renewTime": "2025-06-01T11:40:38.091000Z",
+   "age": "2025-05-31T09:07:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "kube-system",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": 137,
+   "renewTime": "2025-06-01T11:36:07.225000Z",
+   "age": "2025-05-29T18:12:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "kube-system",
+   "holder": "Zeta",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:50:30.007000Z",
+   "age": "2025-05-31T19:29:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "kube-system",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": 60,
+   "renewTime": "2025-06-01T11:04:35.470000Z",
+   "age": "2025-06-01T09:45:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "kube-system",
+   "holder": "Zeta",
+   "duration": 60,
+   "renewTime": "",
+   "age": "2025-06-01T02:32:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "prod",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": 1,
+   "renewTime": "2025-06-01T11:59:11.876000Z",
+   "age": "2025-05-30T01:27:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "prod",
+   "holder": "node-1_5f1e9c",
+   "duration": 15,
+   "renewTime": "2025-06-01T11:58:34.827000Z",
+   "age": "2025-05-30T12:20:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "prod",
+   "holder": "9",
+   "duration": 0,
+   "renewTime": "",
+   "age": "2025-06-01T07:59:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "prod",
+   "holder": "kube-controller-manager-abc_1234",
+   "duration": 137,
+   "renewTime": "2025-06-01T11:35:29.961000Z",
+   "age": "2025-05-30T22:17:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "team-a",
+   "holder": "-",
+   "duration": 30,
+   "renewTime": "2025-06-01T11:03:19.931000Z",
+   "age": "2025-05-31T14:21:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "team-a",
+   "holder": "Zeta",
+   "duration": 137,
+   "renewTime": "2025-06-01T11:13:40.671000Z",
+   "age": "2025-05-31T16:16:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-a",
+   "holder": "café-holder",
+   "duration": 60,
+   "renewTime": "2025-06-01T11:50:42.275000Z",
+   "age": "2025-05-31T11:00:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "team-a",
+   "holder": "café-holder",
+   "duration": 15,
+   "renewTime": "",
+   "age": "2025-06-01T05:45:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "team-a",
+   "holder": "9",
+   "duration": 137,
+   "renewTime": "2025-06-01T11:16:12.674000Z",
+   "age": "2025-05-31T16:32:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "team-a",
+   "holder": "node-1_5f1e9c",
+   "duration": 60,
+   "renewTime": "2025-06-01T11:22:35.564000Z",
+   "age": "2025-05-30T18:28:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "team-a",
+   "holder": "-",
+   "duration": 0,
+   "renewTime": "",
+   "age": "2025-05-30T03:50:00Z"
+  },
+  "uid-edge-8": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "holder": "x",
+   "duration": 30,
+   "renewTime": "2025-06-01T11:59:59.900000Z",
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "team-b",
+   "holder": "node-1_5f1e9c",
+   "duration": 1,
+   "renewTime": "2025-06-01T11:11:35.808000Z",
+   "age": "2025-05-31T07:10:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "team-b",
+   "holder": "café-holder",
+   "duration": 0,
+   "renewTime": "",
+   "age": "2025-06-01T03:51:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "team-b",
+   "holder": "kube-controller-manager-abc_1234",
+   "duration": 0,
+   "renewTime": "2025-06-01T11:25:45.823000Z",
+   "age": "2025-05-29T23:02:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "team-b",
+   "holder": "9",
+   "duration": 30,
+   "renewTime": "2025-06-01T11:05:49.169000Z",
+   "age": "2025-05-31T09:36:00Z"
+  },
+  "uid-edge-9": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "holder": "x",
+   "duration": 30,
+   "renewTime": "2025-06-01T11:59:59.900000Z",
+   "age": "2025-06-01T10:32:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "étude",
+   "holder": "9",
+   "duration": 60,
+   "renewTime": "2025-06-01T11:02:35.598000Z",
+   "age": "2025-06-01T06:15:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "étude",
+   "holder": "-",
+   "duration": 30,
+   "renewTime": "2025-06-01T11:43:33.190000Z",
+   "age": "2025-05-29T23:55:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "holder": "9",
+   "duration": "",
+   "renewTime": "2025-06-01T11:39:26.602000Z",
+   "age": "2025-05-30T06:20:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "Prod",
+   "holder": "node-1_5f1e9c",
+   "duration": "",
+   "renewTime": "2025-06-01T11:09:17.551000Z",
+   "age": "2025-05-30T06:31:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "Prod",
+   "holder": "node-1_5f1e9c",
+   "duration": "",
+   "renewTime": "2025-06-01T11:55:20.672000Z",
+   "age": "2025-05-31T19:04:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "Prod",
+   "holder": "kube-controller-manager-abc_1234",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:01.295000Z",
+   "age": "2025-05-29T21:47:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "Prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:20:47.611000Z",
+   "age": "2025-05-31T11:15:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "default",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:22:24.861000Z",
+   "age": "2025-05-30T02:28:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "default",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": "",
+   "renewTime": "2025-06-01T11:31:32.053000Z",
+   "age": "2025-05-31T14:23:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "default",
+   "holder": "-",
+   "duration": "",
+   "renewTime": "2025-06-01T11:11:10.377000Z",
+   "age": "2025-06-01T01:08:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "default",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": "",
+   "renewTime": "2025-06-01T11:41:41.559000Z",
+   "age": "2025-05-31T16:49:00Z"
+  },
+  "uid-edge-1": {
+   "name": "empty-spec",
+   "namespace": "default",
+   "holder": "-",
+   "duration": "",
+   "renewTime": "",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-10": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "holder": "x",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:59.900000Z",
+   "age": ""
+  },
+  "uid-edge-2": {
+   "name": "zeros",
+   "namespace": "default",
+   "holder": "a",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:58.500000Z",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "null-renew",
+   "namespace": "default",
+   "holder": "a",
+   "duration": "",
+   "renewTime": "",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "empty-holder",
+   "namespace": "default",
+   "holder": "-",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:57.500000Z",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "renew-tie-a",
+   "namespace": "default",
+   "holder": "same-renew",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:56.000000Z",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "renew-tie-b",
+   "namespace": "default",
+   "holder": "same-renew",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:56.000000Z",
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-edge-7": {
+   "name": "annotated",
+   "namespace": "default",
+   "holder": "x",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:59.900000Z",
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "kube-system",
+   "holder": "9",
+   "duration": "",
+   "renewTime": "2025-06-01T11:17:45.410000Z",
+   "age": "2025-05-29T18:53:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "kube-system",
+   "holder": "node-1_5f1e9c",
+   "duration": "",
+   "renewTime": "2025-06-01T11:40:38.091000Z",
+   "age": "2025-05-31T09:07:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "kube-system",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": "",
+   "renewTime": "2025-06-01T11:36:07.225000Z",
+   "age": "2025-05-29T18:12:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "kube-system",
+   "holder": "Zeta",
+   "duration": "",
+   "renewTime": "2025-06-01T11:50:30.007000Z",
+   "age": "2025-05-31T19:29:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "kube-system",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": "",
+   "renewTime": "2025-06-01T11:04:35.470000Z",
+   "age": "2025-06-01T09:45:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "kube-system",
+   "holder": "Zeta",
+   "duration": "",
+   "renewTime": "",
+   "age": "2025-06-01T02:32:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "prod",
+   "holder": "ip-10-0-0-1.ec2.internal_8b9a",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:11.876000Z",
+   "age": "2025-05-30T01:27:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "prod",
+   "holder": "node-1_5f1e9c",
+   "duration": "",
+   "renewTime": "2025-06-01T11:58:34.827000Z",
+   "age": "2025-05-30T12:20:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "prod",
+   "holder": "9",
+   "duration": "",
+   "renewTime": "",
+   "age": "2025-06-01T07:59:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "prod",
+   "holder": "kube-controller-manager-abc_1234",
+   "duration": "",
+   "renewTime": "2025-06-01T11:35:29.961000Z",
+   "age": "2025-05-30T22:17:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "holder": "10",
+   "duration": "",
+   "renewTime": "2025-06-01T11:01:07.217000Z",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "team-a",
+   "holder": "-",
+   "duration": "",
+   "renewTime": "2025-06-01T11:03:19.931000Z",
+   "age": "2025-05-31T14:21:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "team-a",
+   "holder": "Zeta",
+   "duration": "",
+   "renewTime": "2025-06-01T11:13:40.671000Z",
+   "age": "2025-05-31T16:16:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-a",
+   "holder": "café-holder",
+   "duration": "",
+   "renewTime": "2025-06-01T11:50:42.275000Z",
+   "age": "2025-05-31T11:00:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "team-a",
+   "holder": "café-holder",
+   "duration": "",
+   "renewTime": "",
+   "age": "2025-06-01T05:45:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "team-a",
+   "holder": "9",
+   "duration": "",
+   "renewTime": "2025-06-01T11:16:12.674000Z",
+   "age": "2025-05-31T16:32:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "team-a",
+   "holder": "node-1_5f1e9c",
+   "duration": "",
+   "renewTime": "2025-06-01T11:22:35.564000Z",
+   "age": "2025-05-30T18:28:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "team-a",
+   "holder": "-",
+   "duration": "",
+   "renewTime": "",
+   "age": "2025-05-30T03:50:00Z"
+  },
+  "uid-edge-8": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "holder": "x",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:59.900000Z",
+   "age": "2025-06-01T10:33:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "team-b",
+   "holder": "node-1_5f1e9c",
+   "duration": "",
+   "renewTime": "2025-06-01T11:11:35.808000Z",
+   "age": "2025-05-31T07:10:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "team-b",
+   "holder": "café-holder",
+   "duration": "",
+   "renewTime": "",
+   "age": "2025-06-01T03:51:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "team-b",
+   "holder": "kube-controller-manager-abc_1234",
+   "duration": "",
+   "renewTime": "2025-06-01T11:25:45.823000Z",
+   "age": "2025-05-29T23:02:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "team-b",
+   "holder": "9",
+   "duration": "",
+   "renewTime": "2025-06-01T11:05:49.169000Z",
+   "age": "2025-05-31T09:36:00Z"
+  },
+  "uid-edge-9": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "holder": "x",
+   "duration": "",
+   "renewTime": "2025-06-01T11:59:59.900000Z",
+   "age": "2025-06-01T10:32:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "étude",
+   "holder": "9",
+   "duration": "",
+   "renewTime": "2025-06-01T11:02:35.598000Z",
+   "age": "2025-06-01T06:15:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "étude",
+   "holder": "-",
+   "duration": "",
+   "renewTime": "2025-06-01T11:43:33.190000Z",
+   "age": "2025-05-29T23:55:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 137,
+   "renewTime": null,
+   "age": 53.666666666666664
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 53.483333333333334
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 1,
+   "renewTime": null,
+   "age": 16.933333333333334
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 62.21666666666667
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 24.75
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 57.53333333333333
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 1,
+   "renewTime": null,
+   "age": 21.616666666666667
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 137,
+   "renewTime": null,
+   "age": 10.866666666666667
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 30,
+   "renewTime": null,
+   "age": 19.183333333333334
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-10": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 30,
+   "renewTime": null,
+   "age": null
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 1.3833333333333333
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 1.4
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 1.4166666666666667
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 30,
+   "renewTime": null,
+   "age": 1.4333333333333333
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 137,
+   "renewTime": null,
+   "age": 65.11666666666666
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 26.883333333333333
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 137,
+   "renewTime": null,
+   "age": 65.8
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 16.516666666666666
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 60,
+   "renewTime": null,
+   "age": 2.25
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 60,
+   "renewTime": null,
+   "age": 9.466666666666667
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 1,
+   "renewTime": null,
+   "age": 58.55
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 47.666666666666664
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 4.016666666666667
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 137,
+   "renewTime": null,
+   "age": 37.71666666666667
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 50
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 30,
+   "renewTime": null,
+   "age": 21.65
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 137,
+   "renewTime": null,
+   "age": 19.733333333333334
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 60,
+   "renewTime": null,
+   "age": 25
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 15,
+   "renewTime": null,
+   "age": 6.25
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 137,
+   "renewTime": null,
+   "age": 19.466666666666665
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 60,
+   "renewTime": null,
+   "age": 41.53333333333333
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 56.166666666666664
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 30,
+   "renewTime": null,
+   "age": 1.45
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 1,
+   "renewTime": null,
+   "age": 28.833333333333332
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 8.15
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 0,
+   "renewTime": null,
+   "age": 60.96666666666667
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 30,
+   "renewTime": null,
+   "age": 26.4
+  },
+  "uid-edge-9": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 30,
+   "renewTime": null,
+   "age": 1.4666666666666666
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 60,
+   "renewTime": null,
+   "age": 5.75
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "holder": null,
+   "duration": 30,
+   "renewTime": null,
+   "age": 60.083333333333336
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-edge-7","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-0029","uid-edge-4","uid-edge-1","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-0031","uid-edge-3","uid-edge-5","uid-edge-6","uid-0026","uid-0027","uid-edge-8","uid-edge-9","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-edge-2","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-edge-2","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-8","uid-edge-9","uid-0027","uid-0026","uid-edge-6","uid-edge-5","uid-edge-3","uid-0031","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-edge-1","uid-edge-4","uid-0029","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-edge-7","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0006","uid-0023","uid-0005","uid-0000","uid-0016","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0022","uid-0029","uid-0021","uid-0011","uid-0025","uid-0026","uid-0015","uid-0007","uid-0001","uid-0009","uid-0024","uid-0030","uid-0018","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0008","uid-edge-8","uid-0017","uid-0019","uid-0004","uid-0002","uid-0013","uid-0020","uid-0027","uid-edge-9","uid-0012","uid-0028","uid-0010","uid-0014","uid-0003","uid-0031"],
+   "desc": ["uid-0003","uid-0031","uid-edge-9","uid-0012","uid-0028","uid-0010","uid-0014","uid-edge-8","uid-0017","uid-0019","uid-0004","uid-0002","uid-0013","uid-0020","uid-0027","uid-0024","uid-0030","uid-0018","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0008","uid-0025","uid-0026","uid-0015","uid-0007","uid-0001","uid-0009","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0022","uid-0029","uid-0021","uid-0011","uid-0006","uid-0023","uid-0005","uid-0000","uid-0016"]
+  },
+  "holder": {
+   "asc": ["uid-edge-1","uid-edge-4","uid-0022","uid-0002","uid-0027","uid-0031","uid-0023","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-0024","uid-0003","uid-0019","uid-0028","uid-0000","uid-0001","uid-0026","uid-0015","uid-0004","uid-edge-2","uid-edge-3","uid-0017","uid-0012","uid-0013","uid-0025","uid-0029","uid-0021","uid-0008","uid-0009","uid-0030","uid-0014","uid-0016","uid-0006","uid-0007","uid-0010","uid-0020","uid-0018","uid-0005","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9"],
+   "desc": ["uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-5","uid-edge-6","uid-0006","uid-0007","uid-0010","uid-0020","uid-0018","uid-0005","uid-0030","uid-0014","uid-0016","uid-0025","uid-0029","uid-0021","uid-0008","uid-0009","uid-0017","uid-0012","uid-0013","uid-edge-2","uid-edge-3","uid-0026","uid-0015","uid-0004","uid-0024","uid-0003","uid-0019","uid-0028","uid-0000","uid-0001","uid-0023","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0011","uid-edge-1","uid-edge-4","uid-0022","uid-0002","uid-0027","uid-0031"]
+  },
+  "duration": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-0024","uid-0012","uid-0015","uid-0023","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0027","uid-0014","uid-0006","uid-0021","uid-0010","uid-0008","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-0017","uid-0007","uid-0018","uid-0005","uid-0011","uid-0016","uid-edge-7","uid-edge-8","uid-edge-9","uid-0029","uid-0002","uid-0028","uid-0031","uid-0025","uid-0003","uid-0026","uid-0013","uid-0020","uid-0022","uid-0019","uid-0004","uid-0030","uid-0000","uid-0001","uid-0009"],
+   "desc": ["uid-0022","uid-0019","uid-0004","uid-0030","uid-0000","uid-0001","uid-0009","uid-0025","uid-0003","uid-0026","uid-0013","uid-0020","uid-edge-7","uid-edge-8","uid-edge-9","uid-0029","uid-0002","uid-0028","uid-0031","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-0017","uid-0007","uid-0018","uid-0005","uid-0011","uid-0016","uid-0006","uid-0021","uid-0010","uid-0008","uid-edge-1","uid-edge-2","uid-0024","uid-0012","uid-0015","uid-0023","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0027","uid-0014"]
+  },
+  "renewTime": {
+   "asc": ["uid-edge-1","uid-edge-3","uid-0024","uid-0017","uid-0012","uid-0026","uid-0027","uid-0016","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0002","uid-0025","uid-0028","uid-0005","uid-0022","uid-0010","uid-0004","uid-0019","uid-0001","uid-0023","uid-0011","uid-0020","uid-0014","uid-0021","uid-0030","uid-0009","uid-0000","uid-0007","uid-0029","uid-0031","uid-0015","uid-0013","uid-0006","uid-0018","uid-0008","uid-edge-5","uid-edge-6","uid-edge-4","uid-edge-2","uid-edge-7","uid-edge-8","uid-edge-9"],
+   "desc": ["uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-6","uid-0008","uid-0018","uid-0006","uid-0013","uid-0015","uid-0031","uid-0029","uid-0007","uid-0000","uid-0009","uid-0030","uid-0021","uid-0014","uid-0020","uid-0011","uid-0023","uid-0001","uid-0019","uid-0004","uid-0010","uid-0022","uid-0005","uid-0028","uid-0025","uid-0002","uid-0003","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0016","uid-edge-1","uid-edge-3","uid-0024","uid-0017","uid-0012","uid-0026","uid-0027"]
+  },
+  "age": {
+   "asc": ["uid-0009","uid-0001","uid-0016","uid-0014","uid-0031","uid-0008","uid-0011","uid-0027","uid-0000","uid-0005","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0018","uid-0020","uid-0030","uid-0010","uid-0007","uid-0028","uid-0013","uid-0023","uid-0002","uid-0021","uid-0004","uid-0019","uid-0029","uid-0006","uid-0015","uid-0022","uid-0026","uid-0012","uid-0017","uid-0003","uid-0024","uid-0025","uid-edge-9","uid-edge-8","uid-edge-7","uid-edge-6","uid-edge-5","uid-edge-4","uid-edge-3","uid-edge-2","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0025","uid-0024","uid-0003","uid-0017","uid-0012","uid-0026","uid-0022","uid-0015","uid-0006","uid-0029","uid-0019","uid-0004","uid-0021","uid-0002","uid-0023","uid-0013","uid-0028","uid-0007","uid-0010","uid-0030","uid-0020","uid-0018","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0000","uid-0027","uid-0011","uid-0008","uid-0031","uid-0014","uid-0016","uid-0001","uid-0009"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0005","uid-0006","uid-0004","uid-0003"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0005","uid-0006","uid-0016","uid-0018","uid-0004","uid-0017","uid-0019","uid-0003"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0015","uid-0014"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0007","uid-0009","uid-0015","uid-0025","uid-0026","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0007","uid-0009","uid-0015","uid-0025","uid-0026","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0005","uid-0007","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0021","uid-0022","uid-0020"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0021","uid-0022"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0005","uid-0006","uid-0004","uid-0003"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0009","uid-0008","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000","uid-edge-7"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-edge-7","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0005","uid-0006"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0016","uid-0023","uid-edge-5","uid-0001","uid-0009","uid-tie-00","uid-0003"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0005","uid-0006","uid-0003"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0016","uid-0001","uid-0002"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0016","uid-0001","uid-0015","uid-0002","uid-0014"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0016","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000","uid-edge-7"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0001","uid-0002","uid-0004","uid-0003"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0000","uid-0006","uid-0023","uid-0021","uid-0009","uid-0015","uid-0025","uid-0013","uid-0017","uid-0019","uid-0012","uid-0028"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0000","uid-0006","uid-0023","uid-0021","uid-0009","uid-0015","uid-0025","uid-0013","uid-0017","uid-0019","uid-0012","uid-0028"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-7"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-7"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-8"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0021","uid-0022","uid-0025","uid-0024","uid-tie-12","uid-0027"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0025","uid-0024"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0021","uid-0022","uid-0025","uid-0024","uid-tie-12","uid-0027"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0009","uid-0015","uid-0025","uid-0026","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0005","uid-0006","uid-tie-09","uid-tie-10","uid-0004"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0005","uid-0006","uid-0003"]
+  },
+  {
+   "query": "holder:node-1",
+   "matches": ["uid-0005","uid-0006","uid-0007","uid-0018","uid-0020","uid-0010"]
+  },
+  {
+   "query": "holderidentity:/^kube-controller/",
+   "matches": ["uid-0016","uid-0030","uid-0014"]
+  },
+  {
+   "query": "leader:zeta",
+   "matches": ["uid-0015","uid-0026","uid-0004"]
+  },
+  {
+   "query": "owner:10",
+   "matches": ["uid-0023","uid-0011","uid-0021","uid-0029","uid-0009","uid-0025","uid-0008","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "holder:caf",
+   "matches": ["uid-0013","uid-0017","uid-0012"]
+  },
+  {
+   "query": "duration:15",
+   "matches": ["uid-0005","uid-0016","uid-0011","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-0007","uid-0018","uid-0017"]
+  },
+  {
+   "query": "leaseduration:30",
+   "matches": ["uid-0029","uid-edge-10","uid-edge-7","uid-0002","uid-edge-8","uid-0028","uid-edge-9","uid-0031"]
+  },
+  {
+   "query": "leasedurationseconds:0",
+   "matches": ["uid-0029","uid-edge-10","uid-edge-7","uid-0025","uid-0026","uid-0002","uid-0013","uid-0020","uid-edge-8","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "query": "transitions:0",
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0023","uid-0021","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0007","uid-0009","uid-0025","uid-0026","uid-0018","uid-0024","uid-0004","uid-0013","uid-0019","uid-0020","uid-edge-8","uid-0028","uid-edge-9","uid-0031"]
+  },
+  {
+   "query": "leasetransitions:5",
+   "matches": ["uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0017","uid-0027","uid-0010","uid-0014","uid-0003"]
+  },
+  {
+   "query": "changes:12",
+   "matches": ["uid-0011","uid-0022","uid-0008","uid-0030","uid-0002"]
+  },
+  {
+   "query": "holder:-",
+   "matches": ["uid-0005","uid-0006","uid-0016","uid-0021","uid-0029","uid-edge-5","uid-edge-6","uid-0007","uid-0009","uid-0025","uid-0008","uid-0018","uid-0030","uid-0013","uid-0017","uid-0020","uid-0010","uid-0012","uid-0014"]
+  },
+  {
+   "query": "holder:/^$/",
+   "matches": ["uid-0022","uid-edge-1","uid-edge-4","uid-0002","uid-0027","uid-0031"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-edge-7","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0016","uid-edge-7","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0005","uid-0006","uid-0016","uid-0023","uid-edge-10","uid-edge-5","uid-edge-7","uid-0009","uid-0018","uid-tie-00","uid-tie-01","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-edge-8","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0007","uid-0009","uid-0015","uid-0025","uid-0026","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0007","uid-0009","uid-0015","uid-0025","uid-0026","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0007","uid-0009","uid-0015","uid-0025","uid-0026","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0005","uid-0006","uid-0004","uid-0003"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0021","uid-0022","uid-0025","uid-0024","uid-tie-12","uid-0027"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0007","uid-0009","uid-0015","uid-0025","uid-0026","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0016","uid-0023","uid-0011","uid-0001","uid-0007","uid-0009","uid-0008","uid-0018","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0013","uid-0020","uid-0027","uid-0010","uid-0014","uid-0028","uid-0031"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0006","uid-0023","uid-0021","uid-0022","uid-0029","uid-0007","uid-0015","uid-0025","uid-0026","uid-0024","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0010","uid-0012","uid-0028","uid-0003"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0016","uid-0001","uid-0009","uid-0014","uid-0031"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0007","uid-0009","uid-0015","uid-0025","uid-0026","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0022","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0025","uid-0026","uid-0024","uid-0017","uid-edge-8","uid-0012","uid-edge-9","uid-0003"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0011","uid-0021","uid-0022","uid-0029","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0001","uid-0007","uid-0009","uid-0015","uid-0025","uid-0026","uid-0008","uid-0018","uid-0024","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "holder select -",
+   "filters": {
+    "holder": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": ["uid-0022","uid-edge-1","uid-edge-4","uid-0002","uid-0027","uid-0031"]
+  },
+  {
+   "name": "holder select a|x",
+   "filters": {
+    "holder": {
+     "type": "select",
+     "values": ["a","x"]
+    }
+   },
+   "matches": ["uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "name": "duration select 15",
+   "filters": {
+    "duration": {
+     "type": "select",
+     "values": ["15"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "holder select empty",
+   "filters": {
+    "holder": {
+     "type": "select",
+     "values": []
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0027","uid-edge-8","uid-0010","uid-0012","uid-0014","uid-0028","uid-edge-9"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0021","uid-0022","uid-edge-10","uid-edge-5","uid-edge-7","uid-0001","uid-0009","uid-0025","uid-0018","uid-0024","uid-tie-00","uid-tie-01","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-edge-8","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "holder regex",
+   "filters": {
+    "holder": {
+     "type": "regex",
+     "conditions": ["^node"]
+    }
+   },
+   "matches": ["uid-0005","uid-0006","uid-0007","uid-0018","uid-0020","uid-0010"]
+  },
+  {
+   "name": "renewTime regex",
+   "filters": {
+    "renewTime": {
+     "type": "regex",
+     "conditions": ["T11:5"]
+    }
+   },
+   "matches": ["uid-0006","uid-edge-10","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0015","uid-0008","uid-0018","uid-0013","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "name": "duration numeric",
+   "filters": {
+    "duration": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 15
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0022","uid-0029","uid-edge-10","uid-edge-7","uid-0001","uid-0009","uid-0025","uid-0026","uid-0030","uid-0002","uid-0004","uid-0013","uid-0019","uid-0020","uid-edge-8","uid-0028","uid-edge-9","uid-0003","uid-0031"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0016","uid-0023","uid-0021","uid-0022","uid-0001","uid-0009","uid-0018","uid-tie-00","uid-tie-01","uid-0002","uid-0004","uid-0013","uid-0017","uid-0019","uid-0020","uid-0003","uid-0031"]
+  }
+ ],
+ "uniqueValues": {
+  "holder": {
+   "values": ["-","10","9","a","café-holder","ip-10-0-0-1.ec2.internal_8b9a","kube-controller-manager-abc_1234","node-1_5f1e9c","same-renew","x","Zeta"],
+   "counts": {
+    "9": 6,
+    "10": 15,
+    "node-1_5f1e9c": 6,
+    "kube-controller-manager-abc_1234": 3,
+    "ip-10-0-0-1.ec2.internal_8b9a": 5,
+    "-": 6,
+    "x": 4,
+    "a": 2,
+    "same-renew": 2,
+    "Zeta": 3,
+    "café-holder": 3
+   }
+  },
+  "duration": null,
+  "renewTime": {
+   "values": ["2025-06-01T11:01:01.295000Z","2025-06-01T11:01:07.217000Z","2025-06-01T11:02:35.598000Z","2025-06-01T11:03:19.931000Z","2025-06-01T11:04:35.470000Z","2025-06-01T11:05:49.169000Z","2025-06-01T11:09:17.551000Z","2025-06-01T11:11:10.377000Z","2025-06-01T11:11:35.808000Z","2025-06-01T11:13:40.671000Z","2025-06-01T11:16:12.674000Z","2025-06-01T11:17:45.410000Z","2025-06-01T11:20:47.611000Z","2025-06-01T11:22:24.861000Z","2025-06-01T11:22:35.564000Z","2025-06-01T11:25:45.823000Z","2025-06-01T11:31:32.053000Z","2025-06-01T11:35:29.961000Z","2025-06-01T11:36:07.225000Z","2025-06-01T11:39:26.602000Z","2025-06-01T11:40:38.091000Z","2025-06-01T11:41:41.559000Z","2025-06-01T11:43:33.190000Z","2025-06-01T11:50:30.007000Z","2025-06-01T11:50:42.275000Z","2025-06-01T11:55:20.672000Z","2025-06-01T11:58:34.827000Z","2025-06-01T11:59:11.876000Z","2025-06-01T11:59:56.000000Z","2025-06-01T11:59:57.500000Z","2025-06-01T11:59:58.500000Z","2025-06-01T11:59:59.900000Z"],
+   "counts": {
+    "2025-06-01T11:39:26.602000Z": 1,
+    "2025-06-01T11:09:17.551000Z": 1,
+    "2025-06-01T11:55:20.672000Z": 1,
+    "2025-06-01T11:01:01.295000Z": 1,
+    "2025-06-01T11:20:47.611000Z": 1,
+    "2025-06-01T11:22:24.861000Z": 1,
+    "2025-06-01T11:31:32.053000Z": 1,
+    "2025-06-01T11:11:10.377000Z": 1,
+    "2025-06-01T11:41:41.559000Z": 1,
+    "2025-06-01T11:59:59.900000Z": 4,
+    "2025-06-01T11:59:58.500000Z": 1,
+    "2025-06-01T11:59:57.500000Z": 1,
+    "2025-06-01T11:59:56.000000Z": 2,
+    "2025-06-01T11:17:45.410000Z": 1,
+    "2025-06-01T11:40:38.091000Z": 1,
+    "2025-06-01T11:36:07.225000Z": 1,
+    "2025-06-01T11:50:30.007000Z": 1,
+    "2025-06-01T11:04:35.470000Z": 1,
+    "2025-06-01T11:59:11.876000Z": 1,
+    "2025-06-01T11:58:34.827000Z": 1,
+    "2025-06-01T11:35:29.961000Z": 1,
+    "2025-06-01T11:01:07.217000Z": 13,
+    "2025-06-01T11:03:19.931000Z": 1,
+    "2025-06-01T11:13:40.671000Z": 1,
+    "2025-06-01T11:50:42.275000Z": 1,
+    "2025-06-01T11:16:12.674000Z": 1,
+    "2025-06-01T11:22:35.564000Z": 1,
+    "2025-06-01T11:11:35.808000Z": 1,
+    "2025-06-01T11:25:45.823000Z": 1,
+    "2025-06-01T11:05:49.169000Z": 1,
+    "2025-06-01T11:02:35.598000Z": 1,
+    "2025-06-01T11:43:33.190000Z": 1
+   }
+  }
+ }
+}

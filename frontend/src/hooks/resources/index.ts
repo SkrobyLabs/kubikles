@@ -15,6 +15,7 @@
  */
 
 import { createNamespacedResourceHook, createClusterScopedResourceHook } from '../useResource';
+import { viewCapableNamespaced, viewCapableCluster } from '../useRemoteOrLegacy';
 
 // Import all list functions from Wails
 import {
@@ -63,43 +64,47 @@ import {
 // =============================================================================
 
 /** Hook for Kubernetes Pods */
-export const usePods = createNamespacedResourceHook('pods', ListPods, 'pods');
+const usePodsLegacyHook = createNamespacedResourceHook('pods', ListPods, 'pods');
+export const usePods = viewCapableNamespaced('pods', 'pods', usePodsLegacyHook);
+
+/** The legacy pod hook on its own: pod notifications diff the whole pod list even in view mode. */
+export const usePodsLegacy = usePodsLegacyHook;
 
 /** Hook for Kubernetes Deployments */
-export const useDeployments = createNamespacedResourceHook('deployments', ListDeployments, 'deployments');
+export const useDeployments = viewCapableNamespaced('deployments', 'deployments', createNamespacedResourceHook('deployments', ListDeployments, 'deployments'));
 
 /** Hook for Kubernetes StatefulSets */
-export const useStatefulSets = createNamespacedResourceHook('statefulsets', ListStatefulSets, 'statefulSets');
+export const useStatefulSets = viewCapableNamespaced('statefulsets', 'statefulSets', createNamespacedResourceHook('statefulsets', ListStatefulSets, 'statefulSets'));
 
 /** Hook for Kubernetes DaemonSets */
-export const useDaemonSets = createNamespacedResourceHook('daemonsets', ListDaemonSets, 'daemonSets');
+export const useDaemonSets = viewCapableNamespaced('daemonsets', 'daemonSets', createNamespacedResourceHook('daemonsets', ListDaemonSets, 'daemonSets'));
 
 /** Hook for Kubernetes ReplicaSets */
-export const useReplicaSets = createNamespacedResourceHook('replicasets', ListReplicaSets, 'replicaSets');
+export const useReplicaSets = viewCapableNamespaced('replicasets', 'replicaSets', createNamespacedResourceHook('replicasets', ListReplicaSets, 'replicaSets'));
 
 /** Hook for Kubernetes Jobs */
-export const useJobs = createNamespacedResourceHook('jobs', ListJobs, 'jobs');
+export const useJobs = viewCapableNamespaced('jobs', 'jobs', createNamespacedResourceHook('jobs', ListJobs, 'jobs'));
 
 /** Hook for Kubernetes CronJobs */
-export const useCronJobs = createNamespacedResourceHook('cronjobs', ListCronJobs, 'cronJobs');
+export const useCronJobs = viewCapableNamespaced('cronjobs', 'cronJobs', createNamespacedResourceHook('cronjobs', ListCronJobs, 'cronJobs'));
 
 /** Hook for Kubernetes Services */
-export const useServices = createNamespacedResourceHook('services', ListServices, 'services');
+export const useServices = viewCapableNamespaced('services', 'services', createNamespacedResourceHook('services', ListServices, 'services'));
 
 /** Hook for Kubernetes Ingresses */
-export const useIngresses = createNamespacedResourceHook('ingresses', ListIngresses, 'ingresses');
+export const useIngresses = viewCapableNamespaced('ingresses', 'ingresses', createNamespacedResourceHook('ingresses', ListIngresses, 'ingresses'));
 
 /** Hook for Kubernetes ConfigMaps */
-export const useConfigMaps = createNamespacedResourceHook('configmaps', ListConfigMaps, 'configMaps');
+export const useConfigMaps = viewCapableNamespaced('configmaps', 'configMaps', createNamespacedResourceHook('configmaps', ListConfigMaps, 'configMaps'));
 
 /** Hook for Kubernetes Secrets - uses metadata-only fetch to avoid transferring secret data */
-export const useSecrets = createNamespacedResourceHook('secrets', ListSecretsMetadata, 'secrets');
+export const useSecrets = viewCapableNamespaced('secrets', 'secrets', createNamespacedResourceHook('secrets', ListSecretsMetadata, 'secrets'));
 
 /** Hook for Kubernetes PersistentVolumeClaims */
-export const usePVCs = createNamespacedResourceHook('persistentvolumeclaims', ListPVCs, 'pvcs');
+export const usePVCs = viewCapableNamespaced('persistentvolumeclaims', 'pvcs', createNamespacedResourceHook('persistentvolumeclaims', ListPVCs, 'pvcs'));
 
 /** Hook for Kubernetes Events */
-export const useEventsList = createNamespacedResourceHook('events', ListEvents, 'events');
+export const useEventsList = viewCapableNamespaced('events', 'events', createNamespacedResourceHook('events', ListEvents, 'events'));
 
 // =============================================================================
 // CLUSTER-SCOPED RESOURCES
@@ -108,98 +113,102 @@ export const useEventsList = createNamespacedResourceHook('events', ListEvents, 
 // =============================================================================
 
 /** Hook for Kubernetes Nodes */
-export const useNodes = createClusterScopedResourceHook('nodes', ListNodes, 'nodes');
+const useNodesLegacyHook = createClusterScopedResourceHook('nodes', ListNodes, 'nodes');
+export const useNodes = viewCapableCluster('nodes', 'nodes', useNodesLegacyHook);
+
+/** The legacy node hook on its own: the topology diagram needs the whole node list even in view mode. */
+export const useNodesLegacy = useNodesLegacyHook;
 
 /** Hook for Kubernetes Namespaces */
-export const useNamespacesList = createClusterScopedResourceHook('namespaces', ListNamespaces, 'namespaces');
+export const useNamespacesList = viewCapableCluster('namespaces', 'namespaces', createClusterScopedResourceHook('namespaces', ListNamespaces, 'namespaces'));
 
 /** Hook for Kubernetes PersistentVolumes */
-export const usePVs = createClusterScopedResourceHook('persistentvolumes', ListPVs, 'pvs');
+export const usePVs = viewCapableCluster('persistentvolumes', 'pvs', createClusterScopedResourceHook('persistentvolumes', ListPVs, 'pvs'));
 
 /** Hook for Kubernetes IngressClasses */
-export const useIngressClasses = createClusterScopedResourceHook('ingressclasses', ListIngressClasses, 'ingressClasses');
+export const useIngressClasses = viewCapableCluster('ingressclasses', 'ingressClasses', createClusterScopedResourceHook('ingressclasses', ListIngressClasses, 'ingressClasses'));
 
 /** Hook for Kubernetes StorageClasses */
-export const useStorageClasses = createClusterScopedResourceHook('storageclasses', ListStorageClasses, 'storageClasses');
+export const useStorageClasses = viewCapableCluster('storageclasses', 'storageClasses', createClusterScopedResourceHook('storageclasses', ListStorageClasses, 'storageClasses'));
 
 // =============================================================================
 // ACCESS CONTROL / RBAC RESOURCES
 // =============================================================================
 
 /** Hook for Kubernetes ServiceAccounts (namespaced) */
-export const useServiceAccounts = createNamespacedResourceHook('serviceaccounts', ListServiceAccounts, 'serviceAccounts');
+export const useServiceAccounts = viewCapableNamespaced('serviceaccounts', 'serviceAccounts', createNamespacedResourceHook('serviceaccounts', ListServiceAccounts, 'serviceAccounts'));
 
 /** Hook for Kubernetes Roles (namespaced) */
-export const useRoles = createNamespacedResourceHook('roles', ListRoles, 'roles');
+export const useRoles = viewCapableNamespaced('roles', 'roles', createNamespacedResourceHook('roles', ListRoles, 'roles'));
 
 /** Hook for Kubernetes RoleBindings (namespaced) */
-export const useRoleBindings = createNamespacedResourceHook('rolebindings', ListRoleBindings, 'roleBindings');
+export const useRoleBindings = viewCapableNamespaced('rolebindings', 'roleBindings', createNamespacedResourceHook('rolebindings', ListRoleBindings, 'roleBindings'));
 
 /** Hook for Kubernetes ClusterRoles (cluster-scoped) */
-export const useClusterRoles = createClusterScopedResourceHook('clusterroles', ListClusterRoles, 'clusterRoles');
+export const useClusterRoles = viewCapableCluster('clusterroles', 'clusterRoles', createClusterScopedResourceHook('clusterroles', ListClusterRoles, 'clusterRoles'));
 
 /** Hook for Kubernetes ClusterRoleBindings (cluster-scoped) */
-export const useClusterRoleBindings = createClusterScopedResourceHook('clusterrolebindings', ListClusterRoleBindings, 'clusterRoleBindings');
+export const useClusterRoleBindings = viewCapableCluster('clusterrolebindings', 'clusterRoleBindings', createClusterScopedResourceHook('clusterrolebindings', ListClusterRoleBindings, 'clusterRoleBindings'));
 
 // =============================================================================
 // NETWORK RESOURCES
 // =============================================================================
 
 /** Hook for Kubernetes NetworkPolicies (namespaced) */
-export const useNetworkPolicies = createNamespacedResourceHook('networkpolicies', ListNetworkPolicies, 'networkPolicies');
+export const useNetworkPolicies = viewCapableNamespaced('networkpolicies', 'networkPolicies', createNamespacedResourceHook('networkpolicies', ListNetworkPolicies, 'networkPolicies'));
 
 /** Hook for Kubernetes Endpoints (namespaced) */
-export const useEndpoints = createNamespacedResourceHook('endpoints', ListEndpoints, 'endpoints');
+export const useEndpoints = viewCapableNamespaced('endpoints', 'endpoints', createNamespacedResourceHook('endpoints', ListEndpoints, 'endpoints'));
 
 /** Hook for Kubernetes EndpointSlices (namespaced) */
-export const useEndpointSlices = createNamespacedResourceHook('endpointslices', ListEndpointSlices, 'endpointSlices');
+export const useEndpointSlices = viewCapableNamespaced('endpointslices', 'endpointSlices', createNamespacedResourceHook('endpointslices', ListEndpointSlices, 'endpointSlices'));
 
 // =============================================================================
 // CONFIG & POLICY RESOURCES
 // =============================================================================
 
 /** Hook for Kubernetes HorizontalPodAutoscalers (namespaced) */
-export const useHPAs = createNamespacedResourceHook('hpas', ListHPAs, 'hpas');
+export const useHPAs = viewCapableNamespaced('hpas', 'hpas', createNamespacedResourceHook('hpas', ListHPAs, 'hpas'));
 
 /** Hook for Kubernetes PodDisruptionBudgets (namespaced) */
-export const usePDBs = createNamespacedResourceHook('pdbs', ListPDBs, 'pdbs');
+export const usePDBs = viewCapableNamespaced('pdbs', 'pdbs', createNamespacedResourceHook('pdbs', ListPDBs, 'pdbs'));
 
 /** Hook for Kubernetes ResourceQuotas (namespaced) */
-export const useResourceQuotas = createNamespacedResourceHook('resourcequotas', ListResourceQuotas, 'resourceQuotas');
+export const useResourceQuotas = viewCapableNamespaced('resourcequotas', 'resourceQuotas', createNamespacedResourceHook('resourcequotas', ListResourceQuotas, 'resourceQuotas'));
 
 /** Hook for Kubernetes LimitRanges (namespaced) */
-export const useLimitRanges = createNamespacedResourceHook('limitranges', ListLimitRanges, 'limitRanges');
+export const useLimitRanges = viewCapableNamespaced('limitranges', 'limitRanges', createNamespacedResourceHook('limitranges', ListLimitRanges, 'limitRanges'));
 
 // =============================================================================
 // ADMISSION CONTROL RESOURCES (cluster-scoped)
 // =============================================================================
 
 /** Hook for Kubernetes ValidatingWebhookConfigurations */
-export const useValidatingWebhookConfigurations = createClusterScopedResourceHook('validatingwebhookconfigurations', ListValidatingWebhookConfigurations, 'validatingWebhookConfigurations');
+export const useValidatingWebhookConfigurations = viewCapableCluster('validatingwebhookconfigurations', 'validatingWebhookConfigurations', createClusterScopedResourceHook('validatingwebhookconfigurations', ListValidatingWebhookConfigurations, 'validatingWebhookConfigurations'));
 
 /** Hook for Kubernetes MutatingWebhookConfigurations */
-export const useMutatingWebhookConfigurations = createClusterScopedResourceHook('mutatingwebhookconfigurations', ListMutatingWebhookConfigurations, 'mutatingWebhookConfigurations');
+export const useMutatingWebhookConfigurations = viewCapableCluster('mutatingwebhookconfigurations', 'mutatingWebhookConfigurations', createClusterScopedResourceHook('mutatingwebhookconfigurations', ListMutatingWebhookConfigurations, 'mutatingWebhookConfigurations'));
 
 // =============================================================================
 // SCHEDULING RESOURCES (cluster-scoped)
 // =============================================================================
 
 /** Hook for Kubernetes PriorityClasses */
-export const usePriorityClasses = createClusterScopedResourceHook('priorityclasses', ListPriorityClasses, 'priorityClasses');
+export const usePriorityClasses = viewCapableCluster('priorityclasses', 'priorityClasses', createClusterScopedResourceHook('priorityclasses', ListPriorityClasses, 'priorityClasses'));
 
 // =============================================================================
 // COORDINATION RESOURCES
 // =============================================================================
 
 /** Hook for Kubernetes Leases (namespaced) - leader election debugging */
-export const useLeases = createNamespacedResourceHook('leases', ListLeases, 'leases');
+export const useLeases = viewCapableNamespaced('leases', 'leases', createNamespacedResourceHook('leases', ListLeases, 'leases'));
 
 // =============================================================================
 // CSI / STORAGE RESOURCES (cluster-scoped)
 // =============================================================================
 
 /** Hook for Kubernetes CSIDrivers */
-export const useCSIDrivers = createClusterScopedResourceHook('csidrivers', ListCSIDrivers, 'csiDrivers');
+export const useCSIDrivers = viewCapableCluster('csidrivers', 'csiDrivers', createClusterScopedResourceHook('csidrivers', ListCSIDrivers, 'csiDrivers'));
 
 /** Hook for Kubernetes CSINodes */
-export const useCSINodes = createClusterScopedResourceHook('csinodes', ListCSINodes, 'csiNodes');
+export const useCSINodes = viewCapableCluster('csinodes', 'csiNodes', createClusterScopedResourceHook('csinodes', ListCSINodes, 'csiNodes'));

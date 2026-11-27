@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { usePVs } from '~/hooks/resources';
 import { useK8s } from '~/context';
@@ -10,68 +12,23 @@ import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import PVActionsMenu from './PVActionsMenu';
 import { usePVActions } from './usePVActions';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { pvSemantics } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildPVViewColumns, getStatusColor, getReclaimPolicyColor, renderAccessModes } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
 
-const getStatusColor = (phase: any) => {
-    switch (phase) {
-        case 'Bound':
-            return 'text-green-400';
-        case 'Available':
-            return 'text-blue-400';
-        case 'Released':
-            return 'text-yellow-400';
-        case 'Failed':
-            return 'text-red-400';
-        default:
-            return 'text-gray-400';
-    }
-};
-
-const getReclaimPolicyColor = (policy: any) => {
-    switch (policy) {
-        case 'Delete':
-            return 'text-red-400';
-        case 'Retain':
-            return 'text-green-400';
-        case 'Recycle':
-            return 'text-yellow-400';
-        default:
-            return 'text-gray-400';
-    }
-};
-
-const getAccessModeColor = (mode: any) => {
-    switch (mode) {
-        case 'ReadWriteOnce':
-            return 'text-blue-400';
-        case 'ReadOnlyMany':
-            return 'text-yellow-400';
-        case 'ReadWriteMany':
-            return 'text-green-400';
-        case 'ReadWriteOncePod':
-            return 'text-purple-400';
-        default:
-            return 'text-gray-400';
-    }
-};
-
-const renderAccessModes = (modes: any) => {
-    if (!modes || modes.length === 0) return '-';
-    return (
-        <span className="flex flex-wrap gap-1">
-            {modes.map((mode: any, idx: number) => (
-                <span key={idx} className={getAccessModeColor(mode)}>{mode}</span>
-            ))}
-        </span>
-    );
-};
+const PV_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const PV_VIEW_OPTIONS = { sort: PV_INITIAL_SORT, columns: defaultViewColumns('persistentvolumes') };
+const NO_DATA: any[] = [];
 
 export default function PVList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { pvs, loading, loadState } = usePVs(currentContext, isVisible) as any;
-    const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePVActions();
+    const { pvs, loading, loadState, view } = usePVs(currentContext, isVisible, PV_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml, handleShowDependencies } = useStableCallbacks(usePVActions());
     const selection = useSelection();
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     // Unified bulk actions (also used for single delete)
     const {
@@ -88,18 +45,18 @@ export default function PVList({ isVisible }: { isVisible: boolean }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: pvSemantics.name.getValue },
         {
             key: 'capacity',
             label: 'Capacity',
             render: (item: any) => item.spec?.capacity?.storage || '-',
-            getValue: (item: any) => item.spec?.capacity?.storage || ''
+            getValue: pvSemantics.capacity.getValue
         },
         {
             key: 'accessModes',
             label: 'Access Modes',
             render: (item: any) => renderAccessModes(item.spec?.accessModes),
-            getValue: (item: any) => item.spec?.accessModes?.join(', ') || ''
+            getValue: pvSemantics.accessModes.getValue
         },
         {
             key: 'reclaimPolicy',
@@ -109,7 +66,7 @@ export default function PVList({ isVisible }: { isVisible: boolean }) {
                     {item.spec.persistentVolumeReclaimPolicy}
                 </span>
             ) : '-',
-            getValue: (item: any) => item.spec?.persistentVolumeReclaimPolicy || ''
+            getValue: pvSemantics.reclaimPolicy.getValue
         },
         {
             key: 'status',
@@ -119,26 +76,25 @@ export default function PVList({ isVisible }: { isVisible: boolean }) {
                     {item.status?.phase || 'Unknown'}
                 </span>
             ),
-            getValue: (item: any) => item.status?.phase
+            getValue: pvSemantics.status.getValue
         },
         {
             key: 'claim',
             label: 'Claim',
             render: (item: any) => item.spec?.claimRef ? `${item.spec.claimRef.namespace}/${item.spec.claimRef.name}` : '-',
-            getValue: (item: any) => item.spec?.claimRef ? `${item.spec.claimRef.namespace}/${item.spec.claimRef.name}` : ''
+            getValue: pvSemantics.claim.getValue
         },
-        { key: 'storageClass', label: 'Storage Class', render: (item: any) => item.spec?.storageClassName || '-', getValue: (item: any) => item.spec?.storageClassName || '' },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'storageClass', label: 'Storage Class', render: (item: any) => item.spec?.storageClassName || '-', getValue: pvSemantics.storageClass.getValue },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: pvSemantics.age.getValue },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <PVActionsMenu
+                <MenuBound
+                    as={PVActionsMenu}
+                    menuId={`pv-${item.metadata.uid}`}
                     pv={item}
-                    isOpen={activeMenuId === `pv-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `pv-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                     onDelete={(pv: any) => openBulkDelete([pv])}
@@ -148,19 +104,28 @@ export default function PVList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, openBulkDelete]);
+    ], [handleEditYaml, handleShowDependencies, openBulkDelete]);
+
+    const viewColumns = useMemo(
+        () => buildPVViewColumns({
+            onEditYaml: handleEditYaml,
+            onShowDependencies: handleShowDependencies,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [handleEditYaml, handleShowDependencies, openBulkDelete]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="Persistent Volumes"
-                columns={columns}
-                data={pvs}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : pvs}
                 isLoading={loading}
                 showNamespaceSelector={false}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={PV_INITIAL_SORT}
                 resourceType="pvs"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

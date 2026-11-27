@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import HelmReleaseActionsMenu from './HelmReleaseActionsMenu';
 import HelmUpgradeDialog from './HelmUpgradeDialog';
@@ -12,7 +14,6 @@ import { useNotification } from '~/context';
 import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
 import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues } from 'wailsjs/go/main/App';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 const formatAge = (timestamp: any) => {
     if (!timestamp) return '-';
@@ -58,7 +59,6 @@ const getStatusClass = (status: any) => {
 export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { openModal, closeModal } = useUI();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { addNotification } = useNotification();
     const [upgradeRelease, setUpgradeRelease] = useState<any>(null);
     const selection = useSelection();
@@ -80,7 +80,7 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
         handleViewHistory,
         handleRollback,
         handleUninstall
-    } = useHelmReleaseActions();
+    } = useStableCallbacks(useHelmReleaseActions());
 
     // Custom export for Helm releases - includes chart info in YAML header
     const handleExportYaml = useCallback(async (items: any[], { onProgress, signal }: any = {}) => {
@@ -239,11 +239,10 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <HelmReleaseActionsMenu
+                <MenuBound
+                    as={HelmReleaseActionsMenu}
+                    menuId={`helm-${item.namespace}-${item.name}`}
                     release={item}
-                    isOpen={activeMenuId === `helm-${item.namespace}-${item.name}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `helm-${item.namespace}-${item.name}`, buttonElement)}
                     onViewDetails={() => handleOpenDetails(item)}
                     onViewValues={() => handleViewValues(item)}
                     onViewHistory={() => handleViewHistory(item)}
@@ -256,7 +255,7 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleOpenDetails, handleViewValues, handleViewHistory, handleRollback, handleUpgrade, handleForceStatus, handleUninstall]);
+    ], [handleOpenDetails, handleViewValues, handleViewHistory, handleRollback, handleUpgrade, handleForceStatus, handleUninstall]);
 
     // Generate a unique ID for each release since Helm releases don't have UIDs
     const dataWithIds = useMemo(() => {
@@ -282,7 +281,6 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
                 onNamespaceChange={setSelectedNamespaces}
                 showNamespaceSelector={true}
                 multiSelectNamespaces={true}
-                highlightedUid={activeMenuId}
                 initialSort={{ key: 'updated', direction: 'desc' }}
                 resourceType="helmreleases"
                 onRefresh={refresh}

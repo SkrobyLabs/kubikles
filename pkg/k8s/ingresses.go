@@ -30,6 +30,7 @@ func (c *Client) ListIngressesWithContext(ctx context.Context, namespace string,
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -54,6 +55,7 @@ func (c *Client) ListIngressesForContext(contextName, namespace string) ([]netwo
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -131,6 +133,7 @@ func (c *Client) ListIngressClassesWithContext(ctx context.Context, contextName 
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
