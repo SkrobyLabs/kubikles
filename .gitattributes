@@ -1,0 +1,2 @@
+# Expected row output for the parity tests; collapsed in GitHub diffs and left out of language stats.
+pkg/rows/testdata/golden/*.json linguist-generated=true
