@@ -414,7 +414,7 @@ export function clusterRoleBindingFixtures(): FixtureSet {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Namespaced configuration and policy types (batch B1).
+// Namespaced configuration and policy types.
 
 type NamespacedEdge = any & { __noSort?: boolean };
 
@@ -688,7 +688,7 @@ export function serviceAccountFixtures(): FixtureSet {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Namespaced network and RBAC types (batch B2).
+// Namespaced network and RBAC types.
 
 export function roleFixtures(): FixtureSet {
     return namespacedFixtures('roles', 137, (r, _name) => {
@@ -964,7 +964,7 @@ export function ingressFixtures(): FixtureSet {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Workload types without pod-derived columns (batch C).
+// Workload types without pod-derived columns.
 
 /** A pod template as the API serves it: metadata with a null creation timestamp, spec with containers. */
 function podTemplate(containers: any[], extra: any = {}) {
@@ -1420,7 +1420,7 @@ export function pvcFixtures(): FixtureSet {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Pods and nodes (batch D). Shapes follow what the Go backend serialises for core/v1 Pod and
+// Pods and nodes. Shapes follow what the Go backend serialises for core/v1 Pod and
 // Node: container statuses always carry name, state ({} when unset), lastState, ready,
 // restartCount, image and imageID; node status always carries nodeInfo.
 

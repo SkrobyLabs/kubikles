@@ -173,7 +173,7 @@ const defaultConfig: AppConfig = {
         // Run the windowed-list engine in a Web Worker where the in-app probe shows it works.
         // "off" keeps the engine on the main thread. Applies to lists opened afterwards.
         viewWorker: 'auto',
-        // Drop watch updates that change nothing but resourceVersion on lists still on the legacy path.
+        // Drop watch updates that change nothing but resourceVersion on lists that do not use windowed views.
         legacyEventDedupe: false
     },
     debug: {

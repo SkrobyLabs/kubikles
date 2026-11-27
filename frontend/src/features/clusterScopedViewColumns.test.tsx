@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-// Batch A lists (cluster-scoped: classes, webhook configurations, CSI, volumes, RBAC): column builders must cover the
+// Cluster-scoped lists (classes, webhook configurations, CSI, volumes, RBAC): column builders must cover the
 // generated schema exactly, render from cells only (a recording proxy catches reads of anything
 // the cell shape does not provide), and hand actions the row identity.
 vi.mock('~/components/shared/MenuBound', () => ({ default: () => null }));

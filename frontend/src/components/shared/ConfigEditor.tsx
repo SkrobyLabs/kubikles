@@ -370,7 +370,7 @@ export default function ConfigEditor() {
                                 },
                                 legacyEventDedupe: {
                                     type: 'boolean',
-                                    description: 'Drop watch updates that change nothing but the resource version on lists still on the legacy path.',
+                                    description: 'Drop watch updates that change nothing but the resource version on lists that do not use windowed views.',
                                     default: false
                                 },
                                 clientPoolSize: {

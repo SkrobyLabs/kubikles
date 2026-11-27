@@ -1174,8 +1174,7 @@ export default function ResourceList({
     // Consumers that asked for the filtered uids get them over the refs stream, lazily.
     useEffect(() => {
         if (!source || !onFilteredUidsChange) return;
-        // A 'transitions' feed from the backend can replace this refetch later; for now the set is
-        // re-read after the counts settle.
+        // The set is re-read after the counts settle.
         const timer = setTimeout(() => {
             void source.selectAllRefs().then(refs => onFilteredUidsChange(new Set(refs.map(r => r.uid)))).catch(() => {});
         }, 300);

@@ -14,43 +14,43 @@ import (
 	"kubikles/pkg/store"
 )
 
-// The cluster-scoped batch A types served end to end: the golden fixtures are loaded into a fake
+// The cluster-scoped types served end to end: the golden fixtures are loaded into a fake
 // clientset, the real store lists them, and a real view answers every recorded search and the
 // recorded name order. The debug cluster cannot hold these types, so this is the live-data check.
-func TestBatchAViewsOverRealStore(t *testing.T) {
+func TestClusterScopedViewsOverRealStore(t *testing.T) {
 	checkViewsOverRealStore(t, []string{
 		"validatingwebhookconfigurations", "mutatingwebhookconfigurations", "csidrivers", "csinodes",
 		"persistentvolumes", "clusterroles", "clusterrolebindings",
 	})
 }
 
-// The namespaced configuration and policy types of batch B1, served the same way.
-func TestBatchB1ViewsOverRealStore(t *testing.T) {
+// The namespaced configuration and policy types, served the same way.
+func TestConfigPolicyViewsOverRealStore(t *testing.T) {
 	checkViewsOverRealStore(t, []string{
 		"hpas", "pdbs", "resourcequotas", "limitranges", "leases", "networkpolicies", "serviceaccounts",
 	})
 }
 
-// The namespaced network and RBAC types of batch B2, served the same way.
-func TestBatchB2ViewsOverRealStore(t *testing.T) {
+// The namespaced network and RBAC types, served the same way.
+func TestNetworkRbacViewsOverRealStore(t *testing.T) {
 	checkViewsOverRealStore(t, []string{
 		"roles", "rolebindings", "endpoints", "endpointslices", "services", "ingresses",
 	})
 }
 
-// The workload types without pod-derived columns and the persistent volume claims of batch C.
-func TestBatchCViewsOverRealStore(t *testing.T) {
+// The workload types without pod-derived columns and the persistent volume claims.
+func TestWorkloadStorageViewsOverRealStore(t *testing.T) {
 	checkViewsOverRealStore(t, []string{"replicasets", "jobs", "daemonsets", "persistentvolumeclaims"})
 }
 
-// Pods and nodes of batch D, served the same way (their metrics columns have no data here).
-func TestBatchDViewsOverRealStore(t *testing.T) {
+// Pods and nodes, served the same way (their metrics columns have no data here).
+func TestPodNodeViewsOverRealStore(t *testing.T) {
 	checkViewsOverRealStore(t, []string{"pods", "nodes"})
 }
 
 // The metrics overlays end to end: the real store feeds the rows, the hub feeds the metrics, and
 // every recorded state of the golden file gives the recorded cpu order, availability and cells.
-func TestBatchDMetricsOverRealStore(t *testing.T) {
+func TestPodNodeMetricsOverRealStore(t *testing.T) {
 	// Namespaces are left out: their fixtures repeat names, which a fake clientset cannot hold
 	// (the golden tests cover them).
 	for _, typ := range []string{"pods", "nodes"} {
@@ -223,11 +223,11 @@ func checkViewsOverRealStore(t *testing.T, types []string) {
 	}
 }
 
-// Deployments and stateful sets of batch E served end to end: the golden workloads and the pods of
+// Deployments and stateful sets served end to end: the golden workloads and the pods of
 // a recorded pod list go into a fake clientset, the real store lists both, and a real view gives
 // the recorded derived cells and Pods order; a second recorded list is then applied pod by pod
 // through the store watch and must give that list's cells.
-func TestBatchEWorkloadsOverRealStore(t *testing.T) {
+func TestDeploymentStatefulSetViewsOverRealStore(t *testing.T) {
 	checkViewsOverRealStore(t, []string{"deployments", "statefulsets"})
 	for _, typ := range []string{"deployments", "statefulsets"} {
 		t.Run(typ+"/derived", func(t *testing.T) {

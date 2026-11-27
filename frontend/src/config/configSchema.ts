@@ -210,7 +210,7 @@ export const configSchema: Record<string, any> = {
         legacyEventDedupe: {
             type: 'boolean',
             label: 'Skip No-op Watch Updates',
-            description: 'Drop watch updates that change nothing but the resource version (lists not yet on windowed views)',
+            description: 'Drop watch updates that change nothing but the resource version (lists that do not use windowed views)',
             subtext: 'Saves list re-renders on busy clusters. Objects whose content changes on every update (node heartbeats, leases) are unaffected.',
             default: false
         },

@@ -184,7 +184,7 @@ kubikles/
 │   │   ├── planner.go      # chooseNamespaceScope port (cluster-wide vs per-namespace shards)
 │   │   ├── routes.go       # GET /_kubikles/v1/views/{id}/window|refs|rows and /objects/{type} (bulk.RouteProvider)
 │   │   ├── tsgen.go        # Renders frontend/src/generated/rowSchemas.ts from the registry
-│   │   ├── batcha_integration_test.go  # Golden fixtures served through a fake clientset, the real store and real views (live-data check for types the debug cluster cannot hold; also scopes namespaced types by namespace)
+│   │   ├── store_integration_test.go   # Golden fixtures served through a fake clientset, the real store and real views (live-data check for types the debug cluster cannot hold; also scopes namespaced types by namespace)
 │   │   ├── testdata/golden/# Parity files written by the legacy frontend code (see frontend/src/test/golden)
 │   │   └── query/          # Search language: parser.go (queryParser.ts port), engine.go (filterEngine.ts port), jsregex.go (RE2 first, regexp2 ECMAScript fallback), jsstring.go (JavaScript string semantics: UTF-16 order, whitespace set, pattern rewriting for JS parity)
 │   ├── compressedassets/

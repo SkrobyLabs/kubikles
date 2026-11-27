@@ -2,7 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-// Batch D lists (pods, nodes and the namespace metrics columns): the column builders cover the
+// Pods, nodes and the namespace metrics columns: the column builders cover the
 // generated schema exactly, render from cells only, hand actions the row identity, and the
 // metrics cells show what the legacy cells show for the same sample.
 vi.mock('~/components/shared/MenuBound', () => ({ default: () => null }));

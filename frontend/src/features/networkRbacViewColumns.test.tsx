@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-// Batch B2 lists (namespaced network and RBAC types): column builders must cover the generated
+// Namespaced network and RBAC types: column builders must cover the generated
 // schema exactly, render from cells only (a recording proxy catches reads of anything the cell
 // shape does not provide), and hand actions the row identity.
 vi.mock('~/components/shared/MenuBound', () => ({ default: () => null }));

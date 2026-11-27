@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-// Batch E lists (deployments, stateful sets): column builders must cover the generated schema
+// Deployments, stateful sets: column builders must cover the generated schema
 // exactly, render from cells only (a recording proxy catches reads of anything the cell shape does
 // not provide), and draw the Pods squares from the podRefs cell.
 vi.mock('~/components/shared/MenuBound', () => ({ default: () => null }));
