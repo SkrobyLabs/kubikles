@@ -77,6 +77,10 @@ const performanceConfigSchema = z.object({
   enableRequestCancellation: z.boolean().optional(),
   forceHttp1: z.boolean().optional(),
   clientPoolSize: z.number().int().min(0).max(10).optional(),
+  bulkTransport: z.enum(['auto', 'off']).optional(),
+  viewStore: z.boolean().optional(),
+  viewWorker: z.enum(['auto', 'off']).optional(),
+  legacyEventDedupe: z.boolean().optional(),
 });
 
 // Debug config

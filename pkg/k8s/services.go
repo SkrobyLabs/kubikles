@@ -32,6 +32,7 @@ func (c *Client) ListServicesWithContext(ctx context.Context, namespace string, 
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -56,6 +57,7 @@ func (c *Client) ListServicesForContext(contextName, namespace string) ([]v1.Ser
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {

@@ -32,6 +32,7 @@ export function isInServerMode() {
 let ws = null;
 let wsConnecting = false;
 let wsReconnectTimer = null;
+let hasConnectedBefore = false; // true after the first successful open
 let currentClientId = null; // Server-assigned client ID for session tracking
 const eventListeners = new Map(); // eventName -> Set of callbacks
 
@@ -54,6 +55,14 @@ function connectWebSocket() {
         ws.onopen = () => {
             console.log('[WS] Connected');
             wsConnecting = false;
+            // Events sent while disconnected (including when the server cut off
+            // a slow client) are lost, so tell listeners to re-list.
+            if (hasConnectedBefore) {
+                eventListeners.get('ws:reconnected')?.forEach(cb => {
+                    try { cb(undefined); } catch (err) { console.error('[WS] reconnect handler error:', err); }
+                });
+            }
+            hasConnectedBefore = true;
             if (wsReconnectTimer) {
                 clearTimeout(wsReconnectTimer);
                 wsReconnectTimer = null;

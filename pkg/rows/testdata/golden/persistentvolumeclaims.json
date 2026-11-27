@@ -1,0 +1,4617 @@
+{
+ "type": "persistentvolumeclaims",
+ "now": 1748779200000,
+ "columns": ["name","namespace","status","volume","capacity","accessModes","storageClass","age","volumeMode","requested","selector"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "status": "select",
+  "volume": "select",
+  "capacity": "select",
+  "accessModes": "select",
+  "storageClass": "select",
+  "age": "numeric",
+  "volumeMode": "select",
+  "requested": "select",
+  "selector": "select"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "10Gi"
+     }
+    },
+    "volumeName": "pvc-299",
+    "storageClassName": "gp3"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "10Gi"
+    }
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T15:41:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "250Mi"
+     }
+    },
+    "volumeName": "pvc-915",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "250Mi"
+    }
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-29T23:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOncePod"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "gp3"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T13:44:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "250Mi"
+     }
+    },
+    "storageClassName": "standard",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Lost"
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T07:48:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "2Ti"
+     }
+    },
+    "storageClassName": "Fast-SSD"
+   },
+   "status": {
+    "phase": "Lost"
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T05:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOncePod"],
+    "resources": {
+     "requests": {
+      "storage": "500Mi"
+     }
+    },
+    "volumeName": "pvc-422",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "500Mi"
+    }
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T03:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "5Gi"
+     }
+    },
+    "storageClassName": "gp3"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-29T18:21:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "5Gi"
+     }
+    },
+    "storageClassName": "gp3"
+   },
+   "status": {
+    "phase": "Lost"
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T09:46:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce","ReadWriteMany","ReadOnlyMany"],
+    "resources": {
+     "requests": {
+      "storage": "2Ti"
+     }
+    },
+    "volumeName": "pvc-519",
+    "storageClassName": "standard",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "2Ti"
+    }
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "default",
+    "creationTimestamp": "2025-06-01T01:36:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "2Ti"
+     }
+    },
+    "volumeName": "pvc-353",
+    "storageClassName": "standard"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "2Ti"
+    }
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T14:54:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pv-a"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "plain",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pv-g"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-10",
+    "creationTimestamp": "2025-06-01T10:31:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pv-i"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-13",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "5Gi"
+     }
+    }
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "pending-no-volume",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": [],
+    "resources": {}
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "no-requests-no-modes",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pv-b",
+    "storageClassName": ""
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "2Gi"
+    }
+   },
+   "metadata": {
+    "name": "empty-class-grown",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pv-c",
+    "volumeMode": ""
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "empty-volume-mode",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany"],
+    "selector": {
+     "matchLabels": {
+      "1": "one",
+      "a": "1",
+      "b": "2"
+     }
+    },
+    "resources": {
+     "requests": {
+      "storage": "10Gi"
+     }
+    },
+    "volumeName": "pv-d"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "10Gi"
+    }
+   },
+   "metadata": {
+    "name": "multi-selector",
+    "namespace": "default",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["Custom"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pv-e"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "unknown-access-mode",
+    "namespace": "default",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    }
+   },
+   "status": {},
+   "metadata": {
+    "name": "no-phase",
+    "namespace": "default",
+    "uid": "uid-edge-8",
+    "creationTimestamp": "2025-06-01T10:33:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "3Gi"
+     }
+    },
+    "volumeName": "pv-f"
+   },
+   "status": {
+    "phase": "Bound"
+   },
+   "metadata": {
+    "name": "bound-without-capacity",
+    "namespace": "default",
+    "uid": "uid-edge-9",
+    "creationTimestamp": "2025-06-01T10:32:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOncePod"],
+    "resources": {
+     "requests": {
+      "storage": "2Ti"
+     }
+    },
+    "volumeName": "pvc-798",
+    "storageClassName": "standard",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "2Ti"
+    }
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T10:47:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOncePod"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pvc-846",
+    "storageClassName": "standard",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T17:37:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "2Ti"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T23:03:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "2Ti"
+     }
+    },
+    "storageClassName": "standard",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Lost"
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T06:54:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "10Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T20:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOncePod"],
+    "resources": {
+     "requests": {
+      "storage": "100Gi"
+     }
+    },
+    "volumeName": "pvc-470"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "100Gi"
+    }
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-29T21:47:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "500Mi"
+     }
+    }
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T21:06:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce","ReadWriteMany","ReadOnlyMany"],
+    "selector": {
+     "matchLabels": {
+      "app": "web",
+      "tier": "frontend"
+     }
+    },
+    "resources": {
+     "requests": {
+      "storage": "2Ti"
+     }
+    },
+    "storageClassName": "standard"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T18:56:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "250Mi"
+     }
+    },
+    "storageClassName": "standard",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-29T20:08:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce","ReadWriteMany","ReadOnlyMany"],
+    "resources": {
+     "requests": {
+      "storage": "250Mi"
+     }
+    },
+    "volumeName": "pvc-897",
+    "storageClassName": "gp3",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "250Mi"
+    }
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T15:12:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "selector": {
+     "matchLabels": {
+      "9": "nine",
+      "10": "ten",
+      "app": "x"
+     }
+    },
+    "resources": {
+     "requests": {
+      "storage": "100Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T03:18:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOncePod"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Lost"
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T12:03:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "500Mi"
+     }
+    },
+    "volumeName": "pvc-518",
+    "storageClassName": "gp3"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T07:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "100Gi"
+     }
+    },
+    "storageClassName": "standard",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T09:53:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "2Ti"
+     }
+    },
+    "volumeName": "pvc-534",
+    "storageClassName": "Fast-SSD"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "250Mi"
+    }
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T19:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "500Mi"
+     }
+    },
+    "volumeName": "pvc-611",
+    "storageClassName": "gp3",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "500Mi"
+    }
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-06-01T00:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "10Gi"
+     }
+    },
+    "storageClassName": "Fast-SSD",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T23:05:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteMany"],
+    "resources": {
+     "requests": {
+      "storage": "5Gi"
+     }
+    },
+    "volumeName": "pvc-31",
+    "storageClassName": "gp3"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "5Gi"
+    }
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T10:26:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pvc-81",
+    "storageClassName": "standard",
+    "volumeMode": "Block"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T00:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOncePod"],
+    "resources": {
+     "requests": {
+      "storage": "250Mi"
+     }
+    },
+    "storageClassName": "standard"
+   },
+   "status": {
+    "phase": "Pending"
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T04:57:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pv-h"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-11",
+    "creationTimestamp": "2025-06-01T10:30:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce","ReadWriteMany","ReadOnlyMany"],
+    "resources": {
+     "requests": {
+      "storage": "10Gi"
+     }
+    },
+    "volumeName": "pvc-655",
+    "storageClassName": "gp3"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "10Gi"
+    }
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T12:15:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "1Gi"
+     }
+    },
+    "volumeName": "pv-h"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-12",
+    "creationTimestamp": "2025-06-01T10:29:00Z"
+   }
+  },
+  {
+   "spec": {
+    "accessModes": ["ReadOnlyMany","ReadWriteOnce"],
+    "resources": {
+     "requests": {
+      "storage": "500Mi"
+     }
+    },
+    "volumeName": "pvc-457",
+    "storageClassName": "standard",
+    "volumeMode": "Filesystem"
+   },
+   "status": {
+    "phase": "Bound",
+    "capacity": {
+     "storage": "500Mi"
+    }
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T07:57:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-8","uid-edge-13"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "status": "Bound",
+   "volume": "pvc-299",
+   "capacity": "10Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "gp3",
+   "age": "2025-05-31T15:41:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "10Gi",
+   "selector": ""
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "Prod",
+   "status": "Bound",
+   "volume": "pvc-915",
+   "capacity": "250Mi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-05-29T23:34:00Z",
+   "volumeMode": "Block",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "Prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "gp3",
+   "age": "2025-05-31T13:44:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "Prod",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "250Mi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-30T07:48:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "Prod",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "2Ti",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T05:39:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "Prod",
+   "status": "Bound",
+   "volume": "pvc-422",
+   "capacity": "500Mi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "",
+   "age": "2025-06-01T03:38:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "5Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "gp3",
+   "age": "2025-05-29T18:21:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "5Gi",
+   "selector": ""
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "default",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "5Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "gp3",
+   "age": "2025-05-30T09:46:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "5Gi",
+   "selector": ""
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pvc-519",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+   "storageClass": "standard",
+   "age": "2025-06-01T01:36:00Z",
+   "volumeMode": "Block",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pvc-353",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-30T14:54:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-edge-1": {
+   "name": "plain",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-a",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:40:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-10": {
+   "name": "annotated",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-g",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:31:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-13": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-i",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": null,
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-2": {
+   "name": "pending-no-volume",
+   "namespace": "default",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "5Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:39:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "5Gi",
+   "selector": ""
+  },
+  "uid-edge-3": {
+   "name": "no-requests-no-modes",
+   "namespace": "default",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "",
+   "accessModes": "",
+   "storageClass": "",
+   "age": "2025-06-01T10:38:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "",
+   "selector": ""
+  },
+  "uid-edge-4": {
+   "name": "empty-class-grown",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-b",
+   "capacity": "2Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "",
+   "age": "2025-06-01T10:37:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-5": {
+   "name": "empty-volume-mode",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-c",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:36:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-6": {
+   "name": "multi-selector",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-d",
+   "capacity": "10Gi",
+   "accessModes": "ReadOnlyMany",
+   "storageClass": "",
+   "age": "2025-06-01T10:35:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "10Gi",
+   "selector": "1=one,a=1,b=2"
+  },
+  "uid-edge-7": {
+   "name": "unknown-access-mode",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-e",
+   "capacity": "1Gi",
+   "accessModes": "Custom",
+   "storageClass": "",
+   "age": "2025-06-01T10:34:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-8": {
+   "name": "no-phase",
+   "namespace": "default",
+   "status": null,
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:33:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-9": {
+   "name": "bound-without-capacity",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-f",
+   "capacity": "3Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:32:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "3Gi",
+   "selector": ""
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "kube-system",
+   "status": "Bound",
+   "volume": "pvc-798",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "standard",
+   "age": "2025-05-30T10:47:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "kube-system",
+   "status": "Bound",
+   "volume": "pvc-846",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "standard",
+   "age": "2025-05-29T17:37:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "kube-system",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-31T23:03:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "kube-system",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "standard",
+   "age": "2025-06-01T06:54:00Z",
+   "volumeMode": "Block",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "kube-system",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "10Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-31T20:17:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "10Gi",
+   "selector": ""
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "prod",
+   "status": "Bound",
+   "volume": "pvc-470",
+   "capacity": "100Gi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "",
+   "age": "2025-05-29T21:47:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "100Gi",
+   "selector": ""
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "500Mi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-05-31T21:06:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+   "storageClass": "standard",
+   "age": "2025-05-30T18:56:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": "app=web,tier=frontend"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "250Mi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-29T20:08:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "prod",
+   "status": "Bound",
+   "volume": "pvc-897",
+   "capacity": "250Mi",
+   "accessModes": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+   "storageClass": "gp3",
+   "age": "2025-05-30T15:12:00Z",
+   "volumeMode": "Block",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "100Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-06-01T03:18:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "100Gi",
+   "selector": "9=nine,10=ten,app=x"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "prod",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-31T12:03:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "prod",
+   "status": "Bound",
+   "volume": "pvc-518",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "gp3",
+   "age": "2025-06-01T07:37:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "team-a",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "100Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "standard",
+   "age": "2025-05-30T09:53:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "100Gi",
+   "selector": ""
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pvc-534",
+   "capacity": "250Mi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-31T19:17:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pvc-611",
+   "capacity": "500Mi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "gp3",
+   "age": "2025-06-01T00:17:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "team-a",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "10Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T23:05:00Z",
+   "volumeMode": "Block",
+   "requested": "10Gi",
+   "selector": ""
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pvc-31",
+   "capacity": "5Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "gp3",
+   "age": "2025-05-30T10:26:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "5Gi",
+   "selector": ""
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pvc-81",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-30T00:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "team-a",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "250Mi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "standard",
+   "age": "2025-05-30T04:57:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-edge-11": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pv-h",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:30:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "team-b",
+   "status": "Bound",
+   "volume": "pvc-655",
+   "capacity": "10Gi",
+   "accessModes": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+   "storageClass": "gp3",
+   "age": "2025-05-30T12:15:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "10Gi",
+   "selector": ""
+  },
+  "uid-edge-12": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "status": "Bound",
+   "volume": "pv-h",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:29:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "étude",
+   "status": "Bound",
+   "volume": "pvc-457",
+   "capacity": "500Mi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-30T07:57:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "Prod",
+   "status": "Bound",
+   "volume": "pvc-299",
+   "capacity": "10Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "gp3",
+   "age": "2025-05-31T15:41:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "10Gi",
+   "selector": ""
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "Prod",
+   "status": "Bound",
+   "volume": "pvc-915",
+   "capacity": "250Mi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-05-29T23:34:00Z",
+   "volumeMode": "Block",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "Prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "gp3",
+   "age": "2025-05-31T13:44:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "Prod",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "250Mi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-30T07:48:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "Prod",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "2Ti",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T05:39:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "Prod",
+   "status": "Bound",
+   "volume": "pvc-422",
+   "capacity": "500Mi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "",
+   "age": "2025-06-01T03:38:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "default",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "5Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "gp3",
+   "age": "2025-05-29T18:21:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "5Gi",
+   "selector": ""
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "default",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "5Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "gp3",
+   "age": "2025-05-30T09:46:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "5Gi",
+   "selector": ""
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pvc-519",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+   "storageClass": "standard",
+   "age": "2025-06-01T01:36:00Z",
+   "volumeMode": "Block",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pvc-353",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-30T14:54:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-edge-1": {
+   "name": "plain",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-a",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:40:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-10": {
+   "name": "annotated",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-g",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:31:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-13": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-i",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-2": {
+   "name": "pending-no-volume",
+   "namespace": "default",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "5Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:39:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "5Gi",
+   "selector": ""
+  },
+  "uid-edge-3": {
+   "name": "no-requests-no-modes",
+   "namespace": "default",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "",
+   "accessModes": "",
+   "storageClass": "",
+   "age": "2025-06-01T10:38:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "",
+   "selector": ""
+  },
+  "uid-edge-4": {
+   "name": "empty-class-grown",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-b",
+   "capacity": "2Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "",
+   "age": "2025-06-01T10:37:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-5": {
+   "name": "empty-volume-mode",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-c",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:36:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-6": {
+   "name": "multi-selector",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-d",
+   "capacity": "10Gi",
+   "accessModes": "ReadOnlyMany",
+   "storageClass": "",
+   "age": "2025-06-01T10:35:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "10Gi",
+   "selector": "1=one,a=1,b=2"
+  },
+  "uid-edge-7": {
+   "name": "unknown-access-mode",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-e",
+   "capacity": "1Gi",
+   "accessModes": "Custom",
+   "storageClass": "",
+   "age": "2025-06-01T10:34:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-8": {
+   "name": "no-phase",
+   "namespace": "default",
+   "status": "",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:33:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-edge-9": {
+   "name": "bound-without-capacity",
+   "namespace": "default",
+   "status": "Bound",
+   "volume": "pv-f",
+   "capacity": "3Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:32:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "3Gi",
+   "selector": ""
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "kube-system",
+   "status": "Bound",
+   "volume": "pvc-798",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "standard",
+   "age": "2025-05-30T10:47:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "kube-system",
+   "status": "Bound",
+   "volume": "pvc-846",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "standard",
+   "age": "2025-05-29T17:37:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "kube-system",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-31T23:03:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "kube-system",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "standard",
+   "age": "2025-06-01T06:54:00Z",
+   "volumeMode": "Block",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "kube-system",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "10Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-31T20:17:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "10Gi",
+   "selector": ""
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "prod",
+   "status": "Bound",
+   "volume": "pvc-470",
+   "capacity": "100Gi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "",
+   "age": "2025-05-29T21:47:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "100Gi",
+   "selector": ""
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "500Mi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-05-31T21:06:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "2Ti",
+   "accessModes": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+   "storageClass": "standard",
+   "age": "2025-05-30T18:56:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": "app=web,tier=frontend"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "250Mi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-29T20:08:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "prod",
+   "status": "Bound",
+   "volume": "pvc-897",
+   "capacity": "250Mi",
+   "accessModes": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+   "storageClass": "gp3",
+   "age": "2025-05-30T15:12:00Z",
+   "volumeMode": "Block",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "100Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-06-01T03:18:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "100Gi",
+   "selector": "9=nine,10=ten,app=x"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "prod",
+   "status": "Lost",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-31T12:03:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "prod",
+   "status": "Bound",
+   "volume": "pvc-518",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "gp3",
+   "age": "2025-06-01T07:37:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "1Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T10:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "team-a",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "100Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "standard",
+   "age": "2025-05-30T09:53:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "100Gi",
+   "selector": ""
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pvc-534",
+   "capacity": "250Mi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-31T19:17:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "2Ti",
+   "selector": ""
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pvc-611",
+   "capacity": "500Mi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "gp3",
+   "age": "2025-06-01T00:17:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "team-a",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "10Gi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "Fast-SSD",
+   "age": "2025-05-30T23:05:00Z",
+   "volumeMode": "Block",
+   "requested": "10Gi",
+   "selector": ""
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pvc-31",
+   "capacity": "5Gi",
+   "accessModes": "ReadWriteMany",
+   "storageClass": "gp3",
+   "age": "2025-05-30T10:26:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "5Gi",
+   "selector": ""
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pvc-81",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-30T00:00:00Z",
+   "volumeMode": "Block",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "team-a",
+   "status": "Pending",
+   "volume": "",
+   "capacity": "250Mi",
+   "accessModes": "ReadWriteOncePod",
+   "storageClass": "standard",
+   "age": "2025-05-30T04:57:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "250Mi",
+   "selector": ""
+  },
+  "uid-edge-11": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "status": "Bound",
+   "volume": "pv-h",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:30:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "team-b",
+   "status": "Bound",
+   "volume": "pvc-655",
+   "capacity": "10Gi",
+   "accessModes": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+   "storageClass": "gp3",
+   "age": "2025-05-30T12:15:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "10Gi",
+   "selector": ""
+  },
+  "uid-edge-12": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "status": "Bound",
+   "volume": "pv-h",
+   "capacity": "1Gi",
+   "accessModes": "ReadWriteOnce",
+   "storageClass": "",
+   "age": "2025-06-01T10:29:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "1Gi",
+   "selector": ""
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "étude",
+   "status": "Bound",
+   "volume": "pvc-457",
+   "capacity": "500Mi",
+   "accessModes": "ReadOnlyMany, ReadWriteOnce",
+   "storageClass": "standard",
+   "age": "2025-05-30T07:57:00Z",
+   "volumeMode": "Filesystem",
+   "requested": "500Mi",
+   "selector": ""
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 20.316666666666666,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 60.43333333333333,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 22.266666666666666,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 52.2,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 54.35,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 8.366666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 65.65,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50.233333333333334,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 10.4,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 45.1,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.3333333333333333,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-10": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.4833333333333334,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-13": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": null,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.35,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.3666666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.3833333333333333,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.4,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.4166666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.4333333333333333,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.45,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-9": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.4666666666666666,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 49.21666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 66.38333333333334,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 12.95,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 5.1,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 15.716666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 62.21666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 14.9,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 41.06666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 63.86666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 44.8,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 8.7,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 23.95,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 4.383333333333334,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 50.11666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 16.716666666666665,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 11.716666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 36.916666666666664,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 49.56666666666667,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 60,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 55.05,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-11": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.5,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 47.75,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-edge-12": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 1.5166666666666666,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "status": null,
+   "volume": null,
+   "capacity": null,
+   "accessModes": null,
+   "storageClass": null,
+   "age": 52.05,
+   "volumeMode": null,
+   "requested": null,
+   "selector": null
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-edge-10","uid-0003","uid-0005","uid-0006","uid-edge-9","uid-0020","uid-0021","uid-0013","uid-0029","uid-edge-4","uid-edge-5","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-edge-6","uid-0031","uid-edge-3","uid-edge-2","uid-edge-1","uid-0026","uid-0027","uid-edge-11","uid-edge-12","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-edge-7","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-edge-7","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-11","uid-edge-12","uid-0027","uid-0026","uid-edge-1","uid-edge-2","uid-edge-3","uid-0031","uid-edge-6","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-edge-5","uid-edge-4","uid-0029","uid-0013","uid-0021","uid-0020","uid-edge-9","uid-0006","uid-0005","uid-0003","uid-edge-10","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0029","uid-0000","uid-0016","uid-0019","uid-0026","uid-0001","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-0024","uid-0028","uid-0011","uid-0006","uid-0023","uid-0020","uid-0027","uid-0015","uid-0018","uid-0031","uid-0013","uid-0004","uid-0030","uid-0008","uid-0012","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002","uid-0009","uid-edge-11","uid-0010","uid-0005","uid-0017","uid-0021","uid-0003","uid-0025","uid-0022","uid-edge-12","uid-0014","uid-0007"],
+   "desc": ["uid-0007","uid-edge-12","uid-0014","uid-edge-11","uid-0010","uid-0005","uid-0017","uid-0021","uid-0003","uid-0025","uid-0022","uid-0031","uid-0013","uid-0004","uid-0030","uid-0008","uid-0012","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0002","uid-0009","uid-0023","uid-0020","uid-0027","uid-0015","uid-0018","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-0024","uid-0028","uid-0011","uid-0006","uid-0029","uid-0000","uid-0016","uid-0019","uid-0026","uid-0001"]
+  },
+  "status": {
+   "asc": ["uid-edge-1","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0029","uid-0024","uid-0010","uid-0005","uid-0000","uid-0012","uid-0028","uid-0014","uid-0015","uid-0021","uid-0007","uid-0022","uid-0001","uid-0002","uid-0018","uid-0023","uid-0030","uid-0011","uid-0019","uid-0026","uid-edge-2","uid-edge-3","uid-0013","uid-0020","uid-0004","uid-0027","uid-0016","uid-0017","uid-0008","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0025","uid-0009","uid-0006"],
+   "desc": ["uid-edge-2","uid-edge-3","uid-0013","uid-0020","uid-0004","uid-0027","uid-0016","uid-0017","uid-0008","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0025","uid-0009","uid-0006","uid-0023","uid-0030","uid-0011","uid-0019","uid-0026","uid-edge-1","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0029","uid-0024","uid-0010","uid-0005","uid-0000","uid-0012","uid-0028","uid-0014","uid-0015","uid-0021","uid-0007","uid-0022","uid-0001","uid-0002","uid-0018"]
+  },
+  "volume": {
+   "asc": ["uid-edge-2","uid-edge-3","uid-0023","uid-0013","uid-0020","uid-0004","uid-0027","uid-0016","uid-0030","uid-0017","uid-0008","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0011","uid-0019","uid-0026","uid-0025","uid-0009","uid-0006","uid-edge-1","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0000","uid-0021","uid-0028","uid-0029","uid-0007","uid-0002","uid-0031","uid-0024","uid-0005","uid-0010","uid-0014","uid-0015","uid-0022","uid-0018","uid-0012","uid-0001"],
+   "desc": ["uid-0001","uid-0012","uid-0018","uid-0022","uid-0015","uid-0014","uid-0010","uid-0005","uid-0024","uid-0031","uid-0002","uid-0007","uid-0029","uid-0028","uid-0021","uid-0000","uid-edge-11","uid-edge-12","uid-edge-10","uid-edge-9","uid-edge-7","uid-edge-6","uid-edge-5","uid-edge-4","uid-edge-1","uid-edge-2","uid-edge-3","uid-0023","uid-0013","uid-0020","uid-0004","uid-0027","uid-0016","uid-0030","uid-0017","uid-0008","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0011","uid-0019","uid-0026","uid-0025","uid-0009","uid-0006"]
+  },
+  "capacity": {
+   "asc": ["uid-edge-3","uid-0013","uid-0003","uid-0002","uid-edge-6","uid-0027","uid-0000","uid-0017","uid-0014","uid-edge-1","uid-edge-5","uid-edge-7","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0016","uid-0030","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0022","uid-0018","uid-0005","uid-0012","uid-0019","uid-0025","uid-0001","uid-0009","uid-edge-4","uid-0023","uid-0024","uid-0020","uid-0008","uid-0028","uid-0015","uid-0026","uid-edge-9","uid-0029","uid-0010","uid-0004","uid-0007","uid-edge-2","uid-0021","uid-0011","uid-0006"],
+   "desc": ["uid-edge-2","uid-0021","uid-0011","uid-0006","uid-0029","uid-0010","uid-0004","uid-0007","uid-edge-9","uid-0023","uid-0024","uid-0020","uid-0008","uid-0028","uid-0015","uid-0026","uid-edge-4","uid-0005","uid-0012","uid-0019","uid-0025","uid-0001","uid-0009","uid-edge-1","uid-edge-5","uid-edge-7","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0016","uid-0030","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0022","uid-0018","uid-edge-6","uid-0027","uid-0000","uid-0017","uid-0014","uid-0013","uid-0003","uid-0002","uid-edge-3"]
+  },
+  "accessModes": {
+   "asc": ["uid-edge-3","uid-edge-7","uid-edge-6","uid-0031","uid-0013","uid-0027","uid-0017","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0007","uid-0019","uid-0026","uid-0001","uid-0009","uid-edge-4","uid-0023","uid-0010","uid-0020","uid-0005","uid-0000","uid-0021","uid-0003","uid-0011","uid-edge-1","uid-edge-2","uid-edge-5","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0004","uid-0028","uid-0022","uid-0006","uid-0024","uid-0008","uid-0012","uid-0014","uid-0029","uid-0016","uid-0030","uid-0015","uid-0025","uid-0002","uid-0018"],
+   "desc": ["uid-0029","uid-0016","uid-0030","uid-0015","uid-0025","uid-0002","uid-0018","uid-0024","uid-0008","uid-0012","uid-0014","uid-edge-1","uid-edge-2","uid-edge-5","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0004","uid-0028","uid-0022","uid-0006","uid-edge-4","uid-0023","uid-0010","uid-0020","uid-0005","uid-0000","uid-0021","uid-0003","uid-0011","uid-0031","uid-0013","uid-0027","uid-0017","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0007","uid-0019","uid-0026","uid-0001","uid-0009","uid-edge-6","uid-edge-7","uid-edge-3"]
+  },
+  "storageClass": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0029","uid-0004","uid-0001","uid-0002","uid-0013","uid-0020","uid-0027","uid-0005","uid-0030","uid-0017","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0026","uid-0031","uid-0010","uid-0000","uid-0016","uid-0012","uid-0014","uid-0021","uid-0011","uid-0006","uid-0023","uid-0024","uid-0008","uid-0028","uid-0015","uid-0003","uid-0007","uid-0019","uid-0025","uid-0022","uid-0009","uid-0018"],
+   "desc": ["uid-0023","uid-0024","uid-0008","uid-0028","uid-0015","uid-0003","uid-0007","uid-0019","uid-0025","uid-0022","uid-0009","uid-0018","uid-0031","uid-0010","uid-0000","uid-0016","uid-0012","uid-0014","uid-0021","uid-0011","uid-0006","uid-0013","uid-0020","uid-0027","uid-0005","uid-0030","uid-0017","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0026","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0029","uid-0004","uid-0001","uid-0002"]
+  },
+  "age": {
+   "asc": ["uid-0018","uid-0006","uid-0009","uid-0002","uid-0001","uid-0022","uid-0025","uid-0026","uid-0019","uid-0007","uid-0011","uid-0003","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0021","uid-0015","uid-0014","uid-0028","uid-0012","uid-0008","uid-0017","uid-0030","uid-0016","uid-0000","uid-0005","uid-0027","uid-0004","uid-0020","uid-0010","uid-0024","uid-0013","uid-0029","uid-0023","uid-0031","uid-edge-12","uid-edge-11","uid-edge-10","uid-edge-9","uid-edge-7","uid-edge-6","uid-edge-5","uid-edge-4","uid-edge-3","uid-edge-2","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0023","uid-0029","uid-0013","uid-0024","uid-0010","uid-0020","uid-0004","uid-0027","uid-0005","uid-0000","uid-0016","uid-0030","uid-0017","uid-0008","uid-0012","uid-0028","uid-0014","uid-0015","uid-0021","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0011","uid-0007","uid-0019","uid-0026","uid-0025","uid-0022","uid-0001","uid-0002","uid-0009","uid-0006","uid-0018"]
+  },
+  "volumeMode": {
+   "asc": ["uid-0023","uid-0024","uid-0030","uid-0017","uid-0012","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0022","uid-0001","uid-0018","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0029","uid-0013","uid-0010","uid-0020","uid-0004","uid-0027","uid-0005","uid-0000","uid-0016","uid-0008","uid-0028","uid-0014","uid-0015","uid-0021","uid-0003","uid-0011","uid-0007","uid-0019","uid-0026","uid-0025","uid-0002","uid-0009","uid-0006"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0029","uid-0013","uid-0010","uid-0020","uid-0004","uid-0027","uid-0005","uid-0000","uid-0016","uid-0008","uid-0028","uid-0014","uid-0015","uid-0021","uid-0003","uid-0011","uid-0007","uid-0019","uid-0026","uid-0025","uid-0002","uid-0009","uid-0006","uid-0023","uid-0024","uid-0030","uid-0017","uid-0012","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0022","uid-0001","uid-0018"]
+  },
+  "requested": {
+   "asc": ["uid-edge-3","uid-0013","uid-0003","uid-0002","uid-edge-6","uid-0027","uid-0000","uid-0017","uid-0014","uid-edge-1","uid-edge-4","uid-edge-5","uid-edge-7","uid-edge-10","uid-edge-11","uid-edge-12","uid-0016","uid-0030","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0022","uid-0018","uid-0012","uid-0019","uid-0025","uid-0001","uid-0009","uid-0023","uid-0024","uid-0020","uid-0005","uid-0008","uid-0028","uid-0015","uid-0026","uid-edge-9","uid-0031","uid-0029","uid-0010","uid-0004","uid-0007","uid-edge-2","uid-0021","uid-0011","uid-0006"],
+   "desc": ["uid-edge-2","uid-0021","uid-0011","uid-0006","uid-0031","uid-0029","uid-0010","uid-0004","uid-0007","uid-edge-9","uid-0023","uid-0024","uid-0020","uid-0005","uid-0008","uid-0028","uid-0015","uid-0026","uid-0012","uid-0019","uid-0025","uid-0001","uid-0009","uid-edge-1","uid-edge-4","uid-edge-5","uid-edge-7","uid-edge-10","uid-edge-11","uid-edge-12","uid-0016","uid-0030","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0022","uid-0018","uid-edge-6","uid-0027","uid-0000","uid-0017","uid-0014","uid-0013","uid-0003","uid-0002","uid-edge-3"]
+  },
+  "selector": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0023","uid-0029","uid-0024","uid-0010","uid-0020","uid-0004","uid-0027","uid-0005","uid-0000","uid-0016","uid-0030","uid-0017","uid-0012","uid-0028","uid-0014","uid-0015","uid-0021","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0011","uid-0007","uid-0019","uid-0026","uid-0025","uid-0022","uid-0001","uid-0002","uid-0009","uid-0006","uid-0018","uid-edge-6","uid-0013","uid-0008"],
+   "desc": ["uid-0008","uid-0013","uid-edge-6","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-7","uid-edge-9","uid-edge-10","uid-edge-11","uid-edge-12","uid-0031","uid-0023","uid-0029","uid-0024","uid-0010","uid-0020","uid-0004","uid-0027","uid-0005","uid-0000","uid-0016","uid-0030","uid-0017","uid-0012","uid-0028","uid-0014","uid-0015","uid-0021","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0003","uid-0011","uid-0007","uid-0019","uid-0026","uid-0025","uid-0022","uid-0001","uid-0002","uid-0009","uid-0006","uid-0018"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0006","uid-0004","uid-0003","uid-0005"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0016","uid-0019","uid-0006","uid-0018","uid-0004","uid-0003","uid-0005","uid-0017"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0015","uid-0014"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-tie-09","uid-0005","uid-0007"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0020","uid-0021","uid-0022"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0021","uid-0022"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0006","uid-0004","uid-0003","uid-0005"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0008","uid-0009","uid-0010","uid-0007"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000","uid-edge-10"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-0001","uid-edge-10","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0006","uid-0005"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0001","uid-0016","uid-0023","uid-0009","uid-tie-00","uid-0003"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0006","uid-edge-9","uid-0003","uid-0005"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0002"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0015","uid-0002","uid-0014"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0002"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000","uid-edge-10"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0001","uid-0006","uid-0002","uid-0004","uid-0003","uid-0005"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-edge-11","uid-edge-12"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0016","uid-0024","uid-0028","uid-0018","uid-0023","uid-0009","uid-0013","uid-0021","uid-0014"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0016","uid-0024","uid-0028","uid-0018","uid-0023","uid-0009","uid-0013","uid-0021","uid-0014"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-10"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-10"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-11"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0024","uid-0027","uid-tie-12","uid-0021","uid-0022","uid-0025"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0024","uid-0027","uid-tie-12","uid-0021","uid-0022","uid-0025"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0006","uid-0004","uid-tie-09","uid-tie-10","uid-0005"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0006","uid-0003","uid-0005"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-edge-10","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-edge-10","uid-0002"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0016","uid-0019","uid-0006","uid-edge-10","uid-edge-13","uid-edge-4","uid-edge-7","uid-edge-8","uid-0018","uid-0020","uid-0023","uid-0004","uid-0009","uid-0013","uid-0031","uid-tie-00","uid-tie-01","uid-0003","uid-0005","uid-0017","uid-edge-11","uid-edge-12"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0006","uid-edge-9","uid-0004","uid-0003","uid-0005"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-tie-12","uid-0021","uid-0022","uid-0025"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0001","uid-0019","uid-0026","uid-0006","uid-0011","uid-0028","uid-0015","uid-0018","uid-0002","uid-0008","uid-0009","uid-0012","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0017","uid-0021","uid-0022","uid-0025","uid-0014","uid-0007"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0000","uid-0016","uid-0029","uid-0024","uid-0020","uid-0023","uid-0027","uid-0004","uid-0013","uid-0030","uid-0031","uid-0005","uid-0010"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0001","uid-0006","uid-0018","uid-0002","uid-0009"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0029","uid-0024","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0023","uid-0013","uid-0031","uid-0010","uid-edge-11","uid-edge-12"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0026","uid-0029","uid-0006","uid-0011","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "name": "status select Bound",
+   "filters": {
+    "status": {
+     "type": "select",
+     "values": ["Bound"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0029","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-0015","uid-0018","uid-0002","uid-0012","uid-0031","uid-0005","uid-0010","uid-0021","uid-0022","uid-edge-11","uid-0014","uid-edge-12","uid-0007"]
+  },
+  {
+   "name": "status select Pending|Lost",
+   "filters": {
+    "status": {
+     "type": "select",
+     "values": ["Pending","Lost"]
+    }
+   },
+   "matches": ["uid-0016","uid-0019","uid-0026","uid-0006","uid-0011","uid-edge-2","uid-edge-3","uid-0020","uid-0023","uid-0027","uid-0004","uid-0008","uid-0009","uid-0013","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0017","uid-0025"]
+  },
+  {
+   "name": "volume select pv-a",
+   "filters": {
+    "volume": {
+     "type": "select",
+     "values": ["pv-a"]
+    }
+   },
+   "matches": ["uid-edge-1"]
+  },
+  {
+   "name": "capacity select 1Gi|10Gi",
+   "filters": {
+    "capacity": {
+     "type": "select",
+     "values": ["1Gi","10Gi"]
+    }
+   },
+   "matches": ["uid-0000","uid-0016","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-0018","uid-0027","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0017","uid-0022","uid-edge-11","uid-0014","uid-edge-12"]
+  },
+  {
+   "name": "accessModes select ReadWriteOnce",
+   "filters": {
+    "accessModes": {
+     "type": "select",
+     "values": ["ReadWriteOnce"]
+    }
+   },
+   "matches": ["uid-0006","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-5","uid-edge-8","uid-edge-9","uid-0004","uid-0022","uid-edge-11","uid-edge-12"]
+  },
+  {
+   "name": "accessModes select ReadOnlyMany, ReadWriteOnce",
+   "filters": {
+    "accessModes": {
+     "type": "select",
+     "values": ["ReadOnlyMany, ReadWriteOnce"]
+    }
+   },
+   "matches": ["uid-0001","uid-0019","uid-0026","uid-0027","uid-0009","uid-0013","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0017","uid-0007"]
+  },
+  {
+   "name": "storageClass select standard|",
+   "filters": {
+    "storageClass": {
+     "type": "select",
+     "values": ["standard",""]
+    }
+   },
+   "matches": ["uid-0001","uid-0019","uid-0029","uid-0024","uid-0028","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0015","uid-0018","uid-0023","uid-0002","uid-0004","uid-0008","uid-0009","uid-0003","uid-0022","uid-0025","uid-edge-11","uid-edge-12","uid-0007"]
+  },
+  {
+   "name": "volumeMode select Block",
+   "filters": {
+    "volumeMode": {
+     "type": "select",
+     "values": ["Block"]
+    }
+   },
+   "matches": ["uid-0001","uid-0024","uid-0018","uid-0023","uid-0012","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0017","uid-0022"]
+  },
+  {
+   "name": "requested select 5Gi",
+   "filters": {
+    "requested": {
+     "type": "select",
+     "values": ["5Gi"]
+    }
+   },
+   "matches": ["uid-0006","uid-0011","uid-edge-2","uid-0021"]
+  },
+  {
+   "name": "selector select app=web",
+   "filters": {
+    "selector": {
+     "type": "select",
+     "values": ["app=web"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "namespace select prod",
+   "filters": {
+    "namespace": {
+     "type": "select",
+     "values": ["prod"]
+    }
+   },
+   "matches": ["uid-0002","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-0014","uid-edge-12"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0006","uid-0024","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-4","uid-edge-7","uid-edge-8","uid-edge-9","uid-0018","uid-0020","uid-0023","uid-0002","uid-0004","uid-0009","uid-0013","uid-0031","uid-tie-00","uid-tie-01","uid-0003","uid-0005","uid-0017","uid-0021","uid-0022","uid-0025","uid-edge-11","uid-edge-12"]
+  },
+  {
+   "name": "capacity regex",
+   "filters": {
+    "capacity": {
+     "type": "regex",
+     "conditions": ["Gi$"]
+    }
+   },
+   "matches": ["uid-0000","uid-0016","uid-0006","uid-0011","uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-8","uid-edge-9","uid-0018","uid-0027","uid-0002","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0017","uid-0021","uid-0022","uid-edge-11","uid-0014","uid-edge-12"]
+  },
+  {
+   "name": "volume regex",
+   "filters": {
+    "volume": {
+     "type": "regex",
+     "conditions": ["^pv-"]
+    }
+   },
+   "matches": ["uid-edge-1","uid-edge-10","uid-edge-13","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-edge-9","uid-edge-11","uid-edge-12"]
+  },
+  {
+   "name": "storageClass regex",
+   "filters": {
+    "storageClass": {
+     "type": "regex",
+     "conditions": ["^[a-z]"]
+    }
+   },
+   "matches": ["uid-0000","uid-0016","uid-0019","uid-0026","uid-0006","uid-0011","uid-0024","uid-0028","uid-0015","uid-0018","uid-0020","uid-0023","uid-0027","uid-0008","uid-0009","uid-0012","uid-0013","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0003","uid-0005","uid-0010","uid-0017","uid-0021","uid-0022","uid-0025","uid-0014","uid-0007"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0019","uid-0006","uid-0024","uid-0018","uid-0020","uid-0023","uid-0002","uid-0004","uid-0009","uid-0013","uid-tie-00","uid-tie-01","uid-0003","uid-0005","uid-0017","uid-0021","uid-0022","uid-0025"]
+  }
+ ],
+ "uniqueValues": {
+  "status": {
+   "values": ["Bound","Lost","Pending"],
+   "counts": {
+    "Bound": 26,
+    "Pending": 26,
+    "Lost": 5
+   }
+  },
+  "volume": {
+   "values": ["pv-a","pv-b","pv-c","pv-d","pv-e","pv-f","pv-g","pv-h","pv-i","pvc-299","pvc-31","pvc-353","pvc-422","pvc-457","pvc-470","pvc-518","pvc-519","pvc-534","pvc-611","pvc-655","pvc-798","pvc-81","pvc-846","pvc-897","pvc-915"],
+   "counts": {
+    "pvc-299": 1,
+    "pvc-915": 1,
+    "pvc-422": 1,
+    "pvc-519": 1,
+    "pvc-353": 1,
+    "pv-a": 1,
+    "pv-g": 1,
+    "pv-i": 1,
+    "pv-b": 1,
+    "pv-c": 1,
+    "pv-d": 1,
+    "pv-e": 1,
+    "pv-f": 1,
+    "pvc-798": 1,
+    "pvc-846": 1,
+    "pvc-470": 1,
+    "pvc-897": 1,
+    "pvc-518": 1,
+    "pvc-534": 1,
+    "pvc-611": 1,
+    "pvc-31": 1,
+    "pvc-81": 1,
+    "pv-h": 2,
+    "pvc-655": 1,
+    "pvc-457": 1
+   }
+  },
+  "capacity": {
+   "values": ["100Gi","10Gi","1Gi","250Mi","2Gi","2Ti","3Gi","500Mi","5Gi"],
+   "counts": {
+    "10Gi": 5,
+    "250Mi": 6,
+    "1Gi": 26,
+    "2Ti": 7,
+    "500Mi": 4,
+    "5Gi": 4,
+    "2Gi": 1,
+    "3Gi": 1,
+    "100Gi": 3
+   }
+  },
+  "accessModes": {
+   "values": ["Custom","ReadOnlyMany","ReadOnlyMany, ReadWriteOnce","ReadWriteMany","ReadWriteOnce","ReadWriteOnce, ReadWriteMany, ReadOnlyMany","ReadWriteOncePod"],
+   "counts": {
+    "ReadWriteMany": 9,
+    "ReadOnlyMany, ReadWriteOnce": 22,
+    "ReadWriteOncePod": 7,
+    "ReadWriteOnce": 13,
+    "ReadWriteOnce, ReadWriteMany, ReadOnlyMany": 4,
+    "ReadOnlyMany": 1,
+    "Custom": 1
+   }
+  },
+  "storageClass": {
+   "values": ["Fast-SSD","gp3","standard"],
+   "counts": {
+    "gp3": 9,
+    "standard": 12,
+    "Fast-SSD": 20
+   }
+  },
+  "volumeMode": {
+   "values": ["Block","Filesystem"],
+   "counts": {
+    "Filesystem": 37,
+    "Block": 21
+   }
+  },
+  "requested": {
+   "values": ["100Gi","10Gi","1Gi","250Mi","2Ti","3Gi","500Mi","5Gi"],
+   "counts": {
+    "10Gi": 5,
+    "250Mi": 5,
+    "1Gi": 26,
+    "2Ti": 8,
+    "500Mi": 5,
+    "5Gi": 4,
+    "3Gi": 1,
+    "100Gi": 3
+   }
+  },
+  "selector": {
+   "values": ["1=one,a=1,b=2","9=nine,10=ten,app=x","app=web,tier=frontend"],
+   "counts": {
+    "1=one,a=1,b=2": 1,
+    "app=web,tier=frontend": 1,
+    "9=nine,10=ten,app=x": 1
+   }
+  }
+ }
+}

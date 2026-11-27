@@ -5,6 +5,7 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import { getClientId } from '~/lib/wailsjs-adapter/runtime/runtime';
 import { StartTerminalSession, SendTerminalInput, ResizeTerminal, CloseTerminalSession } from 'wailsjs/go/main/App';
+import { createDedupedSizeSender, createFitScheduler } from '~/utils/terminalResize';
 import 'xterm/css/xterm.css';
 
 // Get theme colors from CSS variables
@@ -56,30 +57,63 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }: { na
 
         term.open(terminalRef.current!);
 
-        // Load WebGL addon for GPU-accelerated rendering (Metal on macOS)
-        try {
-            const webglAddon = new WebglAddon();
-            (webglAddon as any).onContextLost(() => {
-                console.warn('WebGL context lost, falling back to canvas renderer');
-                webglAddon.dispose();
-                webglAddonRef.current = null;
-            });
-            term.loadAddon(webglAddon);
-            webglAddonRef.current = webglAddon;
-            console.log('Terminal using WebGL renderer (GPU accelerated)');
-        } catch (e: any) {
-            console.warn('WebGL addon failed to load, using canvas renderer:', (e as any).message);
-        }
+        // WebKit caps live WebGL contexts, so hidden keepAlive terminals release
+        // theirs (DOM renderer is used meanwhile) and re-attach on show.
+        const attachWebgl = () => {
+            if (webglAddonRef.current) return;
+            try {
+                const webglAddon = new WebglAddon();
+                (webglAddon as any).onContextLost(() => {
+                    console.warn('WebGL context lost, falling back to default renderer');
+                    webglAddon.dispose();
+                    if (webglAddonRef.current === webglAddon) webglAddonRef.current = null;
+                });
+                term.loadAddon(webglAddon);
+                webglAddonRef.current = webglAddon;
+            } catch (e: any) {
+                console.warn('WebGL addon failed to load, using default renderer:', (e as any).message);
+            }
+        };
+        const detachWebgl = () => {
+            if (!webglAddonRef.current) return;
+            try { webglAddonRef.current.dispose(); } catch { /* already lost */ }
+            webglAddonRef.current = null;
+        };
+        attachWebgl();
 
-        // Slight delay to ensure container has dimensions
-        setTimeout(() => {
+        // Zero-size container means a hidden (display:none) keepAlive tab.
+        const isShown = () => !!terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0;
+
+        // Resize path: observers/window events only request a fit (debounced);
+        // size changes reach the backend solely through term.onResize, deduped.
+        const sizeSender = createDedupedSizeSender((cols, rows) => {
+            if (sessionIdRef.current) ResizeTerminal(sessionIdRef.current, cols, rows);
+        });
+        const fitScheduler = createFitScheduler(() => {
             try {
                 fitAddon.fit();
-                console.log("Terminal fit complete", fitAddon.proposeDimensions());
             } catch (e: any) {
-                console.error("Terminal fit failed", e);
+                console.error('Terminal fit failed', e);
             }
-        }, 100);
+        }, isShown, 100);
+        let wasShown = isShown();
+        const syncGeometry = () => {
+            const shown = isShown();
+            if (!shown) {
+                if (wasShown) detachWebgl();
+                wasShown = false;
+                return;
+            }
+            if (!wasShown) {
+                attachWebgl();
+                wasShown = true;
+                try { term.refresh(0, term.rows - 1); } catch { /* disposed */ }
+            }
+            fitScheduler.request();
+        };
+        const timers: ReturnType<typeof setTimeout>[] = [];
+        // Slight delay to ensure container has dimensions
+        timers.push(setTimeout(syncGeometry, 100));
 
         xtermRef.current = term;
 
@@ -92,12 +126,10 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }: { na
                 term.write('\r\n\x1b[32mConnected to terminal...\x1b[0m\r\n');
 
                 // Send initial resize after connection
-                setTimeout(() => {
-                    const dims = fitAddon.proposeDimensions();
-                    if (dims && sessionIdRef.current) {
-                        ResizeTerminal(sessionIdRef.current, dims.cols, dims.rows);
-                    }
-                }, 150);
+                sizeSender.reset();
+                timers.push(setTimeout(() => {
+                    if (isShown()) sizeSender.send(term.cols, term.rows);
+                }, 150));
             })
             .catch((err: any) => {
                 term.write(`\r\n\x1b[31mFailed to start terminal: ${err}\x1b[0m\r\n`);
@@ -143,30 +175,23 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }: { na
             }
         });
 
-        // Handle resize
-        const sendResizeToBackend = () => {
-            const dims = fitAddon.proposeDimensions();
-            if (dims && sessionIdRef.current) {
-                ResizeTerminal(sessionIdRef.current, dims.cols, dims.rows);
-            }
-        };
+        window.addEventListener('resize', syncGeometry);
+        term.onResize(({ cols, rows }) => sizeSender.send(cols, rows));
 
-        const handleResize = () => {
-            fitAddon.fit();
-            sendResizeToBackend();
-        };
-        window.addEventListener('resize', handleResize);
-
-        // Listen for terminal resize events from xterm
-        term.onResize(({ cols, rows }) => {
-            if (sessionIdRef.current) {
-                ResizeTerminal(sessionIdRef.current, cols, rows);
-            }
-        });
+        const resizeObserver = new ResizeObserver(syncGeometry);
+        const intersectionObserver = new IntersectionObserver(syncGeometry);
+        if (terminalRef.current) {
+            resizeObserver.observe(terminalRef.current);
+            intersectionObserver.observe(terminalRef.current);
+        }
 
         // Cleanup
         return () => {
-            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('resize', syncGeometry);
+            resizeObserver.disconnect();
+            intersectionObserver.disconnect();
+            fitScheduler.cancel();
+            timers.forEach(clearTimeout);
             cancelTerminalOutput();
 
             // Close the terminal session
@@ -176,10 +201,7 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }: { na
             }
 
             // Dispose WebGL addon before terminal
-            if (webglAddonRef.current) {
-                webglAddonRef.current.dispose();
-                webglAddonRef.current = null;
-            }
+            detachWebgl();
             term.dispose();
 
             // Delay onClose to handle React Strict Mode double-invocation
@@ -193,44 +215,6 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }: { na
             }
         };
     }, [namespace, pod, container, context, command]);
-
-    // Re-fit when the container size changes or becomes visible
-    useEffect(() => {
-        const fit = () => {
-            if (fitAddonRef.current && terminalRef.current) {
-                try {
-                    // Check dimensions before fitting
-                    const { clientWidth, clientHeight } = terminalRef.current;
-
-                    if (clientWidth > 0 && clientHeight > 0) {
-                        fitAddonRef.current.fit();
-                    }
-                } catch (e: any) {
-                    console.error("Fit failed", e);
-                }
-            }
-        };
-
-        const resizeObserver = new ResizeObserver(() => {
-            requestAnimationFrame(fit);
-        });
-
-        const intersectionObserver = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                setTimeout(fit, 100);
-            }
-        });
-
-        if (terminalRef.current) {
-            resizeObserver.observe(terminalRef.current);
-            intersectionObserver.observe(terminalRef.current);
-        }
-
-        return () => {
-            resizeObserver.disconnect();
-            intersectionObserver.disconnect();
-        };
-    }, []);
 
     return (
         <div className="h-full w-full bg-background p-2 overflow-hidden relative">

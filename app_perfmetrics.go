@@ -3,7 +3,11 @@ package main
 import (
 	goruntime "runtime"
 	"sort"
+	"sync/atomic"
 	"time"
+
+	"kubikles/pkg/rows"
+	"kubikles/pkg/store"
 )
 
 // =============================================================================
@@ -96,31 +100,60 @@ type PerformanceMetrics struct {
 
 	// List Request Stats
 	ListRequests ListRequestStats `json:"listRequests"`
+
+	// Shared store: shards, entries, estimated bytes, degraded fetch modes.
+	// Nil when the store is not running.
+	Store *store.Stats `json:"store,omitempty"`
+
+	// Open row views: counts, last window size, version and cumulative notice and byte counters
+	// (the panel derives rates). Nil when views are not running.
+	Views []rows.ViewStats `json:"views,omitempty"`
 }
 
-// recordWatcherEvent records an event for a watcher key (called from watch loops)
-func (a *App) recordWatcherEvent(watcherKey string, eventType string) {
-	now := time.Now().UnixMilli()
+// watcherStatsFor returns the counters for a watcher key, creating them on
+// first use. Watch loops resolve this once and keep the pointer, so the
+// per-event path in recordEvent touches no lock.
+func (a *App) watcherStatsFor(watcherKey string) *WatcherEventStats {
+	a.eventStatsMutex.RLock()
+	stats, exists := a.eventStats[watcherKey]
+	a.eventStatsMutex.RUnlock()
+	if exists {
+		return stats
+	}
 
 	a.eventStatsMutex.Lock()
 	defer a.eventStatsMutex.Unlock()
-
-	stats, exists := a.eventStats[watcherKey]
-	if !exists {
-		stats = &WatcherEventStats{Key: watcherKey}
-		a.eventStats[watcherKey] = stats
+	if stats, exists = a.eventStats[watcherKey]; exists {
+		return stats
 	}
+	if a.eventStats == nil {
+		a.eventStats = make(map[string]*WatcherEventStats)
+	}
+	stats = &WatcherEventStats{Key: watcherKey}
+	a.eventStats[watcherKey] = stats
+	return stats
+}
 
+// recordEvent bumps the counters with atomics. Counters may be read while
+// being written by GetPerformanceMetrics, which loads them atomically; the
+// snapshot is not a single consistent cut, which is fine for a dashboard.
+func (a *App) recordEvent(stats *WatcherEventStats, eventType string) {
 	switch eventType {
 	case "ADDED":
-		stats.Added++
+		atomic.AddInt64(&stats.Added, 1)
 	case "MODIFIED":
-		stats.Modified++
+		atomic.AddInt64(&stats.Modified, 1)
 	case "DELETED":
-		stats.Deleted++
+		atomic.AddInt64(&stats.Deleted, 1)
 	}
-	stats.TotalEvents++
-	stats.LastEventMs = now
+	atomic.AddInt64(&stats.TotalEvents, 1)
+	atomic.StoreInt64(&stats.LastEventMs, time.Now().UnixMilli())
+}
+
+// recordWatcherEvent records an event for a watcher key. Prefer resolving the
+// stats once with watcherStatsFor and calling recordEvent per event.
+func (a *App) recordWatcherEvent(watcherKey string, eventType string) {
+	a.recordEvent(a.watcherStatsFor(watcherKey), eventType)
 }
 
 // clearEventStats removes event statistics for a watcher key (called when watcher is cleaned up)
@@ -132,8 +165,7 @@ func (a *App) clearEventStats(watcherKey string) {
 
 // GetPerformanceMetrics returns current performance metrics for the dashboard
 func (a *App) GetPerformanceMetrics() PerformanceMetrics {
-	var m goruntime.MemStats
-	goruntime.ReadMemStats(&m)
+	m := readMemSnapshot()
 
 	goroutineCount := goruntime.NumGoroutine()
 
@@ -209,8 +241,8 @@ func (a *App) GetPerformanceMetrics() PerformanceMetrics {
 
 	// GC stats
 	metrics.GC.NumGC = m.NumGC
-	metrics.GC.LastGCPauseNs = m.PauseNs[(m.NumGC+255)%256]
-	metrics.GC.TotalPauseNs = m.PauseTotalNs
+	metrics.GC.LastGCPauseNs = m.LastGCPauseNs
+	metrics.GC.TotalPauseNs = m.TotalPauseNs
 	metrics.GC.NextGCBytes = m.NextGC
 	metrics.GC.GCCPUFraction = m.GCCPUFraction
 
@@ -243,21 +275,22 @@ func (a *App) GetPerformanceMetrics() PerformanceMetrics {
 	for _, stats := range a.eventStats {
 		// Calculate events per second
 		windowDuration := float64(now-windowStart) / 1000.0
+		total := atomic.LoadInt64(&stats.TotalEvents)
 		eventsPerSec := 0.0
 		if windowDuration > 0 {
-			eventsPerSec = float64(stats.TotalEvents) / windowDuration
+			eventsPerSec = float64(total) / windowDuration
 		}
 		statsCopy := WatcherEventStats{
 			Key:          stats.Key,
-			Added:        stats.Added,
-			Modified:     stats.Modified,
-			Deleted:      stats.Deleted,
-			TotalEvents:  stats.TotalEvents,
-			LastEventMs:  stats.LastEventMs,
+			Added:        atomic.LoadInt64(&stats.Added),
+			Modified:     atomic.LoadInt64(&stats.Modified),
+			Deleted:      atomic.LoadInt64(&stats.Deleted),
+			TotalEvents:  total,
+			LastEventMs:  atomic.LoadInt64(&stats.LastEventMs),
 			EventsPerSec: eventsPerSec,
 		}
 		allStats = append(allStats, statsCopy)
-		totalEvents += stats.TotalEvents
+		totalEvents += total
 	}
 	a.eventStatsMutex.RUnlock()
 
@@ -281,6 +314,12 @@ func (a *App) GetPerformanceMetrics() PerformanceMetrics {
 
 	// List request stats
 	metrics.ListRequests = a.listRequestManager.GetStats()
+
+	// Shared store stats
+	metrics.Store = a.storeStats()
+	if a.views != nil {
+		metrics.Views = a.views.Stats()
+	}
 
 	return metrics
 }

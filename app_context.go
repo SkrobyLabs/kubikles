@@ -66,6 +66,7 @@ func (a *App) SwitchContext(name string) error {
 		debug.LogK8s("SwitchContext: Stopping all watchers before context switch", nil)
 		a.watcherManager.StopAll()
 	}
+	a.resetStore()
 
 	return nil
 }
@@ -144,6 +145,7 @@ func (a *App) UpdateContextDetail(name string, req k8s.ContextUpdateRequest) err
 		if a.watcherManager != nil {
 			a.watcherManager.RestartAll()
 		}
+		a.resyncStore()
 	}
 
 	return nil

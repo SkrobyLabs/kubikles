@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { GetAllPodLogs, SavePodLogs, SaveLogsBundle } from 'wailsjs/go/main/App';
 import { useK8s, useConfig } from '~/context';
@@ -28,10 +28,61 @@ import Tooltip from '../Tooltip';
 
 import { useLogStream, ALL_CONTAINERS, ALL_PODS } from './useLogStream';
 import { useLogSearch } from './useLogSearch';
+import { isListCovered, isListShown, watchListReady } from './listReady';
 import { LogLine, Spinner } from './LogLine';
+import { useTabActive } from './TabActiveContext';
+import { createFollowPin, followKeyDirection } from './followPin';
+import { EventsOn } from 'wailsjs/runtime/runtime';
+import { requestFrameOrTimeout } from '~/utils/frame';
 import { TimePickerModal } from './TimePickerModal';
 import { logsToVisibleString, logsToDebugString, stripAnsiCodes } from './logUtils';
 import { GetAllContainersLogsAll, GetAllPodsLogsAll } from 'wailsjs/go/main/App';
+
+// Virtuoso header/footer are module-level so they keep their identity across renders
+// (inline components would remount on every update); data arrives through `context`.
+interface LogListContext { loadingBefore: boolean; hasMoreBefore: boolean; loadingAfter: boolean; trimmedCount: number }
+
+const LogListHeader = ({ context }: { context?: LogListContext }) => {
+    if (!context) return null;
+    return (
+        <>
+            {context.loadingBefore && (
+                <div className="flex items-center justify-center py-2 text-gray-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    Loading older logs...
+                </div>
+            )}
+            {context.trimmedCount > 0 && !context.loadingBefore && (
+                <div className="flex items-center justify-center py-1 text-amber-500/80 text-xs">
+                    {context.trimmedCount.toLocaleString()} earlier lines were dropped to keep the live view fast. Scroll up to load them again.
+                </div>
+            )}
+            {!context.hasMoreBefore && !context.loadingBefore && (
+                <div className="flex items-center justify-center py-1 text-gray-600 text-xs">
+                    — You are at the top —
+                </div>
+            )}
+        </>
+    );
+};
+
+// The spacer keeps the last line clear of the horizontal scrollbar: with unwrapped lines the bar
+// takes its height out of the viewport, and scrolling to the end stops that much short.
+const LogListFooter = ({ context }: { context?: LogListContext }) => (
+    <>
+        {context?.loadingAfter && (
+            <div className="flex items-center justify-center py-2 text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                Loading newer logs...
+            </div>
+        )}
+        <div className="h-2" aria-hidden="true" />
+    </>
+);
+
+const LOG_LIST_COMPONENTS = { Header: LogListHeader, Footer: LogListFooter };
+const LOG_LIST_STYLE = { height: '100%' };
+const LOG_LIST_VIEWPORT = { top: 0, bottom: 0 };
 
 export default function LogViewer({
     namespace: initialNamespace,
@@ -42,8 +93,11 @@ export default function LogViewer({
     ownerName: initialOwnerName = '',
     podCreationTime: initialPodCreationTime = '',
     resolveFreshPods,
-    tabContext = ''
-}: { namespace: any; pod: any; containers?: any; siblingPods?: any; podContainerMap?: any; ownerName?: any; podCreationTime?: any; resolveFreshPods?: any; tabContext?: any }) {
+    tabContext = '',
+    isActive: isActiveProp
+}: { namespace: any; pod: any; containers?: any; siblingPods?: any; podContainerMap?: any; ownerName?: any; podCreationTime?: any; resolveFreshPods?: any; tabContext?: any; isActive?: boolean }) {
+    const tabActive = useTabActive();
+    const isActive = isActiveProp ?? tabActive;
     const { currentContext, connectionMode, lastRefresh } = useK8s();
     const { getConfig } = useConfig();
     const [logTarget, setLogTarget] = useState(() => ({
@@ -132,6 +186,7 @@ export default function LogViewer({
     const virtuosoRef = useRef<any>(null);
     const logsContainerRef = useRef<HTMLDivElement>(null);
     const isAtBottomRef = useRef(true);
+    const followPinRef = useRef(createFollowPin());
     // Tracks the underlying-buffer position of the current selection so copy
     // can synthesize text from stream.logs even after Virtuoso unmounts lines.
     const selectionStateRef = useRef<{
@@ -142,6 +197,9 @@ export default function LogViewer({
     // fire outside of this window (e.g. scroll-driven node detach/reattach)
     // are ignored so they cannot clobber the frozen selection state.
     const isMouseDownRef = useRef(false);
+    // Whether any selection overlay divs are currently in the DOM, so the common
+    // no-selection case (every streamed batch) can skip the DOM walk entirely.
+    const hasOverlaysRef = useRef(false);
 
     // Check if this tab is stale
     const isStale = tabContext && tabContext !== currentContext;
@@ -209,12 +267,15 @@ export default function LogViewer({
         initialPosition,
         isStale,
         currentContext,
-        resolveFreshLogTarget
+        resolveFreshLogTarget,
+        isActive
     });
 
     // Search hook
     const search = useLogSearch({
         logs: stream.logs,
+        logCount: stream.logCount,
+        firstId: stream.firstItemIndex,
         getConfig,
         getSafeConfig
     });
@@ -250,10 +311,18 @@ export default function LogViewer({
     }, [connectionMode, isFollowing, namespace, selectedPod, selectedContainer, stream.pollNewerLogs]);
 
     // Toolbar refresh and the application refresh shortcut share one signal.
+    // Server mode also raises it when the socket reconnects, to re-list what was missed. A log
+    // tab that is following needs that too (lines were lost and the stream may be gone), but a
+    // paused tab, or one with its whole history loaded, must keep what it shows.
+    const reconnectRefresh = useRef(false);
+    useEffect(() => EventsOn('ws:reconnected', () => { reconnectRefresh.current = true; }), []);
     const previousRefresh = useRef(lastRefresh);
     useEffect(() => {
         if (previousRefresh.current === lastRefresh) return;
         previousRefresh.current = lastRefresh;
+        const fromReconnect = reconnectRefresh.current;
+        reconnectRefresh.current = false;
+        if (fromReconnect && !isFollowing) return;
         if (!isStale && namespace && selectedPod) stream.fetchLogs({ refreshTarget: true });
     }, [lastRefresh, isStale, namespace, selectedPod, stream.fetchLogs]);
 
@@ -266,12 +335,14 @@ export default function LogViewer({
     const applySelectionHighlight = useCallback(() => {
         const container = logsContainerRef.current;
         if (!container) return;
-        container.querySelectorAll('.log-selection-overlay').forEach(el => el.remove());
-
         const a = selectionStateRef.current.anchor;
         const f = selectionStateRef.current.focus;
-        if (!a || !f) return;
-        if (a.idx === f.idx && a.offset === f.offset) return;
+        const hasSelection = !!a && !!f && !(a.idx === f.idx && a.offset === f.offset);
+        if (!hasSelection && !hasOverlaysRef.current) return;
+
+        container.querySelectorAll('.log-selection-overlay').forEach(el => el.remove());
+        hasOverlaysRef.current = false;
+        if (!hasSelection || !a || !f) return;
 
         const forward = a.idx < f.idx || (a.idx === f.idx && a.offset <= f.offset);
         const start = forward ? a : f;
@@ -326,6 +397,7 @@ export default function LogViewer({
                 overlay.style.width = rect.width + 'px';
                 overlay.style.height = rect.height + 'px';
                 lineEl.appendChild(overlay);
+                hasOverlaysRef.current = true;
             }
         });
     }, []);
@@ -358,6 +430,8 @@ export default function LogViewer({
             return onlyOverlay(m.addedNodes) && onlyOverlay(m.removedNodes);
         };
         const observer = new MutationObserver((mutations) => {
+            // Nothing to repaint without a selection or stale overlays: skip the scan.
+            if (!hasOverlaysRef.current && !(selectionStateRef.current.anchor && selectionStateRef.current.focus)) return;
             for (const m of mutations) {
                 if (isOurOverlayMutation(m)) continue;
                 schedule();
@@ -483,10 +557,10 @@ export default function LogViewer({
 
             const parsePrefixesNow = selectedPod === ALL_PODS || selectedContainer === ALL_CONTAINERS;
             const prefixRe = /^\[([a-z0-9][a-z0-9\-.]*(\/[a-z0-9][a-z0-9\-.]*)?)\]\s*/;
-            const logs = stream.logs;
             const parts: string[] = [];
             for (let i = start.idx; i <= end.idx; i++) {
-                const entry = logs[i];
+                // Ids are stable across head trimming; lines trimmed away are copied as blanks.
+                const entry = stream.getEntryById(i);
                 if (!entry) { parts.push(''); continue; }
                 let content: string = entry.content || '';
                 if (parsePrefixesNow) {
@@ -510,12 +584,13 @@ export default function LogViewer({
 
         document.addEventListener('copy', handleCopy);
         return () => document.removeEventListener('copy', handleCopy);
-    }, [stream.logs, selectedPod, selectedContainer]);
+    }, [stream.getEntryById, selectedPod, selectedContainer]);
 
 
     // Virtuoso callbacks
     const handleAtBottomStateChange = useCallback((atBottom: any) => {
         isAtBottomRef.current = atBottom;
+        followPinRef.current.noteAtBottom(atBottom);
         if (!atBottom && !stream.hasMoreAfter && !isFollowing && !stream.isAllLoaded) {
             stream.setHasMoreAfter(true);
         }
@@ -532,18 +607,22 @@ export default function LogViewer({
     }, [stream.isAllLoaded, stream.hasMoreAfter, isFollowing, stream.loadNewerLogs]);
 
     const followOutput = useCallback((isAtBottom: any) => {
-        if (isFollowing && isAtBottom) return 'smooth';
+        // 'smooth' restarts its animation on every append and lags behind a fast stream.
+        // The pin, not the list's at-bottom flag, decides: a burst of lines makes that flag false.
+        if (isFollowing && (isAtBottom || followPinRef.current.isPinned())) return 'auto';
         return false;
     }, [isFollowing]);
 
     // Scroll helpers
     const scrollToTop = useCallback(() => {
         isAtBottomRef.current = false;
+        followPinRef.current.unpin();
         (virtuosoRef as any).current?.scrollToIndex({ index: 0, behavior: 'auto' });
     }, []);
 
     const scrollToBottom = useCallback(() => {
         isAtBottomRef.current = true;
+        followPinRef.current.pin();
         (virtuosoRef as any).current?.scrollToIndex({ index: 'LAST', behavior: 'auto' });
     }, []);
 
@@ -662,7 +741,7 @@ export default function LogViewer({
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `${selectedPod}-${timestamp}.log`;
         try {
-            await SavePodLogs(logsToVisibleString(stream.logs, showTimestamps), filename);
+            await SavePodLogs(logsToVisibleString(stream.getEntries(), showTimestamps), filename);
         } catch (err: any) {
             console.error('Failed to save visible logs:', err);
         }
@@ -672,7 +751,7 @@ export default function LogViewer({
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `DEBUG-${selectedPod}-${timestamp}.log`;
         try {
-            await SavePodLogs(logsToDebugString(stream.logs), filename);
+            await SavePodLogs(logsToDebugString(stream.getEntries()), filename);
         } catch (err: any) {
             console.error('Failed to save debug logs:', err);
         }
@@ -681,13 +760,18 @@ export default function LogViewer({
     // Render log item
     const parsePrefixes = selectedPod === ALL_PODS || selectedContainer === ALL_CONTAINERS;
 
-    const renderLogItem = useCallback((index: any) => {
-        const entry = search.displayLogs[index];
-        if (!entry) return null;
+    const getDisplayRow = search.getRow;
+    const renderLogItem = useCallback((index: number) => {
+        const row = getDisplayRow(index);
+        if (!row) return null;
 
+        // Row wrappers are throwaway; LogLine receives the stable entry plus primitives,
+        // so React.memo skips every line whose own inputs did not change.
         return (
             <LogLine
-                entry={entry}
+                entry={row.isSkipIndicator ? row : row.entry}
+                lineId={row.originalIndex}
+                isMatch={row.isMatch}
                 showTimestamps={showTimestamps}
                 searchTerm={search.searchTerm}
                 searchRegex={search.searchRegex}
@@ -695,7 +779,110 @@ export default function LogViewer({
                 parsePrefixes={parsePrefixes}
             />
         );
-    }, [search.displayLogs, showTimestamps, search.searchTerm, search.searchRegex, wrapLines, parsePrefixes]);
+    }, [getDisplayRow, showTimestamps, search.searchTerm, search.searchRegex, wrapLines, parsePrefixes]);
+
+    const listContext = useMemo<LogListContext>(() => ({
+        loadingBefore: stream.loadingBefore,
+        hasMoreBefore: stream.hasMoreBefore,
+        loadingAfter: stream.loadingAfter,
+        trimmedCount: stream.trimmedCount,
+    }), [stream.loadingBefore, stream.hasMoreBefore, stream.loadingAfter, stream.trimmedCount]);
+
+    // Filtered rows are a derived list, so ids from the live buffer do not apply to it.
+    const filteredView = search.displayIsDerived;
+    const listFirstIndex = filteredView ? 10000 : stream.firstItemIndex;
+    // Entering or leaving the filtered list remounts the scroller, which stays hidden until it has
+    // measured rows. Cover that window with a loading state instead of a blank pane.
+    const listKey = filteredView ? 'filtered' : 'live';
+    const [readyListKey, setReadyListKey] = useState(listKey);
+    const listCovered = isListCovered(listKey, readyListKey, search.displayCount);
+    useEffect(() => {
+        if (readyListKey === listKey) return;
+        return watchListReady(
+            () => isListShown(logsContainerRef.current),
+            () => setReadyListKey(listKey),
+        );
+    }, [listKey, readyListKey]);
+
+    // User scrolling releases or restores the follow pin (see followPin.ts).
+    useEffect(() => {
+        const container = logsContainerRef.current;
+        if (!container) return;
+        const pin = followPinRef.current;
+        // A sideways swipe over unwrapped lines is not vertical scrolling.
+        const onWheel = (e: WheelEvent) => { if (Math.abs(e.deltaY) >= Math.abs(e.deltaX)) pin.noteWheel(e.deltaY); };
+        const onInput = () => pin.noteUserInput();
+        // Only keys that scroll count, and only without a command modifier (copy, find, tab switching).
+        const onKey = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            const direction = followKeyDirection(e.key, e.shiftKey);
+            if (direction) pin.noteUserInput(direction);
+            // End states the intent outright. The native jump lands on the end as it was when the
+            // key was pressed, and on a busy stream that is already more than the slack away from
+            // the real end, so the pin would not come back from the scroll event alone.
+            if (e.key === 'End') {
+                pin.pin();
+                (virtuosoRef as any).current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' });
+            }
+        };
+        const onDown = () => pin.setHeld(true);
+        const onUp = () => pin.setHeld(false);
+        let lastTop = -1;
+        const onScroll = (e: Event) => {
+            const el = e.target as HTMLElement | null;
+            if (!el || typeof el.scrollHeight !== 'number') return;
+            // Horizontal scrolling fires scroll events too; the distance to the end did not change by it.
+            if (el.scrollTop === lastTop) return;
+            lastTop = el.scrollTop;
+            pin.noteScroll(el.scrollHeight - el.scrollTop - el.clientHeight);
+        };
+        container.addEventListener('wheel', onWheel, { passive: true });
+        container.addEventListener('touchmove', onInput, { passive: true });
+        container.addEventListener('keydown', onKey);
+        container.addEventListener('pointerdown', onDown);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+        // A drag that ends outside the window (app switch) never delivers pointerup here.
+        window.addEventListener('blur', onUp);
+        // Scroll events do not bubble, so listen in the capture phase.
+        container.addEventListener('scroll', onScroll, { capture: true, passive: true });
+        return () => {
+            container.removeEventListener('wheel', onWheel);
+            container.removeEventListener('touchmove', onInput);
+            container.removeEventListener('keydown', onKey);
+            container.removeEventListener('pointerdown', onDown);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            window.removeEventListener('blur', onUp);
+            container.removeEventListener('scroll', onScroll, { capture: true });
+        };
+    }, []);
+
+    // While following and pinned, land on the true end after every change to the list. The list's
+    // own follow only fires when the count grows and can stop short of the end when lines wrap or
+    // arrive in bursts; it does not fire at all once the buffer is full and trims as it appends.
+    useEffect(() => {
+        if (!isFollowing || !isActive || !followPinRef.current.isPinned()) return;
+        const handle = requestFrameOrTimeout(() => {
+            if (!followPinRef.current.isPinned()) return;
+            (virtuosoRef as any).current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' });
+        });
+        return () => handle.cancel();
+    }, [isFollowing, isActive, stream.logCount, stream.firstItemIndex, search.displayCount]);
+
+    // Returning to a tab that was hidden: its scroller lost layout, so re-pin to the end when following.
+    const wasActiveRef = useRef(isActive);
+    useEffect(() => {
+        const wasActive = wasActiveRef.current;
+        wasActiveRef.current = isActive;
+        if (!isActive || wasActive) return;
+        // A user who scrolled away before leaving the tab stays where they were.
+        if (!((isFollowing && followPinRef.current.isPinned()) || isAtBottomRef.current)) return;
+        const frame = requestAnimationFrame(() => {
+            (virtuosoRef as any).current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' });
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [isActive, isFollowing]);
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -875,7 +1062,7 @@ export default function LogViewer({
                     }>
                         <button
                             onClick={downloadLogs}
-                            disabled={stream.logs.length === 0 || stream.loading || downloading || !!stream.fetchError}
+                            disabled={stream.logCount === 0 || stream.loading || downloading || !!stream.fetchError}
                             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {downloading ? <Spinner /> : <ArrowDownTrayIcon className="w-4 h-4" />}
@@ -899,7 +1086,7 @@ export default function LogViewer({
                     <Tooltip content="Download visible logs">
                         <button
                             onClick={downloadVisibleLogs}
-                            disabled={stream.logs.length === 0}
+                            disabled={stream.logCount === 0}
                             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <EyeIcon className="w-4 h-4" />
@@ -911,7 +1098,7 @@ export default function LogViewer({
                         <Tooltip content="Download with source markers (debug)">
                             <button
                                 onClick={downloadDebugLogs}
-                                disabled={stream.logs.length === 0}
+                                disabled={stream.logCount === 0}
                                 className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <BugAntIcon className="w-4 h-4" />
@@ -1055,7 +1242,7 @@ export default function LogViewer({
             )}
 
             {/* Logs Content */}
-            <div ref={logsContainerRef} className="flex-1 overflow-hidden text-gray-300 font-mono text-xs" data-selectable-region data-log-region tabIndex={-1}>
+            <div ref={logsContainerRef} className="relative flex-1 overflow-hidden text-gray-300 font-mono text-xs" data-selectable-region data-log-region tabIndex={-1}>
                 {stream.loading || stream.loadingAll ? (
                     <div className="flex flex-col items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1063,7 +1250,7 @@ export default function LogViewer({
                             <span className="mt-3 text-gray-500 text-sm">Loading all logs...</span>
                         )}
                     </div>
-                ) : stream.logs.length === 0 ? (
+                ) : stream.logCount === 0 ? (
                     <div className="flex items-center justify-center h-full">
                         {showPrevious ? (
                             <span className="text-amber-400">No previous container logs available.</span>
@@ -1083,46 +1270,33 @@ export default function LogViewer({
                     </div>
                 ) : (
                     <Virtuoso
+                        key={listKey}
                         ref={virtuosoRef}
-                        style={{ height: '100%' }}
+                        style={LOG_LIST_STYLE}
                         className="px-4"
-                        data={search.displayLogs}
-                        firstItemIndex={stream.firstItemIndex}
-                        initialTopMostItemIndex={viewMode === 'start' ? 0 : search.displayLogs.length - 1}
-                        itemContent={(index) => renderLogItem(index - stream.firstItemIndex)}
+                        totalCount={search.displayCount}
+                        firstItemIndex={listFirstIndex}
+                        initialTopMostItemIndex={viewMode === 'start' ? 0 : Math.max(0, search.displayCount - 1)}
+                        itemContent={(index) => renderLogItem(index - listFirstIndex)}
                         followOutput={followOutput}
                         atBottomStateChange={handleAtBottomStateChange}
                         startReached={handleStartReached}
                         endReached={handleEndReached}
                         overscan={200}
-                        increaseViewportBy={{ top: 0, bottom: 0 }}
+                        increaseViewportBy={LOG_LIST_VIEWPORT}
                         itemsRendered={applySelectionHighlight}
-                        components={{
-                            Header: () => (
-                                <>
-                                    {stream.loadingBefore && (
-                                        <div className="flex items-center justify-center py-2 text-gray-500">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                                            Loading older logs...
-                                        </div>
-                                    )}
-                                    {!stream.hasMoreBefore && !stream.loadingBefore && (
-                                        <div className="flex items-center justify-center py-1 text-gray-600 text-xs">
-                                            — You are at the top —
-                                        </div>
-                                    )}
-                                </>
-                            ),
-                            Footer: () => (
-                                stream.loadingAfter ? (
-                                    <div className="flex items-center justify-center py-2 text-gray-500">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                                        Loading newer logs...
-                                    </div>
-                                ) : null
-                            )
-                        }}
+                        context={listContext}
+                        components={LOG_LIST_COMPONENTS}
                     />
+                )}
+                {listCovered && !stream.loading && !stream.loadingAll && (
+                    <div
+                        data-testid="log-list-cover"
+                        className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background"
+                    >
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <span className="mt-3 text-gray-500 text-sm">{search.searchTerm ? 'Searching logs...' : 'Loading logs...'}</span>
+                    </div>
                 )}
             </div>
 

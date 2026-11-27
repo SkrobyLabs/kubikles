@@ -312,6 +312,7 @@ var knownPackages = map[string]string{
 	"events":          "kubikles/pkg/events",
 	"tools":           "kubikles/pkg/tools",
 	"issuedetector":   "kubikles/pkg/issuedetector",
+	"rows":            "kubikles/pkg/rows",
 }
 
 // generateDispatcher produces the Go source code for the dispatch file.

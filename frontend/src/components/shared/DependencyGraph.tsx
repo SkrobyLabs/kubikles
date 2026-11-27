@@ -629,7 +629,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 source: edge.source,
                 target: edge.target,
                 type: 'smoothstep',
-                animated: edge.relation === 'uses',
+                animated: false, // 'uses' is already dashed + labelled; a running dash animation only burns CPU
                 style: getEdgeStyle(edge.relation),
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
@@ -739,7 +739,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                     source: edge.source,
                     target: edge.target,
                     type: 'smoothstep',
-                    animated: edge.relation === 'uses',
+                    animated: false, // 'uses' is already dashed + labelled; a running dash animation only burns CPU
                     style: getEdgeStyle(edge.relation),
                     markerEnd: {
                         type: MarkerType.ArrowClosed,

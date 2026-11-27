@@ -32,6 +32,7 @@ func (c *Client) ListJobsWithContext(ctx context.Context, contextName, namespace
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -109,6 +110,7 @@ func (c *Client) ListCronJobsWithContext(ctx context.Context, contextName, names
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {

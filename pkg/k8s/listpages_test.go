@@ -23,7 +23,8 @@ func TestPaginatedListPublishesPagesBeforeCompletion(t *testing.T) {
 		}
 		return []int{3}, "", nil, nil
 	}, func(int, int) {})
-	if err != nil || !reflect.DeepEqual(result, []int{1, 2, 3}) {
+	// The observer received every item, so the result carries none of them again.
+	if err != nil || len(result) != 0 {
 		t.Fatalf("result %v, error %v", result, err)
 	}
 	if len(pages) != 2 || pages[0].Loaded != 2 || *pages[0].Total != 3 || *pages[1].Total != 3 {

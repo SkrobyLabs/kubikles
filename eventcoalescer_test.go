@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -14,12 +16,8 @@ func makeTestEvent(resourceType, namespace, name string, data string) ResourceEv
 		Type:         "MODIFIED",
 		ResourceType: resourceType,
 		Namespace:    namespace,
-		Resource: map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"name": name,
-			},
-			"data": data,
-		},
+		Name:         name,
+		Resource:     json.RawMessage(`{"metadata":{"name":` + strconv.Quote(name) + `},"data":` + strconv.Quote(data) + `}`),
 	}
 }
 
@@ -29,11 +27,8 @@ func makeTestEventWithType(eventType, resourceType, namespace, name string) Reso
 		Type:         eventType,
 		ResourceType: resourceType,
 		Namespace:    namespace,
-		Resource: map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"name": name,
-			},
-		},
+		Name:         name,
+		Resource:     json.RawMessage(`{"metadata":{"name":` + strconv.Quote(name) + `}}`),
 	}
 }
 
@@ -84,7 +79,7 @@ func TestEventCoalescer_EventKey(t *testing.T) {
 		},
 		{
 			name:     "event without metadata",
-			event:    ResourceEvent{ResourceType: "pods", Namespace: "test", Resource: map[string]interface{}{}},
+			event:    ResourceEvent{ResourceType: "pods", Namespace: "test", Resource: json.RawMessage(`{}`)},
 			expected: "pods:test:",
 		},
 		{
@@ -125,7 +120,7 @@ func TestEventCoalescer_Coalescing(t *testing.T) {
 	// Verify the latest version won
 	c.mu.Lock()
 	for _, event := range c.events {
-		if data, ok := event.Resource["data"].(string); ok {
+		if data, ok := resourceMap(event)["data"].(string); ok {
 			if data != "version3" {
 				t.Errorf("expected version3 (latest), got %s", data)
 			}
@@ -880,8 +875,19 @@ func TestEventCoalescer_ConcurrentEmitWithBatchCap(t *testing.T) {
 
 	wg.Wait()
 
-	// Wait for auto-drain to complete (500 events / 50 per batch = 10 batches × 10ms = 100ms + margin)
-	time.Sleep(300 * time.Millisecond)
+	// Wait for auto-drain to complete. Capped flushes back the frame interval
+	// off (up to 250ms), so allow several seconds instead of a fixed sleep.
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		n := len(c.events)
+		c.mu.Unlock()
+		if n == 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	c.waitDrained(2 * time.Second)
 
 	mu.Lock()
 	totalEmitted := emittedCount

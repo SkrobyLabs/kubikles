@@ -35,6 +35,7 @@ func (c *Client) ListPodsWithContext(ctx context.Context, namespace string, onPr
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -59,6 +60,7 @@ func (c *Client) ListPodsForContext(contextName, namespace string) ([]v1.Pod, er
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -82,6 +84,7 @@ func (c *Client) ListPodsForNode(nodeName string) ([]v1.Pod, error) {
 	if err != nil {
 		return nil, err
 	}
+	stripManagedFields(list.Items)
 	return list.Items, nil
 }
 

@@ -1,121 +1,82 @@
-import React, { useMemo, useState, useCallback, useEffect, memo } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
-import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
-import ResourceBar from '~/components/shared/ResourceBar';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useNodes } from '~/hooks/resources';
 import { useNodeMetrics } from '~/hooks/useNodeMetrics';
 import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
-import { useK8s } from '~/context';
-import { useUI } from '~/context';
-import { useMenu } from '~/context';
-import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
+import { useK8s, useNotification } from '~/context';
+import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon, TableCellsIcon, Squares2X2Icon, NoSymbolIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { SetNodeSchedulable, DeleteNode, GetNodeYaml } from 'wailsjs/go/main/App';
 import NodeActionsMenu from './NodeActionsMenu';
+import { hasCordonTargets } from './bulkCordon';
 import { useNodeActions } from './useNodeActions';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import MenuBound from '~/components/shared/MenuBound';
+import { NodeMetricCell, NodeMetricViewCell, type NodeMetricsSnapshot } from './NodeMetricCells';
+import { ConditionsCell, TaintsCell } from './NodeCells';
+import { createNodeSemantics } from './semantics';
+import { buildNodeViewColumns, NODE_HIDDEN_BY_DEFAULT, NODE_PINNED_COLUMNS } from './viewColumns';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { useAllViewObjects, useWithFullObject } from '~/hooks/useViewObject';
+import { useMetricsOverlayConfig, useOverlayAvailability } from '~/hooks/useViewOverlay';
+import { OVERLAY_NODE_METRICS } from '~/lib/views/protocol';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import { useValueStore, useSyncValueStore } from '~/utils/valueStore';
 import NodeTopology from '../topology/NodeTopology';
-
-// Helper to get node conditions summary
-const getConditionsSummary = (node: any) => {
-    const conditions = node.status?.conditions || [];
-    const isUnschedulable = node.spec?.unschedulable === true;
-
-    const issues: { type: string; severity: string }[] = [];
-
-    // Check Ready condition
-    const readyCondition = conditions.find((c: any) => c.type === 'Ready');
-    const isReady = readyCondition?.status === 'True';
-
-    if (!isReady) {
-        issues.push({ type: 'NotReady', severity: 'error' });
-    }
-
-    if (isUnschedulable) {
-        issues.push({ type: 'SchedulingDisabled', severity: 'warning' });
-    }
-
-    // Check pressure conditions (these are problems when True)
-    const pressureConditions = ['MemoryPressure', 'DiskPressure', 'PIDPressure'];
-    pressureConditions.forEach((condType: any) => {
-        const cond = conditions.find((c: any) => c.type === condType);
-        if (cond?.status === 'True') {
-            issues.push({ type: condType, severity: 'error' });
-        }
-    });
-
-    // Check NetworkUnavailable (problem when True)
-    const networkCond = conditions.find((c: any) => c.type === 'NetworkUnavailable');
-    if (networkCond?.status === 'True') {
-        issues.push({ type: 'NetworkUnavailable', severity: 'error' });
-    }
-
-    return { isReady, isUnschedulable, issues };
-};
-
-// Conditions cell component
-const ConditionsCell = memo(function ConditionsCell({ node }: { node: any }) {
-    const { isReady, issues } = getConditionsSummary(node);
-
-    if (issues.length === 0) {
-        return <span className="text-green-400">Ready</span>;
-    }
-
-    return (
-        <div className="flex flex-wrap gap-1">
-            {issues.map((issue: any, idx: number) => (
-                <span
-                    key={idx}
-                    className={`px-1.5 py-0.5 text-xs rounded ${
-                        issue.severity === 'error'
-                            ? 'bg-red-500/20 text-red-400'
-                            : 'bg-yellow-500/20 text-yellow-400'
-                    }`}
-                >
-                    {issue.type}
-                </span>
-            ))}
-        </div>
-    );
-});
-
-// Taints cell component with tooltip
-const TaintsCell = memo(function TaintsCell({ node }: { node: any }) {
-    const taints = node.spec?.taints || [];
-    const count = taints.length;
-
-    if (count === 0) {
-        return <span className="text-gray-500">-</span>;
-    }
-
-    const tooltipLines = taints.map((t: any) =>
-        `${t.key}${t.value ? '=' + t.value : ''}:${t.effect}`
-    );
-
-    return (
-        <span className="relative group cursor-help text-gray-300 underline decoration-dotted">
-            {count}
-            <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity delay-500 bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs bg-background border border-border rounded shadow-lg whitespace-pre text-left">
-                {tooltipLines.map((line: any, idx: number) => (
-                    <div key={idx}>{line}</div>
-                ))}
-            </div>
-        </span>
-    );
-});
 
 const STORAGE_KEY = 'kubikles-nodes-view';
 
+const NODE_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const NODE_VIEW_OPTIONS = { sort: NODE_INITIAL_SORT, columns: defaultViewColumns('nodes', NODE_HIDDEN_BY_DEFAULT) };
+const NO_DATA: any[] = [];
+
 export default function NodeList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { nodes, loading, refetch, loadState } = useNodes(currentContext, isVisible) as any;
+    const { addNotification } = useNotification();
+    const { nodes: listNodes, loading, refetch, loadState, view, viewSnapshot } = useNodes(currentContext, isVisible, NODE_VIEW_OPTIONS) as any;
+
+    // View mode: list or topology, persisted to localStorage
+    const [viewMode, setViewMode] = useState<'list' | 'topology'>(() =>
+        (localStorage.getItem(STORAGE_KEY) as 'list' | 'topology') || 'list'
+    );
+
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, viewMode);
+    }, [viewMode]);
+
+    // The topology diagram draws from the whole node list and the metrics map. With the Go view on,
+    // the node objects come from the view (refs stream plus the object route over the shared store
+    // shard), so no legacy node list or watch runs; the metrics map stays on the metrics hook, which
+    // is a poll of the metrics source and not a node list. Without the view the list hook feeds both.
+    const topologyOnView = !!view && viewMode === 'topology';
+    const viewNodes = useAllViewObjects(view ?? null, viewSnapshot ?? null, isVisible && topologyOnView);
+    // The topology draws every node: the view's search and column filters were set by the list
+    // ResourceList, which is unmounted in topology mode, so clear them (the list pushes its own
+    // values again when it mounts).
+    useEffect(() => {
+        if (topologyOnView && view) view.update({ search: '', columnFilters: [] });
+    }, [topologyOnView, view]);
+    const nodes: any[] = view ? (topologyOnView ? viewNodes.objects : NO_DATA) : listNodes;
+    const nodesLoading: boolean = topologyOnView ? viewNodes.loading : loading;
+
     // Delay metrics fetch until nodes are loaded to prioritize showing node list first
-    const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible, !loading && nodes.length > 0);
+    const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible && (!view || topologyOnView), !nodesLoading && nodes.length > 0);
+    // In view mode the backend polls the metrics source while the view is open.
+    useMetricsOverlayConfig(isVisible && !!view);
+    const metricsAvailability = useOverlayAvailability(viewSnapshot, OVERLAY_NODE_METRICS);
+    // Metrics reach cells through a store so ticks never rebuild the column definitions.
+    const metricsSnapshot = useMemo<NodeMetricsSnapshot>(() => ({ metrics, available: metricsAvailable }), [metrics, metricsAvailable]);
+    const metricsStore = useValueStore<NodeMetricsSnapshot>(metricsSnapshot);
+    useSyncValueStore(metricsStore, metricsSnapshot);
+    const semantics = useMemo(() => createNodeSemantics((item: any) => metricsStore.get().metrics[item.metadata?.name]), [metricsStore]);
+
     const nodeActions = useNodeActions(refetch);
     const { handleShowDetails, handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = nodeActions;
+    const stable = useStableCallbacks({ handleEditYaml, handleCordonUncordon, handleShell, handleDelete });
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the node object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     // Multi-select
     const selection = useSelection();
@@ -135,16 +96,40 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetNodeYaml,
     });
 
-    // Compute cordon/uncordon button visibility from selected items
-    const selectedItems = selection.getSelectedItems(nodes);
-    const hasSchedulable = selectedItems.some((n: any) => !n.spec?.unschedulable);
-    const hasCordoned = selectedItems.some((n: any) => n.spec?.unschedulable === true);
+    // Compute cordon/uncordon button visibility from selected items. A windowed list holds only
+    // the identity of selected rows, so both buttons show for any selection and the click picks
+    // the nodes the action applies to from their objects.
+    const windowed = !!view && viewMode === 'list';
+    const selectedItems = windowed ? [] : selection.getSelectedItems(nodes);
+    const hasSelection = windowed ? selection.selectedIds.size > 0 : selectedItems.length > 0;
+    const hasSchedulable = windowed || selectedItems.some((n: any) => !n.spec?.unschedulable);
+    const hasCordoned = windowed || selectedItems.some((n: any) => n.spec?.unschedulable === true);
 
-    const bulkCustomActions = selectedItems.length > 0 ? (
+    const runBulkCordon = useCallback((action: 'cordon' | 'uncordon') => {
+        if (!windowed) {
+            openBulkCustomAction(selectedItems, action);
+            return;
+        }
+        const refs = selection.getRefItems ? selection.getRefItems() : [];
+        view.getObjects(refs).then((objects: any[]) => {
+            // Like the legacy list, the modal gets every selected node. The legacy list hides a
+            // button when no selected node qualifies; here the buttons always show, so say why
+            // nothing opens instead.
+            if (!hasCordonTargets(objects, action)) {
+                addNotification({ type: 'info', title: action === 'cordon' ? 'Nothing to cordon' : 'Nothing to uncordon', message: action === 'cordon' ? 'All selected nodes are already cordoned' : 'None of the selected nodes are cordoned' });
+                return;
+            }
+            openBulkCustomAction(objects, action);
+        }).catch((err: unknown) => {
+            addNotification({ type: 'error', title: 'Failed to load nodes', message: String((err as Error)?.message ?? err) });
+        });
+    }, [windowed, selectedItems, selection, view, openBulkCustomAction, addNotification]);
+
+    const bulkCustomActions = hasSelection ? (
         <>
             {hasSchedulable && (
                 <button
-                    onClick={() => openBulkCustomAction(selectedItems, 'cordon')}
+                    onClick={() => runBulkCordon('cordon')}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded transition-colors"
                     title="Cordon selected nodes"
                 >
@@ -154,7 +139,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
             )}
             {hasCordoned && (
                 <button
-                    onClick={() => openBulkCustomAction(selectedItems, 'uncordon')}
+                    onClick={() => runBulkCordon('uncordon')}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-green-400 hover:text-green-300 hover:bg-green-500/10 rounded transition-colors"
                     title="Uncordon selected nodes"
                 >
@@ -165,45 +150,18 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
         </>
     ) : null;
 
-    // View mode: list or topology, persisted to localStorage
-    const [viewMode, setViewMode] = useState<'list' | 'topology'>(() =>
-        (localStorage.getItem(STORAGE_KEY) as 'list' | 'topology') || 'list'
-    );
-
-    useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, viewMode);
-    }, [viewMode]);
-
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: semantics.name.getValue },
         {
             key: 'cpu',
             label: 'CPU',
             filterType: 'numeric',
             numericHint: 'CPU usage % (0-100)',
             numericUnit: '%',
-            render: (item: any) => {
-                const m = metrics[item.metadata?.name];
-                if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
-                if (!m) return <span className="text-gray-500 text-xs">--</span>;
-                return (
-                    <AggregateResourceBar
-                        usagePercent={m.cpuPercent}
-                        reservedPercent={m.cpuReservedPercent}
-                        committedPercent={m.cpuCommittedPercent}
-                        displayPercent={m.cpuPercent}
-                        type="cpu"
-                        label="CPU"
-                        usageValue={m.cpuUsage}
-                        reservedValue={m.cpuRequested}
-                        committedValue={m.cpuCommitted}
-                        capacityValue={m.cpuCapacity}
-                        formatValue={formatCpu}
-                    />
-                );
-            },
-            getValue: (item: any) => metrics[item.metadata?.name]?.cpuPercent ?? -1,
-            getNumericValue: (item: any) => metrics[item.metadata?.name]?.cpuPercent ?? NaN
+            volatile: true,
+            render: (item: any) => <NodeMetricCell store={metricsStore} item={item} kind="cpu" />,
+            getValue: semantics.cpu.getValue,
+            getNumericValue: semantics.cpu.getNumericValue
         },
         {
             key: 'memory',
@@ -211,48 +169,23 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
             filterType: 'numeric',
             numericHint: 'Memory usage % (0-100)',
             numericUnit: '%',
-            render: (item: any) => {
-                const m = metrics[item.metadata?.name];
-                if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
-                if (!m) return <span className="text-gray-500 text-xs">--</span>;
-                return (
-                    <AggregateResourceBar
-                        usagePercent={m.memPercent}
-                        reservedPercent={m.memReservedPercent}
-                        committedPercent={m.memCommittedPercent}
-                        displayPercent={m.memPercent}
-                        type="memory"
-                        label="Memory"
-                        usageValue={m.memoryUsage}
-                        reservedValue={m.memRequested}
-                        committedValue={m.memCommitted}
-                        capacityValue={m.memCapacity}
-                        formatValue={formatBytes}
-                    />
-                );
-            },
-            getValue: (item: any) => metrics[item.metadata?.name]?.memPercent ?? -1,
-            getNumericValue: (item: any) => metrics[item.metadata?.name]?.memPercent ?? NaN
+            volatile: true,
+            render: (item: any) => <NodeMetricCell store={metricsStore} item={item} kind="memory" />,
+            getValue: semantics.memory.getValue,
+            getNumericValue: semantics.memory.getNumericValue
         },
         {
             key: 'pods',
             label: 'Pods',
-            render: (item: any) => {
-                const m = metrics[item.metadata?.name];
-                if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
-                if (!m) return <span className="text-gray-500 text-xs">--</span>;
-                return <ResourceBar percent={m.podPercent} label="" tooltipLabel={`${m.podCount}/${m.podCapacity}`} color="bg-green-500" />;
-            },
-            getValue: (item: any) => metrics[item.metadata?.name]?.podPercent ?? -1
+            volatile: true,
+            render: (item: any) => <NodeMetricCell store={metricsStore} item={item} kind="pods" />,
+            getValue: semantics.pods.getValue
         },
         {
             key: 'conditions',
             label: 'Conditions',
             render: (item: any) => <ConditionsCell node={item} />,
-            getValue: (item: any) => {
-                const { issues } = getConditionsSummary(item);
-                return issues.length === 0 ? 'Ready' : issues.map((i: any) => i.type).join(',');
-            }
+            getValue: semantics.conditions.getValue
         },
         {
             key: 'taints',
@@ -260,9 +193,9 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
             align: 'center',
             filterable: false,
             render: (item: any) => <TaintsCell node={item} />,
-            getValue: (item: any) => (item.spec?.taints || []).length
+            getValue: semantics.taints.getValue
         },
-        { key: 'version', label: 'Version', render: (item: any) => item.status?.nodeInfo?.kubeletVersion, getValue: (item: any) => item.status?.nodeInfo?.kubeletVersion },
+        { key: 'version', label: 'Version', render: (item: any) => item.status?.nodeInfo?.kubeletVersion, getValue: semantics.version.getValue },
         // Hidden by default columns
         {
             key: 'roles',
@@ -275,13 +208,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
                     .map((k: any) => k.replace('node-role.kubernetes.io/', ''));
                 return roles.length > 0 ? roles.join(', ') : <span className="text-gray-500">-</span>;
             },
-            getValue: (item: any) => {
-                const labels = item.metadata?.labels || {};
-                return Object.keys(labels)
-                    .filter((k: any) => k.startsWith('node-role.kubernetes.io/'))
-                    .map((k: any) => k.replace('node-role.kubernetes.io/', ''))
-                    .join(', ');
-            },
+            getValue: semantics.roles.getValue,
         },
         {
             key: 'internalIP',
@@ -291,7 +218,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
                 const addr = (item.status?.addresses || []).find((a: any) => a.type === 'InternalIP');
                 return addr?.address || <span className="text-gray-500">-</span>;
             },
-            getValue: (item: any) => (item.status?.addresses || []).find((a: any) => a.type === 'InternalIP')?.address || '',
+            getValue: semantics.internalIP.getValue,
         },
         {
             key: 'externalIP',
@@ -301,42 +228,42 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
                 const addr = (item.status?.addresses || []).find((a: any) => a.type === 'ExternalIP');
                 return addr?.address || <span className="text-gray-500">-</span>;
             },
-            getValue: (item: any) => (item.status?.addresses || []).find((a: any) => a.type === 'ExternalIP')?.address || '',
+            getValue: semantics.externalIP.getValue,
         },
         {
             key: 'osImage',
             label: 'OS Image',
             defaultHidden: true,
             render: (item: any) => item.status?.nodeInfo?.osImage || '-',
-            getValue: (item: any) => item.status?.nodeInfo?.osImage || '',
+            getValue: semantics.osImage.getValue,
         },
         {
             key: 'kernelVersion',
             label: 'Kernel',
             defaultHidden: true,
             render: (item: any) => item.status?.nodeInfo?.kernelVersion || '-',
-            getValue: (item: any) => item.status?.nodeInfo?.kernelVersion || '',
+            getValue: semantics.kernelVersion.getValue,
         },
         {
             key: 'containerRuntime',
             label: 'Container Runtime',
             defaultHidden: true,
             render: (item: any) => item.status?.nodeInfo?.containerRuntimeVersion || '-',
-            getValue: (item: any) => item.status?.nodeInfo?.containerRuntimeVersion || '',
+            getValue: semantics.containerRuntime.getValue,
         },
         {
             key: 'architecture',
             label: 'Arch',
             defaultHidden: true,
             render: (item: any) => item.status?.nodeInfo?.architecture || '-',
-            getValue: (item: any) => item.status?.nodeInfo?.architecture || '',
+            getValue: semantics.architecture.getValue,
         },
         {
             key: 'os',
             label: 'OS',
             defaultHidden: true,
             render: (item: any) => item.status?.nodeInfo?.operatingSystem || '-',
-            getValue: (item: any) => item.status?.nodeInfo?.operatingSystem || '',
+            getValue: semantics.os.getValue,
         },
         {
             key: 'age',
@@ -345,22 +272,18 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
             numericHint: 'Age in hours',
             numericUnit: 'h',
             render: (item: any) => formatAge(item.metadata?.creationTimestamp),
-            getValue: (item: any) => item.metadata?.creationTimestamp,
-            getNumericValue: (item: any) => {
-                if (!item.metadata?.creationTimestamp) return NaN;
-                return (Date.now() - new Date(item.metadata.creationTimestamp).getTime()) / 3600000;
-            }
+            getValue: semantics.age.getValue,
+            getNumericValue: semantics.age.getNumericValue
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <NodeActionsMenu
+                <MenuBound
+                    as={NodeActionsMenu}
+                    menuId={`node-${item.metadata.uid}`}
                     node={item}
-                    isOpen={activeMenuId === `node-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `node-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onCordonUncordon={handleCordonUncordon}
                     onShell={handleShell}
@@ -371,7 +294,17 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ] as any[], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleCordonUncordon, handleShell, handleDelete, metrics, metricsAvailable]);
+    ] as any[], [metricsStore, semantics, handleEditYaml, handleCordonUncordon, handleShell, handleDelete]);
+
+    const viewColumns = useMemo(
+        () => buildNodeViewColumns({
+            renderMetric: (item, kind) => <NodeMetricViewCell availability={metricsAvailability} item={item} kind={kind} />,
+            onEditYaml: (item: any) => stable.handleEditYaml(item),
+            onCordonUncordon: (item: any) => stable.handleCordonUncordon(item),
+            onShell: (item: any) => stable.handleShell(item),
+            onDelete: (item: any) => stable.handleDelete(item),
+        }),
+        [metricsAvailability, stable]);
 
     const viewToggle = (
         <div className="flex items-center gap-0.5 bg-surface rounded-md p-0.5 border border-border">
@@ -400,15 +333,16 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
                 data={nodes}
                 isLoading={false}
                 showNamespaceSelector={false}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={NODE_INITIAL_SORT}
                 resourceType="nodes"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
+                volatileInputs={metrics}
                 customHeaderActions={viewToggle}
                 customBody={
                     <NodeTopology
                         isVisible={isVisible}
                         nodes={nodes}
-                        nodesLoading={loading}
+                        nodesLoading={nodesLoading}
                         metrics={metrics}
                         metricsAvailable={metricsAvailable}
                         nodeActions={nodeActions}
@@ -422,13 +356,16 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
         <>
             <ResourceList
                 title="Nodes"
-                columns={columns}
-                data={nodes}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                viewPinnedColumns={NODE_PINNED_COLUMNS}
+                data={view ? NO_DATA : nodes}
                 isLoading={loading}
                 showNamespaceSelector={false}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={NODE_INITIAL_SORT}
                 resourceType="nodes"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
+                volatileInputs={metrics}
                 customHeaderActions={viewToggle}
                 selectable={true}
                 selection={selection}

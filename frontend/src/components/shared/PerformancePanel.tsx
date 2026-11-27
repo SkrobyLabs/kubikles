@@ -1,4 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useUI, useConfig, useK8s } from '~/context';
+import { GetPerformanceMetrics } from 'wailsjs/go/main/App';
+import TransportSection from './TransportSection';
+import StoreViewsSection from './StoreViewsSection';
+import { startVisibleInterval, useWindowVisible } from '~/utils/windowVisibility';
 import {
     CpuChipIcon,
     CircleStackIcon,
@@ -86,7 +91,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
     </div>
 );
 
-export default function PerformancePanel({
+function PerformancePanelView({
     backendMetrics,
     metricsHistory,
     isPolling,
@@ -94,6 +99,8 @@ export default function PerformancePanel({
     bottomTabs = []
 }: { backendMetrics: any; metricsHistory: any[]; isPolling: boolean; onTogglePolling: () => void; bottomTabs?: any[] }) {
     const [activeTab, setActiveTab] = useState('overview');
+    const { connectionMode } = useK8s();
+    const streaming = connectionMode === 'streaming';
 
     // Count keepAlive tabs by type
     const keepAliveCounts = useMemo(() => {
@@ -140,6 +147,8 @@ export default function PerformancePanel({
         { id: 'activity', label: 'Activity' },
         { id: 'memory', label: 'Memory' },
         { id: 'watchers', label: 'Watchers' },
+        { id: 'store', label: 'Store' },
+        { id: 'transport', label: 'Transport' },
     ];
 
     return (
@@ -235,7 +244,9 @@ export default function PerformancePanel({
                                 title="Watchers"
                                 icon={SignalIcon}
                                 value={backendMetrics.watchers?.active || 0}
-                                subtitle={`Created: ${backendMetrics.watchers?.totalCreated || 0} / Cleaned: ${backendMetrics.watchers?.totalCleaned || 0}`}
+                                subtitle={streaming
+                                    ? `Created: ${backendMetrics.watchers?.totalCreated || 0} / Cleaned: ${backendMetrics.watchers?.totalCleaned || 0}`
+                                    : 'None in polling mode'}
                                 sparklineData={watcherHistory}
                                 sparklineColor="stroke-yellow-400"
                             />
@@ -249,6 +260,7 @@ export default function PerformancePanel({
                                 title="Log Streams"
                                 icon={SignalIcon}
                                 value={backendMetrics.logStreams?.active || 0}
+                                subtitle={streaming ? 'Followed logs only' : 'None in polling mode'}
                             />
                             <MetricCard
                                 title="Ingress Forward"
@@ -268,7 +280,7 @@ export default function PerformancePanel({
                                 title="Log Tabs"
                                 icon={DocumentTextIcon}
                                 value={keepAliveCounts.logs}
-                                subtitle="Streaming connections"
+                                subtitle={streaming ? 'Streaming connections' : 'Polled, not streamed'}
                             />
                         </Section>
 
@@ -440,6 +452,15 @@ export default function PerformancePanel({
                     </>
                 )}
 
+                {activeTab === 'store' && (
+                    <StoreViewsSection
+                        metrics={backendMetrics}
+                        previous={metricsHistory.length > 1 ? metricsHistory[metricsHistory.length - 2] : null}
+                    />
+                )}
+
+                {activeTab === 'transport' && <TransportSection />}
+
                 {activeTab === 'watchers' && (
                     <>
                         <Section title="Watcher Statistics">
@@ -468,5 +489,71 @@ export default function PerformancePanel({
                 )}
             </div>
         </div>
+    );
+}
+
+const HISTORY_LIMIT = 60; // ~90 seconds at the default 1.5s interval
+
+// Kept at module level so sparklines survive the tab being unmounted while inactive.
+let cachedMetrics: any = null;
+let cachedHistory: any[] = [];
+// The user's pause also survives the tab being unmounted.
+let cachedUserPolling = true;
+
+/**
+ * Owns metrics polling. Polls only while this component is mounted (the tab is
+ * only mounted while active), the tab is the active one, the user has not
+ * paused, and the window is visible.
+ */
+export default function PerformancePanel() {
+    const { bottomTabs, activeTabId } = useUI();
+    const { getConfig } = useConfig();
+    const pollInterval = getConfig('performance.pollIntervalMs') ?? 1500;
+    const windowVisible = useWindowVisible();
+    const [backendMetrics, setBackendMetrics] = useState<any>(cachedMetrics);
+    const [metricsHistory, setMetricsHistory] = useState<any[]>(cachedHistory);
+    const [userPolling, setUserPolling] = useState(cachedUserPolling);
+    const isActive = activeTabId === null || activeTabId === 'performance-panel';
+    const shouldPoll = userPolling && isActive && windowVisible;
+
+    useEffect(() => {
+        if (!userPolling || !isActive) return;
+        let cancelled = false;
+        const fetchMetrics = async () => {
+            try {
+                const metrics = await GetPerformanceMetrics();
+                if (cancelled) return;
+                cachedMetrics = metrics;
+                cachedHistory = [...cachedHistory, metrics].slice(-HISTORY_LIMIT);
+                setBackendMetrics(metrics);
+                setMetricsHistory(cachedHistory);
+            } catch (err: any) {
+                if (!cancelled) console.error('Failed to fetch performance metrics:', err);
+            }
+        };
+        if (!windowVisible) {
+            // A hidden window does not poll, but the panel still reads the backend once, so the
+            // values it shows are those of the moment it was opened or the window was hidden,
+            // not whatever an earlier visit left behind.
+            void fetchMetrics();
+            return () => { cancelled = true; };
+        }
+        const stop = startVisibleInterval(fetchMetrics, pollInterval);
+        return () => {
+            cancelled = true;
+            stop();
+        };
+    }, [userPolling, isActive, windowVisible, pollInterval]);
+
+    const togglePolling = useCallback(() => setUserPolling(p => { cachedUserPolling = !p; return !p; }), []);
+
+    return (
+        <PerformancePanelView
+            backendMetrics={backendMetrics}
+            metricsHistory={metricsHistory}
+            isPolling={shouldPoll}
+            onTogglePolling={togglePolling}
+            bottomTabs={bottomTabs}
+        />
     );
 }

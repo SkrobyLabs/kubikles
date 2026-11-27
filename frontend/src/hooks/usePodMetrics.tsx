@@ -3,28 +3,8 @@ import { GetPodMetrics, GetPodMetricsFromPrometheus, DetectPrometheus } from 'wa
 import { useK8s } from '../context';
 import { useConfig } from '../context';
 import { k8s } from 'wailsjs/go/models';
-
-interface PodMetricData {
-    cpuPercent: number;
-    memPercent: number;
-    cpuReservedPercent: number;
-    memReservedPercent: number;
-    cpuCommittedPercent: number;
-    memCommittedPercent: number;
-    cpuUsage: number;
-    memoryUsage: number;
-    cpuRequested: number;
-    memRequested: number;
-    cpuCommitted: number;
-    memCommitted: number;
-    nodeCpuCapacity: number;
-    nodeMemCapacity: number;
-    nodeName: string;
-}
-
-interface PodMetricsMap {
-    [key: string]: PodMetricData;
-}
+import { startVisibleInterval } from '../utils/windowVisibility';
+import { transformPodMetrics, type PodMetricsMap } from '../utils/metricsTransform';
 
 type MetricsSource = 'k8s' | 'prometheus' | null;
 
@@ -41,7 +21,8 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
     const [source, setSource] = useState<MetricsSource>(null); // 'k8s' or 'prometheus'
     const { currentContext } = useK8s();
     const { getConfig } = useConfig();
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    // Background polls must not toggle loading (it re-renders every consumer); only the first load does.
+    const hasLoadedRef = useRef(false);
     const prometheusInfoRef = useRef<k8s.PrometheusInfo | null>(null); // Cache prometheus info for fallback
     const pollInterval = getConfig('kubernetes.metricsPollIntervalMs') ?? 30000;
 
@@ -64,50 +45,7 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
     }, []);
 
     // Transform metrics result to map format
-    const transformMetrics = useCallback((result: k8s.PodMetricsResult): PodMetricsMap => {
-        const metricsMap: PodMetricsMap = {};
-        for (const m of (result.metrics || [])) {
-            const key = `${m.namespace}/${m.name}`;
-
-            const cpuPercent = m.nodeCpuCapacity > 0
-                ? Math.round((m.cpuUsage / m.nodeCpuCapacity) * 100)
-                : 0;
-            const memPercent = m.nodeMemCapacity > 0
-                ? Math.round((m.memoryUsage / m.nodeMemCapacity) * 100)
-                : 0;
-            const cpuReservedPercent = m.nodeCpuCapacity > 0
-                ? Math.round((m.cpuRequested / m.nodeCpuCapacity) * 100)
-                : 0;
-            const memReservedPercent = m.nodeMemCapacity > 0
-                ? Math.round((m.memRequested / m.nodeMemCapacity) * 100)
-                : 0;
-            const cpuCommittedPercent = m.nodeCpuCapacity > 0
-                ? Math.round((m.cpuCommitted / m.nodeCpuCapacity) * 100)
-                : 0;
-            const memCommittedPercent = m.nodeMemCapacity > 0
-                ? Math.round((m.memCommitted / m.nodeMemCapacity) * 100)
-                : 0;
-
-            metricsMap[key] = {
-                cpuPercent,
-                memPercent,
-                cpuReservedPercent,
-                memReservedPercent,
-                cpuCommittedPercent,
-                memCommittedPercent,
-                cpuUsage: m.cpuUsage,
-                memoryUsage: m.memoryUsage,
-                cpuRequested: m.cpuRequested,
-                memRequested: m.memRequested,
-                cpuCommitted: m.cpuCommitted,
-                memCommitted: m.memCommitted,
-                nodeCpuCapacity: m.nodeCpuCapacity,
-                nodeMemCapacity: m.nodeMemCapacity,
-                nodeName: m.nodeName
-            };
-        }
-        return metricsMap;
-    }, []);
+    const transformMetrics = useCallback((result: k8s.PodMetricsResult): PodMetricsMap => transformPodMetrics(result), []);
 
     // Get preferred source from config
     const preferredSource = (getConfig('metrics.preferredSource') ?? 'auto') as 'auto' | 'k8s' | 'prometheus';
@@ -116,14 +54,11 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
     const ensurePrometheusInfo = useCallback(async (): Promise<k8s.PrometheusInfo | null> => {
         if (!prometheusInfoRef.current) {
             try {
-                console.log("Pod metrics: Detecting Prometheus...");
                 const promInfo = await DetectPrometheus();
-                console.log("Pod metrics: Prometheus detection result:", promInfo);
                 if (promInfo?.available) {
                     prometheusInfoRef.current = promInfo;
                 }
             } catch (e: any) {
-                console.log("Pod metrics: Prometheus detection failed:", e);
             }
         }
         return prometheusInfoRef.current;
@@ -131,9 +66,7 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
 
     // Helper to fetch from K8s Metrics API
     const fetchFromK8s = useCallback(async (): Promise<k8s.PodMetricsResult> => {
-        console.log("Pod metrics: Fetching K8s metrics...");
         const result = await GetPodMetrics();
-        console.log("Pod metrics: K8s result:", result);
         return result;
     }, []);
 
@@ -141,17 +74,13 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
     const fetchFromPrometheus = useCallback(async (): Promise<k8s.PodMetricsResult> => {
         const promInfo = await ensurePrometheusInfo();
         if (!promInfo) {
-            console.log("Pod metrics: No Prometheus available");
             return { available: false, metrics: [], error: "No Prometheus available" } as any;
         }
         const { namespace, service, port } = promInfo;
-        console.log(`Pod metrics: Querying Prometheus at ${namespace}/${service}:${port}...`);
         try {
             const promResult = await GetPodMetricsFromPrometheus(namespace, service, port);
-            console.log("Pod metrics: Prometheus result:", promResult);
             return promResult;
         } catch (e: any) {
-            console.log("Pod metrics: Prometheus query failed:", e);
             return { available: false, metrics: [], error: String(e) } as any;
         }
     }, [ensurePrometheusInfo]);
@@ -159,7 +88,8 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
     const fetchMetrics = useCallback(async (): Promise<void> => {
         if (!currentContext || !isVisible) return;
 
-        setLoading(true);
+        const showLoading = !hasLoadedRef.current;
+        if (showLoading) setLoading(true);
         try {
             // Handle based on preferred source
             if (preferredSource === 'k8s') {
@@ -195,16 +125,13 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
             // Auto mode: try K8s first, then Prometheus fallback
             const result = await fetchFromK8s();
             if (result.available) {
-                console.log("Pod metrics: K8s metrics available, using them");
                 setAvailable(true);
                 setSource('k8s');
                 updateMetrics(transformMetrics(result));
                 return;
             }
-            console.log("Pod metrics: K8s metrics not available (available=" + result.available + ", error=" + result.error + ")");
 
             // K8s metrics not available, try Prometheus fallback
-            console.log("Pod metrics: K8s metrics unavailable, trying Prometheus fallback...");
             const promResult = await fetchFromPrometheus();
             if (promResult.available) {
                 setAvailable(true);
@@ -222,39 +149,26 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
             setAvailable(false);
             setSource(null);
         } finally {
-            setLoading(false);
+            hasLoadedRef.current = true;
+            if (showLoading) setLoading(false);
         }
     }, [currentContext, isVisible, transformMetrics, preferredSource, fetchFromK8s, fetchFromPrometheus]);
 
     // Initial fetch and polling - wait for isReady (e.g., pods loaded) before fetching
     useEffect(() => {
-        if (!isVisible || !isReady) {
-            // Clear interval when not visible or not ready
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
-            return;
-        }
+        if (!isVisible || !isReady) return;
 
-        // Fetch immediately once ready
-        fetchMetrics();
+        // Fetch once ready, but never while the window is hidden: the fetch
+        // runs on becoming visible instead. Polling (autoPoll) skips hidden
+        // ticks and catches up once on show.
+        const stop = startVisibleInterval(fetchMetrics, autoPoll ? pollInterval : null);
 
-        // Set up polling only if autoPoll is enabled
-        if (autoPoll) {
-            intervalRef.current = setInterval(fetchMetrics, pollInterval);
-        }
-
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
-        };
+        return stop;
     }, [fetchMetrics, isVisible, isReady, autoPoll, pollInterval]);
 
     // Reset on context change
     useEffect(() => {
+        hasLoadedRef.current = false;
         updateMetrics({});
         setAvailable(null); // Reset to unknown until next fetch
         setSource(null);

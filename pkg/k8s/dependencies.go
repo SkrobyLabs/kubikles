@@ -82,6 +82,7 @@ func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, n
 
 	nodeMap := make(map[string]bool, 32)   // Track added nodes by ID, pre-sized for typical graph
 	cache := newResourceCache(ctx, cs, dc) // Request-scoped cache for List() results
+	cache.useStore(c, contextName)         // warm store shards answer before the API server does
 
 	var result *DependencyGraph
 
@@ -169,6 +170,7 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 	}
 	nodeMap := make(map[string]bool, 32)
 	cache := newResourceCache(ctx, cs, dc) // Request-scoped cache with timeout
+	cache.useStore(c, contextName)
 
 	var fullGraph *DependencyGraph
 

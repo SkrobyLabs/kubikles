@@ -386,3 +386,30 @@ func (a *App) StopLogStream(streamID string) {
 		delete(a.logStreams, streamID)
 	}
 }
+
+// logStreamDisconnect stops log streams in server mode once no client is left
+// to read them. Streams are shared by all clients (lines fan out to every
+// socket), so they cannot be closed per client; without this a tab closed
+// without unmounting leaves its stream running until the server exits. It is
+// not an App method so the dispatcher does not expose it.
+type logStreamDisconnect struct{ a *App }
+
+func (logStreamDisconnect) OnClientDisconnect(string) {}
+
+func (d logStreamDisconnect) OnNoClients() {
+	d.a.stopAllLogStreams()
+}
+
+// stopAllLogStreams cancels every active log stream. Each stream's goroutine
+// removes its own entry and emits its done event as it unwinds.
+func (a *App) stopAllLogStreams() {
+	a.logStreamsMutex.Lock()
+	cancels := make([]context.CancelFunc, 0, len(a.logStreams))
+	for _, cancel := range a.logStreams {
+		cancels = append(cancels, cancel)
+	}
+	a.logStreamsMutex.Unlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
+}

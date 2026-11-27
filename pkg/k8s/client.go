@@ -3,11 +3,14 @@ package k8s
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,7 +24,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
-	"sigs.k8s.io/yaml"
 )
 
 // ErrRequestCancelled is returned when a request was canceled
@@ -60,10 +62,16 @@ func paginatedList[T any](
 	if onProgress == nil {
 		items, _, _, err := fetchPage(ctx, metav1.ListOptions{})
 		if err != nil {
-			debug.LogK8s("paginatedList fast-path error", map[string]interface{}{"resource": resourceType, "duration": time.Since(start).String(), "error": err.Error()})
+			if debug.IsEnabled() {
+				debug.LogK8s("paginatedList fast-path error", map[string]interface{}{"resource": resourceType, "duration": time.Since(start).String(), "error": err.Error()})
+			}
 			return nil, err
 		}
-		debug.LogK8s("paginatedList fast-path", map[string]interface{}{"resource": resourceType, "items": len(items), "duration": time.Since(start).String()})
+		stripManagedFields(items)
+		reportListOutcome(ctx, len(items), false)
+		if debug.IsEnabled() {
+			debug.LogK8s("paginatedList fast-path", map[string]interface{}{"resource": resourceType, "items": len(items), "duration": time.Since(start).String()})
+		}
 		return items, nil
 	}
 
@@ -71,6 +79,7 @@ func paginatedList[T any](
 	var allItems []T
 	opts := metav1.ListOptions{Limit: pageSize}
 	pages := 0
+	emittedAny, emitMissed := false, false
 
 	for {
 		// Check context before each page
@@ -80,15 +89,22 @@ func paginatedList[T any](
 
 		items, continueToken, remaining, err := fetchPage(ctx, opts)
 		if err != nil {
-			debug.LogK8s("paginatedList page error", map[string]interface{}{"resource": resourceType, "page": pages + 1, "duration": time.Since(start).String(), "error": err.Error()})
+			if debug.IsEnabled() {
+				debug.LogK8s("paginatedList page error", map[string]interface{}{"resource": resourceType, "page": pages + 1, "duration": time.Since(start).String(), "error": err.Error()})
+			}
 			return nil, err
 		}
 		pages++
+		stripManagedFields(items)
 
 		allItems = append(allItems, items...)
 		// A single-page response is already ready to return; avoid sending it twice.
 		if pages > 1 || continueToken != "" {
-			emitListPage(ctx, items, len(allItems), remaining, continueToken != "")
+			if emitListPage(ctx, items, len(allItems), remaining, continueToken != "") {
+				emittedAny = true
+			} else {
+				emitMissed = true
+			}
 		}
 
 		// Report progress
@@ -106,13 +122,28 @@ func paginatedList[T any](
 		opts.Continue = continueToken
 	}
 
-	debug.LogK8s("paginatedList complete", map[string]interface{}{"resource": resourceType, "items": len(allItems), "pages": pages, "duration": time.Since(start).String()})
+	// A page that failed to reach the observer means it does not hold the whole
+	// list, so the full array must be returned after all.
+	streamed := emittedAny && !emitMissed
+	loaded := len(allItems)
+	reportListOutcome(ctx, loaded, streamed)
+	if streamed {
+		// The observer already holds every page, including the first; returning
+		// the array too would ship the whole list over the bridge twice. The
+		// caller learns that this happened from the outcome.
+		allItems = nil
+	}
+	if debug.IsEnabled() {
+		debug.LogK8s("paginatedList complete", map[string]interface{}{"resource": resourceType, "items": loaded, "pages": pages, "duration": time.Since(start).String()})
+	}
 	return allItems, nil
 }
 
 type Client struct {
 	clientset      kubernetes.Interface
 	metricsClient  metricsclientset.Interface
+	metricsSnap    metricsSnapshots               // short-lived shared lists behind GetNodeMetrics/GetPodMetrics
+	storeReader    atomic.Pointer[storeReaderBox] // warm-store reader for non-UI lists (SetStoreReader)
 	configLoading  clientcmd.ClientConfig
 	currentContext string
 	mu             sync.RWMutex
@@ -273,6 +304,7 @@ func (c *Client) loadConfig(contextName string) error {
 	}
 
 	applyHTTPProtocolSettings(config, forceHTTP1)
+	applyProtobuf(config)
 
 	clientset, err := newAuthenticatedClient(config, kubernetes.NewForConfigAndClient)
 	if err != nil {
@@ -290,6 +322,7 @@ func (c *Client) loadConfig(contextName string) error {
 				return fmt.Errorf("failed to load pool client config: %w", err)
 			}
 			applyHTTPProtocolSettings(poolConfig, forceHTTP1)
+			applyProtobuf(poolConfig)
 			poolCs, err := newAuthenticatedClient(poolConfig, kubernetes.NewForConfigAndClient)
 			if err != nil {
 				return fmt.Errorf("failed to create pool clientset %d: %w", i, err)
@@ -342,6 +375,42 @@ func applyHTTPProtocolSettings(config *rest.Config, forceHTTP1 bool) {
 		return rt
 	}
 	log.Printf("[K8s Client] Using HTTP/1.1 (HTTP/2 disabled)")
+}
+
+const (
+	protobufContentType = "application/vnd.kubernetes.protobuf"
+	jsonContentType     = "application/json"
+
+	// rawJSONAccept is what a RESTClient sends by default (JSON, any fallback).
+	// Raw proxy requests that do not return Kubernetes objects set it explicitly
+	// because the protobuf-configured typed clientset would otherwise advertise
+	// protobuf first.
+	rawJSONAccept = "application/json, */*"
+)
+
+// protobufDisabled reports whether the user opted out of protobuf transport.
+// Some access proxies and API gateways only pass JSON through.
+func protobufDisabled() bool {
+	switch strings.ToLower(os.Getenv("KUBIKLES_DISABLE_PROTOBUF")) {
+	case "1", "true", "yes":
+		return true
+	}
+	return false
+}
+
+// applyProtobuf switches a rest.Config to the Kubernetes protobuf wire format.
+// It must only be applied to configs that build a typed kubernetes.Clientset:
+// the dynamic, metrics, apiextensions and SPDY clients decode unstructured JSON
+// (or custom resources) and must keep negotiating JSON. Every one of those is
+// built from its own freshly loaded rest.Config, never from the typed one, so
+// the setting cannot leak. JSON stays in the Accept list as a fallback for
+// servers or aggregated APIs without protobuf support.
+func applyProtobuf(config *rest.Config) {
+	if config == nil || protobufDisabled() {
+		return
+	}
+	config.ContentType = protobufContentType
+	config.AcceptContentTypes = protobufContentType + "," + jsonContentType
 }
 
 func (c *Client) SwitchContext(contextName string) error {
@@ -483,22 +552,24 @@ func (c *Client) getClientset() (kubernetes.Interface, error) {
 	return mainCs, nil
 }
 
-// RuntimeObjectToMap converts a runtime.Object to a map[string]interface{}
-// This is used for generic resource event handling
+// RuntimeObjectToMap converts a runtime.Object to a map[string]interface{}.
+// The watch path no longer uses it (see EncodeWatchObject); it remains for
+// callers that need to inspect arbitrary fields.
 func RuntimeObjectToMap(obj interface{}) (map[string]interface{}, error) {
 	// If it's already an unstructured object, get the map directly
 	if u, ok := obj.(*unstructured.Unstructured); ok {
 		return u.Object, nil
 	}
 
-	// For typed objects, we need to convert to JSON then to map
-	data, err := yaml.Marshal(obj)
+	// A plain JSON round trip yields the same map as the previous YAML detour
+	// (numbers decode as float64) without the two extra YAML conversions.
+	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal object: %w", err)
 	}
 
 	var result map[string]interface{}
-	if err := yaml.Unmarshal(data, &result); err != nil {
+	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal to map: %w", err)
 	}
 
@@ -535,6 +606,7 @@ func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load client config for context %s: %w", contextName, err)
 	}
+	applyProtobuf(config)
 
 	return newAuthenticatedClient(config, kubernetes.NewForConfigAndClient)
 }
@@ -581,6 +653,7 @@ func (c *Client) getClientsetForContext(contextName string) (kubernetes.Interfac
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config for context %s: %w", contextName, err)
 	}
+	applyProtobuf(config)
 
 	return newAuthenticatedClient(config, kubernetes.NewForConfigAndClient)
 }

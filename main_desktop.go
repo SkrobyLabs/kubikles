@@ -5,6 +5,7 @@ package main
 import (
 	"runtime"
 
+	"kubikles/pkg/bulk"
 	"kubikles/pkg/compressedassets"
 	"kubikles/pkg/crashlog"
 
@@ -38,7 +39,7 @@ func runDesktopMode() {
 		Height: 768,
 		AssetServer: &assetserver.Options{
 			Assets:     assets,
-			Middleware: compressedassets.WailsMiddleware(assets, "frontend/dist"),
+			Middleware: bulk.Chain(app.newBulkHandler(false, nil), compressedassets.WailsMiddleware(assets, "frontend/dist")),
 		},
 		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 30, A: 1},
 		WindowStartState: options.Maximised,

@@ -184,14 +184,57 @@ export const getPodController = (pod: any) => {
     };
 };
 
+const WS = /\s/;
+
+// Linear-time equivalent of the former
+//   /ownerReferences:\s*\n((?:\s+-[\s\S]*?(?=\n\S|\n\s*$))+)/
+// whose lazy scan re-ran its lookahead at every character. Semantics kept on
+// purpose, including: the block runs to the next line that starts in column 0
+// (so it may include sibling metadata keys), and a block with no terminating
+// line (document ends without a trailing newline) is not matched.
+function findOwnerReferencesBlock(text: string): string | null {
+    const len = text.length;
+    let wsStart = len;
+    while (wsStart > 0 && WS.test(text[wsStart - 1])) wsStart--;
+
+    // Next index >= from of a "\n" that ends the block: followed by a
+    // non-space char, or by nothing but whitespace until the end.
+    const findBoundary = (from: number): number => {
+        let q = text.indexOf('\n', from);
+        while (q !== -1) {
+            if (q + 1 >= wsStart || !WS.test(text[q + 1])) return q;
+            q = text.indexOf('\n', q + 1);
+        }
+        return -1;
+    };
+
+    const head = /ownerReferences:\s*\n(?=\s+-)/g;
+    let m: RegExpExecArray | null;
+    while ((m = head.exec(text)) !== null) {
+        const start = m.index + m[0].length;
+        let pos = start;
+        let end = -1;
+        for (;;) {
+            // One repetition of: \s+ "-" lazy-until-boundary
+            let p = pos;
+            while (p < len && WS.test(text[p])) p++;
+            if (p === pos || text[p] !== '-') break;
+            const boundary = findBoundary(p + 1);
+            if (boundary === -1) break;
+            end = pos = boundary;
+        }
+        if (end !== -1) return text.slice(start, end);
+    }
+    return null;
+}
+
 // Extract controller owner from raw YAML string content
 export function extractControllerOwnerFromYaml(yamlContent: any): { kind: string; name: string; uid: string | null } | null {
     if (!yamlContent) return null;
 
-    const ownerRefsMatch = yamlContent.match(/ownerReferences:\s*\n((?:\s+-[\s\S]*?(?=\n\S|\n\s*$))+)/);
-    if (!ownerRefsMatch) return null;
+    const ownerRefsBlock = findOwnerReferencesBlock(String(yamlContent));
+    if (ownerRefsBlock === null) return null;
 
-    const ownerRefsBlock = ownerRefsMatch[1];
     const entries = ownerRefsBlock.split(/\n\s+-\s+/).filter(Boolean);
 
     for (const entry of entries) {

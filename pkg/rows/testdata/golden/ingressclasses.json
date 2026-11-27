@@ -1,0 +1,2198 @@
+{
+ "type": "ingressclasses",
+ "now": 1748779200000,
+ "columns": ["name","controller","default","age"],
+ "filterTypes": {
+  "name": "regex",
+  "controller": "select",
+  "default": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "controller": "example.com/other"
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "creationTimestamp": "2025-06-01T01:28:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "creationTimestamp": "2025-05-31T18:02:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "Example.com/Upper"
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "creationTimestamp": "2025-05-31T23:12:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "traefik.io/ingress-controller"
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "creationTimestamp": "2025-05-31T01:20:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "creationTimestamp": "2025-05-30T22:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "traefik.io/ingress-controller"
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "creationTimestamp": "2025-05-31T14:14:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "creationTimestamp": "2025-05-31T07:23:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "traefik.io/ingress-controller"
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "creationTimestamp": "2025-05-29T21:51:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "Example.com/Upper"
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "creationTimestamp": "2025-05-30T09:29:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "creationTimestamp": "2025-05-31T14:03:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "creationTimestamp": "2025-05-30T14:00:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "controller": "traefik.io/ingress-controller"
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "creationTimestamp": "2025-05-30T01:58:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "Example.com/Upper"
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "creationTimestamp": "2025-05-30T21:26:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "example.com/other"
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "creationTimestamp": "2025-05-31T05:56:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "Example.com/Upper"
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "creationTimestamp": "2025-06-01T05:37:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {},
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "creationTimestamp": "2025-05-31T13:48:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "Example.com/Upper"
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "creationTimestamp": "2025-05-30T01:08:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "creationTimestamp": "2025-05-30T21:21:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "traefik.io/ingress-controller"
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "creationTimestamp": "2025-05-30T13:26:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "creationTimestamp": "2025-05-31T10:38:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "controller": "traefik.io/ingress-controller"
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "creationTimestamp": "2025-06-01T06:19:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "traefik.io/ingress-controller"
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "creationTimestamp": "2025-05-31T09:49:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "creationTimestamp": "2025-06-01T11:46:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "example.com/other"
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "creationTimestamp": "2025-05-30T17:04:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {},
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "creationTimestamp": "2025-05-30T14:57:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "example.com/other"
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "creationTimestamp": "2025-05-31T17:11:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "creationTimestamp": "2025-05-30T07:10:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "creationTimestamp": "2025-06-01T09:50:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "example.com/other"
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "creationTimestamp": "2025-05-31T04:18:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "example.com/other"
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "creationTimestamp": "2025-05-31T01:53:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "Example.com/Upper"
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "creationTimestamp": "2025-06-01T04:26:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "default-class",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z",
+    "annotations": {
+     "ingressclass.kubernetes.io/is-default-class": "true"
+    }
+   }
+  },
+  {
+   "spec": {
+    "controller": "x"
+   },
+   "metadata": {
+    "name": "not-default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z",
+    "annotations": {
+     "ingressclass.kubernetes.io/is-default-class": "false"
+    }
+   }
+  },
+  {
+   "spec": {},
+   "metadata": {
+    "name": "no-controller",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "metadata": {
+    "name": "no-spec",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "x"
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "uid": "uid-edge-5",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "controller": "k8s.io/ingress-nginx"
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-5"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-06-01T01:28:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-31T18:02:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-05-31T23:12:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-31T01:20:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-30T22:00:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-31T14:14:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-31T07:23:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-29T21:51:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-05-30T09:29:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-31T14:03:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-30T14:00:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-30T01:58:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-05-30T21:26:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-31T05:56:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-06-01T05:37:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-31T13:48:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-05-30T01:08:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T21:21:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-30T13:26:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-31T10:38:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-06-01T06:19:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-31T09:49:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-06-01T11:46:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-30T17:04:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-30T14:57:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-31T17:11:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T07:10:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-06-01T09:50:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-31T04:18:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-31T01:53:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-06-01T04:26:00Z"
+  },
+  "uid-edge-1": {
+   "name": "default-class",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "Yes",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "not-default",
+   "controller": "x",
+   "default": "No",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "no-controller",
+   "controller": "",
+   "default": "No",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-spec",
+   "controller": "",
+   "default": "No",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "no-timestamp",
+   "controller": "x",
+   "default": "No",
+   "age": null
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-06-01T01:28:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-31T18:02:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-05-31T23:12:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-31T01:20:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-30T22:00:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-31T14:14:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-31T07:23:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-29T21:51:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-05-30T09:29:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-31T14:03:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-30T14:00:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-30T01:58:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-05-30T21:26:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-31T05:56:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-06-01T05:37:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-31T13:48:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-05-30T01:08:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T21:21:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-30T13:26:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-31T10:38:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-06-01T06:19:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "controller": "traefik.io/ingress-controller",
+   "default": "No",
+   "age": "2025-05-31T09:49:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-06-01T11:46:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-30T17:04:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "controller": "",
+   "default": "No",
+   "age": "2025-05-30T14:57:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-31T17:11:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T07:10:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-06-01T09:50:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-31T04:18:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "controller": "example.com/other",
+   "default": "No",
+   "age": "2025-05-31T01:53:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "controller": "Example.com/Upper",
+   "default": "No",
+   "age": "2025-06-01T04:26:00Z"
+  },
+  "uid-edge-1": {
+   "name": "default-class",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "Yes",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "not-default",
+   "controller": "x",
+   "default": "No",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "no-controller",
+   "controller": "",
+   "default": "No",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-spec",
+   "controller": "",
+   "default": "No",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "no-timestamp",
+   "controller": "x",
+   "default": "No",
+   "age": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "controller": "k8s.io/ingress-nginx",
+   "default": "No",
+   "age": "2025-05-30T10:00:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 10.533333333333333
+  },
+  "uid-0001": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 17.966666666666665
+  },
+  "uid-0002": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 12.8
+  },
+  "uid-0003": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 34.666666666666664
+  },
+  "uid-0004": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 38
+  },
+  "uid-0005": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 21.766666666666666
+  },
+  "uid-0006": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 28.616666666666667
+  },
+  "uid-0007": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 62.15
+  },
+  "uid-0008": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50.516666666666666
+  },
+  "uid-0009": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 21.95
+  },
+  "uid-0010": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 46
+  },
+  "uid-0011": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 58.03333333333333
+  },
+  "uid-0012": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 38.56666666666667
+  },
+  "uid-0013": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 30.066666666666666
+  },
+  "uid-0014": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 6.383333333333334
+  },
+  "uid-0015": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 22.2
+  },
+  "uid-0016": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 58.86666666666667
+  },
+  "uid-0017": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 1.3666666666666667
+  },
+  "uid-0018": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 38.65
+  },
+  "uid-0019": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 46.56666666666667
+  },
+  "uid-0020": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 25.366666666666667
+  },
+  "uid-0021": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 5.683333333333334
+  },
+  "uid-0022": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 26.183333333333334
+  },
+  "uid-0023": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 0.23333333333333334
+  },
+  "uid-0024": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 42.93333333333333
+  },
+  "uid-0025": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 45.05
+  },
+  "uid-0026": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 18.816666666666666
+  },
+  "uid-0027": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 52.833333333333336
+  },
+  "uid-0028": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 2.1666666666666665
+  },
+  "uid-0029": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 31.7
+  },
+  "uid-0030": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 34.11666666666667
+  },
+  "uid-0031": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 7.566666666666666
+  },
+  "uid-edge-1": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-2": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 1.3833333333333333
+  },
+  "uid-edge-5": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": null
+  },
+  "uid-tie-00": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "controller": null,
+   "default": null,
+   "age": 50
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-edge-1","uid-0029","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-0031","uid-edge-3","uid-edge-4","uid-edge-2","uid-0026","uid-0027","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-0027","uid-0026","uid-edge-2","uid-edge-4","uid-edge-3","uid-0031","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-0029","uid-edge-1","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "controller": {
+   "asc": ["uid-edge-3","uid-edge-4","uid-0001","uid-0015","uid-0006","uid-0004","uid-0025","uid-0010","uid-0014","uid-0031","uid-0002","uid-0012","uid-0008","uid-0016","uid-0000","uid-0026","uid-0013","uid-0029","uid-0030","uid-0024","uid-0023","uid-edge-1","uid-0017","uid-0028","uid-0009","uid-0020","uid-0018","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0027","uid-0021","uid-0005","uid-0022","uid-0003","uid-0019","uid-0011","uid-0007","uid-edge-2"],
+   "desc": ["uid-edge-2","uid-0021","uid-0005","uid-0022","uid-0003","uid-0019","uid-0011","uid-0007","uid-0023","uid-edge-1","uid-0017","uid-0028","uid-0009","uid-0020","uid-0018","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0027","uid-0000","uid-0026","uid-0013","uid-0029","uid-0030","uid-0024","uid-0014","uid-0031","uid-0002","uid-0012","uid-0008","uid-0016","uid-edge-3","uid-edge-4","uid-0001","uid-0015","uid-0006","uid-0004","uid-0025","uid-0010"]
+  },
+  "default": {
+   "asc": ["uid-0023","uid-edge-2","uid-0017","uid-edge-3","uid-edge-4","uid-0028","uid-0021","uid-0014","uid-0031","uid-0000","uid-0002","uid-0001","uid-0026","uid-0005","uid-0009","uid-0015","uid-0020","uid-0022","uid-0006","uid-0013","uid-0029","uid-0030","uid-0003","uid-0004","uid-0012","uid-0018","uid-0024","uid-0025","uid-0010","uid-0019","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0008","uid-0027","uid-0011","uid-0016","uid-0007","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-0023","uid-edge-2","uid-0017","uid-edge-3","uid-edge-4","uid-0028","uid-0021","uid-0014","uid-0031","uid-0000","uid-0002","uid-0001","uid-0026","uid-0005","uid-0009","uid-0015","uid-0020","uid-0022","uid-0006","uid-0013","uid-0029","uid-0030","uid-0003","uid-0004","uid-0012","uid-0018","uid-0024","uid-0025","uid-0010","uid-0019","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0008","uid-0027","uid-0011","uid-0016","uid-0007"]
+  },
+  "age": {
+   "asc": ["uid-0007","uid-0016","uid-0011","uid-0027","uid-0008","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0019","uid-0010","uid-0025","uid-0024","uid-0018","uid-0012","uid-0004","uid-0003","uid-0030","uid-0029","uid-0013","uid-0006","uid-0022","uid-0020","uid-0015","uid-0009","uid-0005","uid-0026","uid-0001","uid-0002","uid-0000","uid-0031","uid-0014","uid-0021","uid-0028","uid-edge-4","uid-0017","uid-edge-3","uid-edge-2","uid-edge-1","uid-0023"],
+   "desc": ["uid-0023","uid-edge-1","uid-edge-2","uid-0017","uid-edge-3","uid-edge-4","uid-0028","uid-0021","uid-0014","uid-0031","uid-0000","uid-0002","uid-0001","uid-0026","uid-0005","uid-0009","uid-0015","uid-0020","uid-0022","uid-0006","uid-0013","uid-0029","uid-0030","uid-0003","uid-0004","uid-0012","uid-0018","uid-0024","uid-0025","uid-0010","uid-0019","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0008","uid-0027","uid-0011","uid-0016","uid-0007"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006","uid-0016","uid-0017","uid-0018","uid-0019"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0005","uid-0007","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0020","uid-0021","uid-0022"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0021","uid-0022"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0008","uid-0009","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0005","uid-0006"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0001","uid-0003","uid-0009","uid-0016","uid-0023","uid-tie-00"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0014","uid-0015","uid-0016"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0010","uid-0014","uid-0019","uid-0020","uid-0024","uid-0026","uid-0027"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0010","uid-0014","uid-0019","uid-0020","uid-0024","uid-0026","uid-0027"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": []
+  },
+  {
+   "query": "a:a/b",
+   "matches": []
+  },
+  {
+   "query": "ns:prod",
+   "matches": []
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": []
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": []
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": []
+  },
+  {
+   "query": "NS:default",
+   "matches": []
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0004","uid-0005","uid-0006","uid-tie-09","uid-tie-10"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0013","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0023","uid-0031","uid-edge-1","uid-edge-2","uid-edge-5","uid-tie-00","uid-tie-01"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0006","uid-0007","uid-0008","uid-0010","uid-0011","uid-0012","uid-0013","uid-0016","uid-0018","uid-0019","uid-0020","uid-0022","uid-0024","uid-0025","uid-0027","uid-0029","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0005","uid-0006","uid-0009","uid-0014","uid-0015","uid-0020","uid-0021","uid-0022","uid-0026","uid-0028","uid-0031"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0007","uid-0023"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0000","uid-0014","uid-0017","uid-0021","uid-0023","uid-0028","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "controller select k8s.io/ingress-nginx",
+   "filters": {
+    "controller": {
+     "type": "select",
+     "values": ["k8s.io/ingress-nginx"]
+    }
+   },
+   "matches": ["uid-0009","uid-0017","uid-0018","uid-0020","uid-0023","uid-0027","uid-0028","uid-edge-1","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "default select Yes",
+   "filters": {
+    "default": {
+     "type": "select",
+     "values": ["Yes"]
+    }
+   },
+   "matches": ["uid-edge-1"]
+  },
+  {
+   "name": "default select No|Yes",
+   "filters": {
+    "default": {
+     "type": "select",
+     "values": ["No","Yes"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "controller select empty",
+   "filters": {
+    "controller": {
+     "type": "select",
+     "values": [""]
+    }
+   },
+   "matches": ["uid-0001","uid-0004","uid-0006","uid-0010","uid-0015","uid-0025","uid-edge-3","uid-edge-4"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0013","uid-0016","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0024","uid-0025","uid-0031","uid-tie-00","uid-tie-01"]
+  }
+ ],
+ "uniqueValues": {
+  "controller": {
+   "values": ["example.com/other","Example.com/Upper","k8s.io/ingress-nginx","traefik.io/ingress-controller","x"],
+   "counts": {
+    "example.com/other": 6,
+    "Example.com/Upper": 6,
+    "traefik.io/ingress-controller": 7,
+    "k8s.io/ingress-nginx": 21,
+    "x": 2
+   }
+  },
+  "default": {
+   "values": ["No","Yes"],
+   "counts": {
+    "No": 49,
+    "Yes": 1
+   }
+  }
+ }
+}

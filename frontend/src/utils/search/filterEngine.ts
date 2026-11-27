@@ -31,33 +31,39 @@ export function createFilter(resourceType: string, queryString: string): (item: 
         return () => true;
     }
 
+    // Field definitions and lowercase needles are resolved once here, not per item.
+    const groups = parsed.groups.map((group: any) =>
+        group.map((condition: any) => compileCondition(condition, resourceType)));
+
     return (item: any) => {
         // Groups are OR-ed: if ANY group matches, the item passes
-        return parsed.groups.some((group: any) => {
-            // Conditions within a group are AND-ed: ALL must match
-            return group.every((condition: any) => matchCondition(item, condition, resourceType));
-        });
+        // Conditions within a group are AND-ed: ALL must match
+        for (const group of groups) {
+            let all = true;
+            for (const test of group) {
+                if (!test(item)) { all = false; break; }
+            }
+            if (all) return true;
+        }
+        return false;
     };
 }
 
 /**
- * Check if an item matches a single condition.
+ * Compile a single parsed condition into a predicate.
  *
- * @param {object} item - The resource item to check
  * @param {object} condition - The parsed condition
  * @param {string} resourceType - The resource type
- * @returns {boolean}
  */
-function matchCondition(item: any, condition: any, resourceType: string): boolean {
+function compileCondition(condition: any, resourceType: string): (item: any) => boolean {
     if (condition.type === 'plain') {
         // Plain text matches name only (backward compatible)
-        const name = item.metadata?.name || '';
-
         if (condition.isRegex) {
-            return testRegex(condition.value, name);
+            return (item: any) => testRegex(condition.value, item.metadata?.name || '');
         }
 
-        return name.toLowerCase().includes(condition.value.toLowerCase());
+        const needle = condition.value.toLowerCase();
+        return (item: any) => (item.metadata?.name || '').toLowerCase().includes(needle);
     }
 
     if (condition.type === 'field') {
@@ -65,21 +71,21 @@ function matchCondition(item: any, condition: any, resourceType: string): boolea
 
         if (!fieldDef) {
             // Unknown field - no match
-            return false;
+            return () => false;
         }
 
-        const fieldValue = fieldDef.extractor(item);
+        const extract = fieldDef.extractor;
 
         if (condition.isRegex) {
-            // Regex match
-            return testRegex(condition.value, fieldValue);
-        } else {
-            // Case-insensitive partial match
-            return fieldValue.toLowerCase().includes(condition.value.toLowerCase());
+            return (item: any) => testRegex(condition.value, extract(item));
         }
+
+        // Case-insensitive partial match
+        const needle = condition.value.toLowerCase();
+        return (item: any) => extract(item).toLowerCase().includes(needle);
     }
 
-    return false;
+    return () => false;
 }
 
 function testRegex(regex: any, value: any): boolean {

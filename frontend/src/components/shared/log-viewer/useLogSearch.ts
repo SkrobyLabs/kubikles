@@ -4,11 +4,46 @@ import { stripAnsiCodes } from './logUtils';
 /**
  * Hook for managing log search and filter functionality.
  */
+export interface DisplayRow {
+    /** The underlying entry. Identity is stable, so per-entry caches and React.memo keep working. */
+    entry?: any;
+    /** Stable line id (firstId + position); survives head trimming. */
+    originalIndex?: number;
+    isMatch?: boolean;
+    isSkipIndicator?: boolean;
+    skippedCount?: number;
+    key?: string;
+}
+
+const EMPTY_SET = new Set<number>();
+const NO_ROWS: DisplayRow[] = [];
+
+interface ScanState {
+    logs: any;
+    firstId: number;
+    regexKey: string;
+    scanned: number;
+    matches: Set<number>;
+    matchList: number[];
+}
+
+// Entries only contain escape codes when the source coloured them, so skip the regex for the common case.
+const searchableText = (content: string) => (content.indexOf('\x1b') === -1 ? content : stripAnsiCodes(content));
+
+/**
+ * Hook for managing log search and filter functionality.
+ *
+ * `logs` may be a buffer that is appended to in place: pass `logCount` (and `firstId`,
+ * the id of position 0) so changes are noticed. Matching is incremental over appended
+ * lines and restarts only when the term/options change or the head was trimmed/prepended.
+ */
 export function useLogSearch({
     logs,
+    logCount,
+    firstId = 0,
     getConfig,
     getSafeConfig
-}: { logs: any; getConfig: any; getSafeConfig: any }) {
+}: { logs: any; logCount?: number; firstId?: number; getConfig: any; getSafeConfig: any }) {
     const [showSearch, setShowSearch] = useState(false);
     const [searchTerm, setSearchTerm] = useState(''); // The actual search term used for filtering
     const [searchInput, setSearchInput] = useState(''); // The input field value
@@ -88,80 +123,90 @@ export function useLogSearch({
         setSearchTerm('');
     }, []);
 
-    // Calculate which lines match and filtered view with context
-    const { displayLogs, matchCount, matchIndices } = useMemo(() => {
-        if (!logs || logs.length === 0) {
-            return { displayLogs: [], matchCount: 0, matchIndices: new Set<any>() };
+    const scanRef = useRef<ScanState | null>(null);
+    const count = logCount ?? (logs ? logs.length : 0);
+
+    // Calculate which lines match and the filtered view with context.
+    const model = useMemo(() => {
+        if (!logs || count === 0) {
+            return { mode: 'empty' as const, rows: NO_ROWS, matchCount: 0, matchIndices: EMPTY_SET };
         }
 
-        // If no search term, show all logs
+        // No (valid) search: show the entries themselves, nothing derived.
         if (!searchTerm || !searchRegex) {
-            return { displayLogs: logs.map((entry: any, i: number) => ({ ...entry, originalIndex: i })), matchCount: 0, matchIndices: new Set<any>() };
+            return { mode: 'plain' as const, rows: NO_ROWS, matchCount: 0, matchIndices: EMPTY_SET };
         }
 
-        // Find all matching line indices (search in stripped content without ANSI codes)
-        const matches = new Set<any>();
-        logs.forEach((entry: any, index: number) => {
+        const regexKey = `${searchRegex.source}/${searchRegex.flags}`;
+        let state = scanRef.current;
+        if (!state || state.logs !== logs || state.firstId !== firstId || state.regexKey !== regexKey || state.scanned > count) {
+            state = { logs, firstId, regexKey, scanned: 0, matches: new Set<number>(), matchList: [] };
+            scanRef.current = state;
+        }
+        // Search in stripped content (no ANSI codes); only lines appended since the last pass.
+        for (let index = state.scanned; index < count; index++) {
             searchRegex.lastIndex = 0; // Reset regex state
-            const strippedContent = stripAnsiCodes(entry.content);
-            if (searchRegex.test(strippedContent)) {
-                matches.add(index);
+            if (searchRegex.test(searchableText(logs[index].content))) {
+                state.matches.add(index);
+                state.matchList.push(index);
             }
-        });
+        }
+        state.scanned = count;
+        const matches = state.matches;
 
-        // If not filtering, return all logs with match info
         if (!filterOnly) {
-            return {
-                displayLogs: logs.map((entry: any, index: number) => ({ ...entry, originalIndex: index, isMatch: matches.has(index) })),
-                matchCount: matches.size,
-                matchIndices: matches
-            };
+            return { mode: 'marked' as const, rows: NO_ROWS, matchCount: matches.size, matchIndices: matches };
         }
 
         // Filter mode: include matching lines with context
-        const includedIndices = new Set<any>();
-        matches.forEach((matchIndex: any) => {
-            // Add context lines before
-            for (let i = Math.max(0, (matchIndex as number) - contextLinesBefore); i < (matchIndex as number); i++) {
-                includedIndices.add(i);
-            }
-            // Add matching line
-            includedIndices.add(matchIndex);
-            // Add context lines after
-            for (let i = (matchIndex as number) + 1; i <= Math.min(logs.length - 1, (matchIndex as number) + contextLinesAfter); i++) {
-                includedIndices.add(i);
-            }
-        });
-
-        // Build display with skipped line indicators
-        const result: any[] = [];
-        const sortedIndices = Array.from(includedIndices).sort((a: any, b: any) => a - b);
-        let lastIndex = -1;
-
-        sortedIndices.forEach((index: any) => {
-            // Check if we need to show skipped lines indicator
-            if (lastIndex !== -1 && (index as number) > lastIndex + 1) {
-                const skipped = (index as number) - lastIndex - 1;
-                result.push({
+        const rows: DisplayRow[] = [];
+        let lastIndex = -1; // last position emitted
+        let nextFree = 0; // first position not yet covered by an earlier window
+        for (const matchIndex of state.matchList) {
+            const from = Math.max(nextFree, matchIndex - contextLinesBefore);
+            const to = Math.min(count - 1, matchIndex + contextLinesAfter);
+            if (to < from) continue;
+            if (lastIndex !== -1 && from > lastIndex + 1) {
+                rows.push({
                     isSkipIndicator: true,
-                    skippedCount: skipped,
-                    key: `skip-${lastIndex}-${index}`
+                    skippedCount: from - lastIndex - 1,
+                    key: `skip-${lastIndex}-${from}`
                 });
             }
-            result.push({
-                ...logs[index as number],
-                originalIndex: index,
-                isMatch: matches.has(index)
-            });
-            lastIndex = index as number;
-        });
+            for (let i = from; i <= to; i++) {
+                rows.push({ entry: logs[i], originalIndex: firstId + i, isMatch: matches.has(i) });
+            }
+            lastIndex = to;
+            nextFree = to + 1;
+        }
+        return { mode: 'filtered' as const, rows, matchCount: matches.size, matchIndices: matches };
+    // logs is mutated in place by appends, so count is part of the identity.
+    }, [logs, count, firstId, searchTerm, searchRegex, filterOnly, contextLinesBefore, contextLinesAfter]);
 
-        return {
-            displayLogs: result,
-            matchCount: matches.size,
-            matchIndices: matches
-        };
-    }, [logs, searchTerm, searchRegex, filterOnly, contextLinesBefore, contextLinesAfter]);
+    const displayCount = model.mode === 'filtered' ? model.rows.length : model.mode === 'empty' ? 0 : count;
+
+    const getRow = useCallback((index: number): DisplayRow | null => {
+        if (index < 0) return null;
+        if (model.mode === 'filtered') return model.rows[index] ?? null;
+        if (model.mode === 'empty' || index >= count) return null;
+        const entry = logs[index];
+        if (model.mode === 'marked') return { entry, originalIndex: firstId + index, isMatch: model.matchIndices.has(index) };
+        return { entry, originalIndex: firstId + index };
+    }, [model, logs, count, firstId]);
+
+    // Legacy shape (entry fields spread onto each row). Built on demand: the viewer uses getRow.
+    const displayLogsRef = useRef<{ key: any; value: any[] } | null>(null);
+    const materializeDisplayLogs = () => {
+        if (displayLogsRef.current && displayLogsRef.current.key === getRow) return displayLogsRef.current.value;
+        const value: any[] = [];
+        for (let i = 0; i < displayCount; i++) {
+            const row = getRow(i) as DisplayRow;
+            value.push(row.isSkipIndicator ? row : { ...row.entry, originalIndex: row.originalIndex, ...(row.isMatch === undefined ? {} : { isMatch: row.isMatch }) });
+        }
+        displayLogsRef.current = { key: getRow, value };
+        return value;
+    };
+    const { matchCount, matchIndices } = model;
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -200,7 +245,10 @@ export function useLogSearch({
         regexError,
         searchInputRef,
         searchRegex,
-        displayLogs,
+        get displayLogs() { return materializeDisplayLogs(); },
+        displayCount,
+        displayIsDerived: model.mode === 'filtered',
+        getRow,
         matchCount,
         matchIndices,
         handleSearchKeyDown,

@@ -1,0 +1,257 @@
+{
+  "viewsInfo": {
+    "enabled": true,
+    "types": [
+      "configmaps",
+      "events",
+      "namespaces",
+      "secrets"
+    ]
+  },
+  "open": {
+    "viewId": "fx1",
+    "columns": [
+      "type",
+      "namespace",
+      "involvedObject",
+      "message",
+      "count",
+      "age",
+      "last",
+      "reason",
+      "source",
+      "objectKind"
+    ],
+    "schemaVersion": "4666cf5a",
+    "state": {
+      "version": 1,
+      "total": 0,
+      "filtered": 0,
+      "phase": "loading",
+      "loaded": 0,
+      "expected": 0,
+      "filterable": {
+        "age": true,
+        "count": false,
+        "involvedObject": false,
+        "last": false,
+        "message": false,
+        "namespace": true,
+        "objectKind": false,
+        "reason": false,
+        "source": false,
+        "type": true
+      }
+    },
+    "filterable": {
+      "age": true,
+      "count": false,
+      "involvedObject": false,
+      "last": false,
+      "message": false,
+      "namespace": true,
+      "objectKind": false,
+      "reason": false,
+      "source": false,
+      "type": true
+    }
+  },
+  "window": {
+    "version": 2,
+    "total": 50,
+    "filtered": 50,
+    "offset": 0,
+    "order": [
+      "event-debug-ns-0-event-0",
+      "event-debug-ns-1-event-0",
+      "event-debug-ns-2-event-0"
+    ],
+    "rows": {
+      "event-debug-ns-0-event-0": {
+        "seq": 2,
+        "ns": "debug-ns-0",
+        "name": "event-0",
+        "ts": "2026-11-23T20:46:33Z",
+        "del": false,
+        "c": [
+          "Normal",
+          "debug-ns-0",
+          "Pod/pod-0",
+          "Debug event message 0: Pulled",
+          1,
+          "2026-11-23T20:46:33Z",
+          "2026-11-23T20:46:33Z",
+          "Pulled",
+          "",
+          "Pod"
+        ]
+      },
+      "event-debug-ns-1-event-0": {
+        "seq": 2,
+        "ns": "debug-ns-1",
+        "name": "event-0",
+        "ts": "2026-11-23T20:46:33Z",
+        "del": false,
+        "c": [
+          "Normal",
+          "debug-ns-1",
+          "Pod/pod-0",
+          "Debug event message 0: Pulled",
+          1,
+          "2026-11-23T20:46:33Z",
+          "2026-11-23T20:46:33Z",
+          "Pulled",
+          "",
+          "Pod"
+        ]
+      },
+      "event-debug-ns-2-event-0": {
+        "seq": 2,
+        "ns": "debug-ns-2",
+        "name": "event-0",
+        "ts": "2026-11-23T20:46:33Z",
+        "del": false,
+        "c": [
+          "Normal",
+          "debug-ns-2",
+          "Pod/pod-0",
+          "Debug event message 0: Pulled",
+          1,
+          "2026-11-23T20:46:33Z",
+          "2026-11-23T20:46:33Z",
+          "Pulled",
+          "",
+          "Pod"
+        ]
+      }
+    },
+    "state": {
+      "version": 2,
+      "total": 50,
+      "filtered": 50,
+      "phase": "complete",
+      "loaded": 50,
+      "expected": 50,
+      "filterable": {
+        "age": true,
+        "count": false,
+        "involvedObject": true,
+        "last": true,
+        "message": true,
+        "namespace": true,
+        "objectKind": true,
+        "reason": true,
+        "source": false,
+        "type": true
+      }
+    }
+  },
+  "windowHave": {
+    "version": 2,
+    "total": 50,
+    "filtered": 50,
+    "offset": 0,
+    "order": [
+      "event-debug-ns-0-event-0",
+      "event-debug-ns-1-event-0",
+      "event-debug-ns-2-event-0"
+    ],
+    "rows": {},
+    "state": {
+      "version": 2,
+      "total": 50,
+      "filtered": 50,
+      "phase": "complete",
+      "loaded": 50,
+      "expected": 50,
+      "filterable": {
+        "age": true,
+        "count": false,
+        "involvedObject": true,
+        "last": true,
+        "message": true,
+        "namespace": true,
+        "objectKind": true,
+        "reason": true,
+        "source": false,
+        "type": true
+      }
+    }
+  },
+  "refsNdjson": [
+    "{\"version\":2,\"total\":50,\"filtered\":50}",
+    "[\"event-debug-ns-0-event-0\",\"debug-ns-0\",\"event-0\"]",
+    "[\"event-debug-ns-1-event-0\",\"debug-ns-1\",\"event-0\"]",
+    "[\"event-debug-ns-2-event-0\",\"debug-ns-2\",\"event-0\"]"
+  ],
+  "facet": {
+    "column": "type",
+    "values": [
+      "Normal",
+      "Warning"
+    ],
+    "counts": {
+      "Normal": 35,
+      "Warning": 15
+    },
+    "suppressed": false
+  },
+  "object": {
+    "kind": "Event",
+    "metadata": {
+      "name": "event-0",
+      "namespace": "debug-ns-0",
+      "uid": "event-debug-ns-0-event-0"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "debug-ns-0",
+      "name": "pod-0"
+    },
+    "reason": "Pulled"
+  },
+  "selection": {
+    "selected": 1,
+    "stale": [
+      "nope"
+    ]
+  },
+  "updatedState": {
+    "version": 3,
+    "total": 50,
+    "filtered": 15,
+    "phase": "complete",
+    "loaded": 50,
+    "expected": 50,
+    "filterable": {
+      "age": true,
+      "count": false,
+      "involvedObject": true,
+      "last": true,
+      "message": true,
+      "namespace": true,
+      "objectKind": true,
+      "reason": true,
+      "source": false,
+      "type": true
+    }
+  },
+  "gone": {
+    "status": 410,
+    "body": {
+      "error": "view not found"
+    }
+  },
+  "notices": [
+    {
+      "v": "fx1",
+      "version": 2,
+      "total": 50,
+      "filtered": 50,
+      "phase": "complete",
+      "loaded": 50,
+      "expected": 50,
+      "windowChanged": true
+    }
+  ]
+}

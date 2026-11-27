@@ -1,0 +1,3939 @@
+{
+ "type": "validatingwebhookconfigurations",
+ "now": 1748779200000,
+ "columns": ["name","webhooks","failurePolicy","age"],
+ "filterTypes": {
+  "name": "regex",
+  "webhooks": "select",
+  "failurePolicy": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      }
+     ]
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "None",
+     "rules": [
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      },
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      }
+     ]
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "None"
+    }
+   ],
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "creationTimestamp": "2025-05-30T02:03:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      }
+     ]
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      },
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "creationTimestamp": "2025-06-01T02:08:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "NoneOnDryRun"
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "creationTimestamp": "2025-05-31T11:32:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "creationTimestamp": "2025-06-01T11:19:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      },
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "None"
+    }
+   ],
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "creationTimestamp": "2025-05-30T10:28:00Z"
+   }
+  },
+  {
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "creationTimestamp": "2025-05-30T00:13:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "None",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      },
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "None"
+    }
+   ],
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "creationTimestamp": "2025-05-30T21:21:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"]
+    }
+   ],
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "creationTimestamp": "2025-05-31T11:45:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "creationTimestamp": "2025-05-30T00:35:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "creationTimestamp": "2025-05-31T08:15:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "creationTimestamp": "2025-05-30T15:33:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "None"
+    }
+   ],
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "creationTimestamp": "2025-05-30T09:05:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "NoneOnDryRun"
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "creationTimestamp": "2025-05-31T10:49:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "Some"
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "None",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "creationTimestamp": "2025-05-30T23:23:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "creationTimestamp": "2025-05-29T23:21:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "creationTimestamp": "2025-05-29T17:30:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "None",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      }
+     ]
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      },
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "creationTimestamp": "2025-05-30T02:58:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "NoneOnDryRun"
+    }
+   ],
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "creationTimestamp": "2025-06-01T00:42:00Z"
+   }
+  },
+  {
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "creationTimestamp": "2025-05-30T11:34:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": ""
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore"
+    }
+   ],
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "creationTimestamp": "2025-05-30T09:36:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      },
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "creationTimestamp": "2025-05-30T13:45:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "creationTimestamp": "2025-05-30T05:26:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "None",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "creationTimestamp": "2025-05-29T21:21:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "Some"
+    }
+   ],
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "creationTimestamp": "2025-06-01T07:17:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"]
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "Some"
+    }
+   ],
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "creationTimestamp": "2025-05-29T18:02:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "creationTimestamp": "2025-06-01T01:01:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail"
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      }
+     ]
+    },
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "kube-system",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "creationTimestamp": "2025-05-31T16:29:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      },
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "creationTimestamp": "2025-05-31T00:47:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "rules": [
+      {
+       "operations": ["CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "creationTimestamp": "2025-05-30T22:47:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Ignore",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "None"
+    }
+   ],
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "creationTimestamp": "2025-05-31T05:26:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "c.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "None",
+     "rules": [
+      {
+       "operations": ["*"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["*"]
+      }
+     ]
+    },
+    {
+     "name": "b.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "svc-a",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "None"
+    }
+   ],
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "creationTimestamp": "2025-05-31T03:27:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "url": "https://example.com/hook"
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "",
+     "sideEffects": "Some"
+    }
+   ],
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "creationTimestamp": "2025-05-31T05:57:00Z"
+   }
+  },
+  {
+   "metadata": {
+    "name": "no-webhooks",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "metadata": {
+    "name": "dup-services",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   },
+   "webhooks": [
+    {
+     "name": "one",
+     "clientConfig": {
+      "service": {
+       "namespace": "ns",
+       "name": "svc"
+      }
+     },
+     "failurePolicy": "Ignore",
+     "sideEffects": "None",
+     "rules": [
+      {
+       "operations": ["CREATE"],
+       "resources": ["pods"]
+      }
+     ]
+    },
+    {
+     "name": "two",
+     "clientConfig": {
+      "service": {
+       "namespace": "ns",
+       "name": "svc"
+      }
+     },
+     "failurePolicy": "Fail",
+     "sideEffects": "Some",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "resources": ["pods","jobs"]
+      },
+      {
+       "operations": ["CREATE"],
+       "resources": ["pods"]
+      }
+     ]
+    },
+    {
+     "name": "three",
+     "clientConfig": {
+      "url": "https://x"
+     },
+     "failurePolicy": "",
+     "rules": []
+    }
+   ]
+  },
+  {
+   "metadata": {
+    "name": "mixed-policies",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   },
+   "webhooks": [
+    {
+     "name": "x",
+     "clientConfig": {},
+     "failurePolicy": "Ignore"
+    },
+    {
+     "name": "y",
+     "clientConfig": {}
+    }
+   ]
+  },
+  {
+   "metadata": {
+    "name": "no-timestamp",
+    "uid": "uid-edge-4",
+    "creationTimestamp": null
+   },
+   "webhooks": [
+    {
+     "name": "z",
+     "clientConfig": {}
+    }
+   ]
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "webhooks": [
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "cert-manager",
+       "name": "svc-b",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "sideEffects": "NoneOnDryRun",
+     "rules": [
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["pods","services"]
+      },
+      {
+       "operations": ["CREATE","UPDATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    },
+    {
+     "name": "a.example.com",
+     "clientConfig": {
+      "service": {
+       "namespace": "default",
+       "name": "webhook",
+       "path": "/validate"
+      }
+     },
+     "admissionReviewVersions": ["v1"],
+     "failurePolicy": "Fail",
+     "rules": [
+      {
+       "operations": ["DELETE","CREATE"],
+       "apiGroups": [""],
+       "apiVersions": ["v1"],
+       "resources": ["deployments","statefulsets"]
+      }
+     ]
+    }
+   ],
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-4"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "webhooks": 3,
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-30T02:03:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "webhooks": 3,
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-06-01T02:08:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "webhooks": 3,
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-31T11:32:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-06-01T11:19:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "webhooks": 3,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:28:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "webhooks": 0,
+   "failurePolicy": "-",
+   "age": "2025-05-30T00:13:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "webhooks": 2,
+   "failurePolicy": "Ignore",
+   "age": "2025-05-30T21:21:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-05-31T11:45:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T00:35:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "webhooks": 3,
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-31T08:15:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T15:33:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "webhooks": 1,
+   "failurePolicy": "Ignore",
+   "age": "2025-05-30T09:05:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "webhooks": 2,
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-05-31T10:49:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "webhooks": 3,
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-30T23:23:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-05-29T23:21:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-05-29T17:30:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "webhooks": 3,
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-30T02:58:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-06-01T00:42:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "webhooks": 0,
+   "failurePolicy": "-",
+   "age": "2025-05-30T11:34:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "webhooks": 2,
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-30T09:36:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T13:45:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T05:26:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-05-29T21:21:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-06-01T07:17:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "webhooks": 3,
+   "failurePolicy": "Fail",
+   "age": "2025-05-29T18:02:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-06-01T01:01:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "webhooks": 3,
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-31T16:29:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "webhooks": 1,
+   "failurePolicy": "Ignore",
+   "age": "2025-05-31T00:47:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T22:47:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "webhooks": 2,
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-05-31T05:26:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-31T03:27:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": "2025-05-31T05:57:00Z"
+  },
+  "uid-edge-1": {
+   "name": "no-webhooks",
+   "webhooks": 0,
+   "failurePolicy": "-",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "dup-services",
+   "webhooks": 3,
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "mixed-policies",
+   "webhooks": 2,
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-timestamp",
+   "webhooks": 1,
+   "failurePolicy": "Fail",
+   "age": null
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "webhooks": 2,
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "webhooks": "",
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-30T02:03:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "webhooks": "",
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-06-01T02:08:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "webhooks": "",
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-31T11:32:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-06-01T11:19:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:28:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "webhooks": "",
+   "failurePolicy": "-",
+   "age": "2025-05-30T00:13:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "webhooks": "",
+   "failurePolicy": "Ignore",
+   "age": "2025-05-30T21:21:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-31T11:45:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T00:35:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "webhooks": "",
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-31T08:15:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T15:33:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "webhooks": "",
+   "failurePolicy": "Ignore",
+   "age": "2025-05-30T09:05:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "webhooks": "",
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-05-31T10:49:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "webhooks": "",
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-30T23:23:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-29T23:21:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-29T17:30:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "webhooks": "",
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-30T02:58:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-06-01T00:42:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "webhooks": "",
+   "failurePolicy": "-",
+   "age": "2025-05-30T11:34:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "webhooks": "",
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-30T09:36:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T13:45:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T05:26:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-29T21:21:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-06-01T07:17:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-29T18:02:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-06-01T01:01:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "webhooks": "",
+   "failurePolicy": "Fail, Ignore",
+   "age": "2025-05-31T16:29:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "webhooks": "",
+   "failurePolicy": "Ignore",
+   "age": "2025-05-31T00:47:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T22:47:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "webhooks": "",
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-05-31T05:26:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-31T03:27:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-31T05:57:00Z"
+  },
+  "uid-edge-1": {
+   "name": "no-webhooks",
+   "webhooks": "",
+   "failurePolicy": "-",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "dup-services",
+   "webhooks": "",
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "mixed-policies",
+   "webhooks": "",
+   "failurePolicy": "Ignore, Fail",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "no-timestamp",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "webhooks": "",
+   "failurePolicy": "Fail",
+   "age": "2025-05-30T10:00:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 57.95
+  },
+  "uid-0001": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 9.866666666666667
+  },
+  "uid-0002": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 24.466666666666665
+  },
+  "uid-0003": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 0.6833333333333333
+  },
+  "uid-0004": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 49.53333333333333
+  },
+  "uid-0005": {
+   "name": null,
+   "webhooks": 0,
+   "failurePolicy": null,
+   "age": 59.78333333333333
+  },
+  "uid-0006": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 38.65
+  },
+  "uid-0007": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 24.25
+  },
+  "uid-0008": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 59.416666666666664
+  },
+  "uid-0009": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 27.75
+  },
+  "uid-0010": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 44.45
+  },
+  "uid-0011": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 50.916666666666664
+  },
+  "uid-0012": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 25.183333333333334
+  },
+  "uid-0013": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 36.61666666666667
+  },
+  "uid-0014": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 60.65
+  },
+  "uid-0015": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 66.5
+  },
+  "uid-0016": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 57.03333333333333
+  },
+  "uid-0017": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 11.3
+  },
+  "uid-0018": {
+   "name": null,
+   "webhooks": 0,
+   "failurePolicy": null,
+   "age": 48.43333333333333
+  },
+  "uid-0019": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50.4
+  },
+  "uid-0020": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 46.25
+  },
+  "uid-0021": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 54.56666666666667
+  },
+  "uid-0022": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 62.65
+  },
+  "uid-0023": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 4.716666666666667
+  },
+  "uid-0024": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 65.96666666666667
+  },
+  "uid-0025": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 10.983333333333333
+  },
+  "uid-0026": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 19.516666666666666
+  },
+  "uid-0027": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 35.21666666666667
+  },
+  "uid-0028": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 37.21666666666667
+  },
+  "uid-0029": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 30.566666666666666
+  },
+  "uid-0030": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 32.55
+  },
+  "uid-0031": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": 30.05
+  },
+  "uid-edge-1": {
+   "name": null,
+   "webhooks": 0,
+   "failurePolicy": null,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-2": {
+   "name": null,
+   "webhooks": 3,
+   "failurePolicy": null,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "webhooks": 1,
+   "failurePolicy": null,
+   "age": null
+  },
+  "uid-tie-00": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "webhooks": 2,
+   "failurePolicy": null,
+   "age": 50
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-edge-2","uid-0029","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-edge-3","uid-0031","uid-edge-1","uid-0026","uid-0027","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-0027","uid-0026","uid-edge-1","uid-0031","uid-edge-3","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-0029","uid-edge-2","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "webhooks": {
+   "asc": ["uid-edge-1","uid-0018","uid-0005","uid-0003","uid-0023","uid-0025","uid-0017","uid-0007","uid-0031","uid-0027","uid-0028","uid-0010","uid-0011","uid-0021","uid-0014","uid-0022","uid-0015","uid-edge-3","uid-0012","uid-0029","uid-0030","uid-0006","uid-0020","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0019","uid-0008","uid-edge-2","uid-0001","uid-0026","uid-0002","uid-0009","uid-0013","uid-0004","uid-0016","uid-0000","uid-0024"],
+   "desc": ["uid-edge-2","uid-0001","uid-0026","uid-0002","uid-0009","uid-0013","uid-0004","uid-0016","uid-0000","uid-0024","uid-edge-3","uid-0012","uid-0029","uid-0030","uid-0006","uid-0020","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0019","uid-0008","uid-0003","uid-0023","uid-0025","uid-0017","uid-0007","uid-0031","uid-0027","uid-0028","uid-0010","uid-0011","uid-0021","uid-0014","uid-0022","uid-0015","uid-edge-1","uid-0018","uid-0005"]
+  },
+  "failurePolicy": {
+   "asc": ["uid-edge-1","uid-0018","uid-0005","uid-0003","uid-0023","uid-0025","uid-0017","uid-0007","uid-0031","uid-0030","uid-0028","uid-0010","uid-0020","uid-0004","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0021","uid-0008","uid-0014","uid-0022","uid-0024","uid-0015","uid-0026","uid-0002","uid-0009","uid-0013","uid-0019","uid-0016","uid-0000","uid-0027","uid-0006","uid-0011","uid-edge-2","uid-edge-3","uid-0001","uid-0012","uid-0029"],
+   "desc": ["uid-edge-2","uid-edge-3","uid-0001","uid-0012","uid-0029","uid-0027","uid-0006","uid-0011","uid-0026","uid-0002","uid-0009","uid-0013","uid-0019","uid-0016","uid-0000","uid-0003","uid-0023","uid-0025","uid-0017","uid-0007","uid-0031","uid-0030","uid-0028","uid-0010","uid-0020","uid-0004","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0021","uid-0008","uid-0014","uid-0022","uid-0024","uid-0015","uid-edge-1","uid-0018","uid-0005"]
+  },
+  "age": {
+   "asc": ["uid-0015","uid-0024","uid-0022","uid-0014","uid-0005","uid-0008","uid-0000","uid-0016","uid-0021","uid-0011","uid-0019","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0018","uid-0020","uid-0010","uid-0006","uid-0028","uid-0013","uid-0027","uid-0030","uid-0029","uid-0031","uid-0009","uid-0012","uid-0002","uid-0007","uid-0026","uid-0017","uid-0025","uid-0001","uid-0023","uid-edge-3","uid-edge-2","uid-edge-1","uid-0003"],
+   "desc": ["uid-0003","uid-edge-1","uid-edge-2","uid-edge-3","uid-0023","uid-0001","uid-0025","uid-0017","uid-0026","uid-0007","uid-0002","uid-0012","uid-0009","uid-0031","uid-0029","uid-0030","uid-0027","uid-0013","uid-0028","uid-0006","uid-0010","uid-0020","uid-0018","uid-0004","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0019","uid-0011","uid-0021","uid-0016","uid-0000","uid-0008","uid-0005","uid-0014","uid-0022","uid-0024","uid-0015"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006","uid-0016","uid-0017","uid-0018","uid-0019"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015","uid-edge-3"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0005","uid-0007","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0020","uid-0021","uid-0022"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0021","uid-0022"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0008","uid-0009","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0005","uid-0006"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0001","uid-0003","uid-0009","uid-0016","uid-0023","uid-tie-00"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0014","uid-0015","uid-0016","uid-edge-3"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0000","uid-0001","uid-0007","uid-0009","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0023","uid-0024"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0000","uid-0001","uid-0007","uid-0009","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0023","uid-0024"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": []
+  },
+  {
+   "query": "a:a/b",
+   "matches": []
+  },
+  {
+   "query": "ns:prod",
+   "matches": []
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": []
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": []
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": []
+  },
+  {
+   "query": "NS:default",
+   "matches": []
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": ["uid-0006","uid-0008","uid-0012","uid-0019","uid-0020","uid-0029","uid-0030","uid-edge-3","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0004","uid-0005","uid-0006","uid-tie-09","uid-tie-10"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "webhooks:2",
+   "matches": ["uid-0006","uid-0008","uid-0012","uid-0019","uid-0020","uid-0029","uid-0030","uid-edge-3","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "count:3",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0004","uid-0009","uid-0013","uid-0016","uid-0024","uid-0026","uid-edge-2"]
+  },
+  {
+   "query": "webhookcount:0",
+   "matches": ["uid-0005","uid-0018","uid-edge-1"]
+  },
+  {
+   "query": "failurepolicy:ignore",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0006","uid-0009","uid-0011","uid-0012","uid-0013","uid-0016","uid-0019","uid-0026","uid-0027","uid-0029","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "query": "failure:fail",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0007","uid-0008","uid-0009","uid-0010","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "onfailure:/^Ignore/",
+   "matches": ["uid-0001","uid-0006","uid-0011","uid-0012","uid-0027","uid-0029","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "query": "sideeffects:none",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0006","uid-0008","uid-0009","uid-0011","uid-0012","uid-0013","uid-0015","uid-0016","uid-0017","uid-0022","uid-0025","uid-0026","uid-0027","uid-0029","uid-0030","uid-edge-2","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "sideeffect:some",
+   "matches": ["uid-0001","uid-0013","uid-0014","uid-0016","uid-0020","uid-0023","uid-0024","uid-0026","uid-0031","uid-edge-2"]
+  },
+  {
+   "query": "service:ns/svc",
+   "matches": ["uid-edge-2"]
+  },
+  {
+   "query": "services:/^cert-manager/",
+   "matches": ["uid-0001","uid-0012","uid-0013","uid-0016","uid-0019","uid-0020","uid-0024","uid-0025","uid-0029","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "target:default",
+   "matches": ["uid-0002","uid-0006","uid-0008","uid-0009","uid-0011","uid-0015","uid-0017","uid-0028","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "resources:pods",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0008","uid-0009","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0020","uid-0022","uid-0024","uid-0025","uid-0027","uid-0028","uid-edge-2","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "resource:/^jobs/",
+   "matches": []
+  },
+  {
+   "query": "operations:create",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0006","uid-0008","uid-0009","uid-0010","uid-0012","uid-0013","uid-0015","uid-0016","uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-0028","uid-0029","uid-edge-2","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ops:delete",
+   "matches": ["uid-0001","uid-0002","uid-0003","uid-0004","uid-0008","uid-0009","uid-0012","uid-0015","uid-0016","uid-0021","uid-0022","uid-0025","uid-0027","uid-0029","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "operation:*",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0008","uid-0013","uid-0014","uid-0016","uid-0020","uid-0022","uid-0026","uid-0030"]
+  },
+  {
+   "query": "reinvocation:never",
+   "matches": []
+  },
+  {
+   "query": "failurepolicy:\"Ignore Fail\"",
+   "matches": ["uid-0001","uid-0012","uid-0029","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "query": "service:ns/svc OR resources:deployments",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0004","uid-0006","uid-0008","uid-0009","uid-0010","uid-0013","uid-0015","uid-0016","uid-0020","uid-0026","uid-edge-2","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0013","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0023","uid-0031","uid-edge-4","uid-tie-00","uid-tie-01"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0024","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0001","uid-0002","uid-0007","uid-0009","uid-0012","uid-0017","uid-0023","uid-0025","uid-0026"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0003","uid-0014","uid-0015","uid-0022","uid-0024"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0001","uid-0003","uid-0017","uid-0023","uid-0025","uid-edge-1","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "failurePolicy select Fail",
+   "filters": {
+    "failurePolicy": {
+     "type": "select",
+     "values": ["Fail"]
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0007","uid-0008","uid-0010","uid-0014","uid-0015","uid-0017","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0028","uid-0030","uid-0031","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "failurePolicy select Ignore|Fail",
+   "filters": {
+    "failurePolicy": {
+     "type": "select",
+     "values": ["Ignore","Fail"]
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0006","uid-0007","uid-0008","uid-0010","uid-0011","uid-0014","uid-0015","uid-0017","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0027","uid-0028","uid-0030","uid-0031","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "failurePolicy select Fail, Ignore",
+   "filters": {
+    "failurePolicy": {
+     "type": "select",
+     "values": ["Fail, Ignore"]
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-0009","uid-0013","uid-0016","uid-0019","uid-0026"]
+  },
+  {
+   "name": "failurePolicy select -",
+   "filters": {
+    "failurePolicy": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": ["uid-0005","uid-0018","uid-edge-1"]
+  },
+  {
+   "name": "webhooks select 1",
+   "filters": {
+    "webhooks": {
+     "type": "select",
+     "values": ["1"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "webhooks numeric",
+   "filters": {
+    "webhooks": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0004","uid-0006","uid-0008","uid-0009","uid-0012","uid-0013","uid-0016","uid-0019","uid-0020","uid-0024","uid-0026","uid-0029","uid-0030","uid-edge-2","uid-edge-3","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "failurePolicy regex",
+   "filters": {
+    "failurePolicy": {
+     "type": "regex",
+     "conditions": ["^Ignore"]
+    }
+   },
+   "matches": ["uid-0001","uid-0006","uid-0011","uid-0012","uid-0027","uid-0029","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0004","uid-0005","uid-0006","uid-0009","uid-0013","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0024","uid-0025","uid-0031","uid-tie-00","uid-tie-01"]
+  }
+ ],
+ "uniqueValues": {
+  "webhooks": null,
+  "failurePolicy": {
+   "values": ["-","Fail","Fail, Ignore","Ignore","Ignore, Fail"],
+   "counts": {
+    "Fail, Ignore": 7,
+    "Ignore, Fail": 5,
+    "Fail": 31,
+    "-": 3,
+    "Ignore": 3
+   }
+  }
+ }
+}

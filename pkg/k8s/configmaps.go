@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -11,6 +12,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
 )
 
@@ -85,6 +87,7 @@ func (c *Client) ListConfigMapsWithContext(ctx context.Context, namespace string
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -109,6 +112,7 @@ func (c *Client) ListConfigMapsForContext(contextName, namespace string) ([]v1.C
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -138,6 +142,7 @@ func (c *Client) ListSecretsWithContext(ctx context.Context, namespace string, o
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -162,6 +167,7 @@ func (c *Client) ListSecretsForContext(contextName, namespace string) ([]v1.Secr
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -202,71 +208,19 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 		progressFn = onProgress[0]
 	}
 
-	// Build the request path
-	var path string
-	if namespace == "" {
-		path = "/api/v1/secrets"
-	} else {
-		path = fmt.Sprintf("/api/v1/namespaces/%s/secrets", namespace)
-	}
-
-	// tableResponse is used to parse the Table response including pagination metadata
-	type tableResponse struct {
-		metav1.Table `json:",inline"`
-		Metadata     struct {
-			Continue           string `json:"continue"`
-			RemainingItemCount *int64 `json:"remainingItemCount,omitempty"`
-		} `json:"metadata"`
-	}
+	path := ResourcePath(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, namespace)
 
 	var allItems []SecretListItem
-	continueToken := ""
+	emittedAny, emitMissed := false, false
 
-	for {
-		// Check context before each page
-		if err := ctx.Err(); err != nil {
-			if isCancelledError(err) {
-				return nil, ErrRequestCancelled
-			}
-			return nil, err
-		}
-
-		// Use Table format with metadata-only objects
-		req := cs.CoreV1().RESTClient().Get().
-			AbsPath(path).
-			SetHeader("Accept", "application/json;as=Table;g=meta.k8s.io;v=v1")
-		// Only set limit when progress tracking is requested (avoids bypassing watch cache)
-		if progressFn != nil {
-			req = req.Param("limit", fmt.Sprintf("%d", defaultPageSize))
-		}
-		if continueToken != "" {
-			req = req.Param("continue", continueToken)
-		}
-
-		result := req.Do(ctx)
-
-		if err := result.Error(); err != nil {
-			log.Printf("[ListSecretsMetadata] API call failed after %v, ns=%q, err=%v", time.Since(start), namespace, err)
-			if isCancelledError(err) {
-				return nil, ErrRequestCancelled
-			}
-			return nil, err
-		}
-
-		// Parse the Table response
-		body, err := result.Raw()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read response: %w", err)
-		}
-
-		var table tableResponse
-		if err := json.Unmarshal(body, &table); err != nil {
-			return nil, fmt.Errorf("failed to parse table response: %w", err)
-		}
-
+	opts := TableListOptions{}
+	if progressFn != nil {
+		opts.PageSize = defaultPageSize
+	}
+	err = ListTable(ctx, RESTClientOf(cs), path, opts, func(table TablePage) error {
 		// Find column indices
 		nameIdx, typeIdx, dataIdx := -1, -1, -1
-		for i, col := range table.ColumnDefinitions {
+		for i, col := range table.Columns {
 			switch col.Name {
 			case "Name":
 				nameIdx = i
@@ -330,27 +284,39 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 			allItems = append(allItems, item)
 		}
 
-		if pageStart > 0 || table.Metadata.Continue != "" {
-			emitListPage(ctx, allItems[pageStart:], len(allItems), table.Metadata.RemainingItemCount, table.Metadata.Continue != "")
+		if pageStart > 0 || table.Continue != "" {
+			if emitListPage(ctx, allItems[pageStart:], len(allItems), table.Remaining, table.Continue != "") {
+				emittedAny = true
+			} else {
+				emitMissed = true
+			}
 		}
+		noteListResourceVersion(ctx, table.ResourceVersion)
 
 		// Report progress
 		if progressFn != nil {
 			total := len(allItems)
-			if table.Metadata.RemainingItemCount != nil {
-				total = len(allItems) + int(*table.Metadata.RemainingItemCount)
+			if table.Remaining != nil {
+				total = len(allItems) + int(*table.Remaining)
 			}
 			progressFn(len(allItems), total)
 		}
-
-		// No more pages
-		if table.Metadata.Continue == "" {
-			break
+		return nil
+	})
+	if err != nil {
+		if !errors.Is(err, ErrRequestCancelled) {
+			log.Printf("[ListSecretsMetadata] API call failed after %v, ns=%q, err=%v", time.Since(start), namespace, err)
 		}
-		continueToken = table.Metadata.Continue
+		return nil, err
 	}
 
 	log.Printf("[ListSecretsMetadata] API call took %v, ns=%q, items=%d", time.Since(start), namespace, len(allItems))
+	streamed := emittedAny && !emitMissed
+	reportListOutcome(ctx, len(allItems), streamed)
+	if streamed {
+		// Every page already reached the observer; see paginatedList.
+		return nil, nil
+	}
 	return allItems, nil
 }
 

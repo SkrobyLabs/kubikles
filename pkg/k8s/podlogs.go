@@ -15,6 +15,8 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/client-go/kubernetes"
 )
 
 const maxPollingLogBytes int64 = 4 * 1024 * 1024
@@ -27,18 +29,11 @@ func pollingLogByteLimit() *int64 {
 }
 
 func (c *Client) GetPodLogs(namespace, podName, containerName string, timestamps bool, previous bool, sinceTime string) (string, error) {
-	// When sinceTime is set, we need to get logs starting from that time (first N lines after sinceTime)
-	// Kubernetes TailLines gives last N lines, so we fetch all and truncate to first 200
+	// With sinceTime the caller wants the FIRST page after that time, which the
+	// API cannot express as a tail: stream and stop after 200 lines instead of
+	// downloading everything and truncating.
 	if sinceTime != "" {
-		allLogs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, timestamps, previous, sinceTime)
-		if err != nil {
-			return "", err
-		}
-		lines := strings.Split(allLogs, "\n")
-		if len(lines) <= 200 {
-			return allLogs, nil
-		}
-		return strings.Join(lines[:200], "\n"), nil
+		return c.readLogHead(namespace, podName, containerName, timestamps, previous, sinceTime, 200)
 	}
 	// Default: get last 200 lines
 	return c.getPodLogsWithOptions(namespace, podName, containerName, func(i int64) *int64 { return &i }(200), timestamps, previous, sinceTime)
@@ -48,103 +43,12 @@ func (c *Client) GetAllPodLogs(namespace, podName, containerName string, timesta
 	return c.getPodLogsWithOptions(namespace, podName, containerName, nil, timestamps, previous, "")
 }
 
-// GetPodLogsFromStart fetches all logs and returns the first N lines (default 200)
-func (c *Client) GetPodLogsFromStart(namespace, podName, containerName string, timestamps bool, previous bool, lineLimit int) (string, error) {
-	allLogs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, timestamps, previous, "")
-	if err != nil {
-		return "", err
-	}
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
-	lines := strings.Split(allLogs, "\n")
-	if len(lines) <= lineLimit {
-		return allLogs, nil
-	}
-	return strings.Join(lines[:lineLimit], "\n"), nil
-}
-
-// GetPodLogsBefore fetches logs before a given timestamp.
-// Returns up to lineLimit lines that occur before the specified timestamp.
-// The beforeTime should be in RFC3339 format (e.g., 2024-11-26T14:30:00Z).
-// Returns the logs and a boolean indicating if there are more logs before these.
-func (c *Client) GetPodLogsBefore(namespace, podName, containerName string, timestamps bool, previous bool, beforeTime string, lineLimit int) (string, bool, error) {
-	allLogs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, true, previous, "") // Always fetch with timestamps to find position
-	if err != nil {
-		return "", false, err
-	}
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
-
-	lines := strings.Split(allLogs, "\n")
-
-	// Normalize beforeTime - extract just the comparable portion (first 30 chars if available)
-	compareLen := 30
-	if len(beforeTime) < compareLen {
-		compareLen = len(beforeTime)
-	}
-	beforeTimePrefix := beforeTime[:compareLen]
-
-	// Find the line index where timestamp >= beforeTime (strict: we want lines BEFORE this)
-	cutoffIndex := -1
-	for i, line := range lines {
-		if len(line) >= 30 { // Timestamp is at least 30 chars: 2024-11-26T14:30:00.123456789Z
-			lineTime := line[:30]
-			// Use >= to find the first line at or after beforeTime
-			// We exclude this line and all after it
-			if lineTime >= beforeTimePrefix {
-				cutoffIndex = i
-				break
-			}
-		}
-	}
-
-	var resultLines []string
-	hasMoreBefore := false
-
-	if cutoffIndex == -1 {
-		// beforeTime is after all logs, return last lineLimit lines
-		if len(lines) > lineLimit {
-			resultLines = lines[len(lines)-lineLimit:]
-			hasMoreBefore = true
-		} else {
-			resultLines = lines
-		}
-	} else if cutoffIndex == 0 {
-		// beforeTime is before all logs, nothing to return
-		return "", false, nil
-	} else {
-		// Return lineLimit lines before cutoffIndex
-		startIndex := cutoffIndex - lineLimit
-		if startIndex < 0 {
-			startIndex = 0
-		} else {
-			hasMoreBefore = true
-		}
-		resultLines = lines[startIndex:cutoffIndex]
-	}
-
-	// If caller doesn't want timestamps, strip them
-	if !timestamps {
-		for i, line := range resultLines {
-			if len(line) > 31 {
-				resultLines[i] = line[31:] // Skip timestamp and space
-			}
-		}
-	}
-
-	return strings.Join(resultLines, "\n"), hasMoreBefore, nil
-}
-
 // GetPodLogsAfter fetches logs after a given timestamp.
 // Returns up to lineLimit lines that occur after the specified timestamp.
 // The afterTime should be in RFC3339 format.
 // Returns the logs and a boolean indicating if there are more logs after these.
 func (c *Client) GetPodLogsAfter(namespace, podName, containerName string, timestamps bool, previous bool, afterTime string, lineLimit int) (string, bool, error) {
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
+	lineLimit = clampLogLimit(lineLimit)
 	sinceTime := nextLogSinceTime(afterTime)
 	// Always fetch with timestamps so we can properly compare
 	allLogs, err := c.getPodLogsWithOptionsLimit(namespace, podName, containerName, nil, true, previous, sinceTime, pollingLogByteLimit(), lineLimit+1)
@@ -209,6 +113,26 @@ func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string,
 	return c.getPodLogsWithOptionsLimit(namespace, podName, containerName, tailLines, timestamps, previous, sinceTime, nil, 0)
 }
 
+// buildPodLogOptions assembles the request options shared by the one-shot log
+// readers. An unparsable sinceTime is ignored, as it always was.
+func buildPodLogOptions(containerName string, tailLines *int64, timestamps, previous bool, sinceTime string) *v1.PodLogOptions {
+	opts := &v1.PodLogOptions{
+		TailLines:  tailLines,
+		Timestamps: timestamps,
+		Previous:   previous,
+	}
+	if containerName != "" {
+		opts.Container = containerName
+	}
+	if sinceTime != "" {
+		if t, err := time.Parse(time.RFC3339, sinceTime); err == nil {
+			mt := metav1.NewTime(t)
+			opts.SinceTime = &mt
+		}
+	}
+	return opts
+}
+
 func (c *Client) getPodLogsWithOptionsLimit(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string, limitBytes *int64, maxLines int) (string, error) {
 	if IsDebugClusterContext(c.GetCurrentContext()) {
 		return "", fmt.Errorf("logs are not available on the debug cluster")
@@ -221,24 +145,10 @@ func (c *Client) getPodLogsWithOptionsLimit(namespace, podName, containerName st
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
 
-	opts := &v1.PodLogOptions{
-		TailLines:  tailLines,
-		Timestamps: timestamps,
-		Previous:   previous,
-	}
+	opts := buildPodLogOptions(containerName, tailLines, timestamps, previous, sinceTime)
 	if sinceTime == "" && maxLines > 0 && tailLines == nil {
 		tail := int64(maxLines)
 		opts.TailLines = &tail
-	}
-	if containerName != "" {
-		opts.Container = containerName
-	}
-	if sinceTime != "" {
-		t, err := time.Parse(time.RFC3339, sinceTime)
-		if err == nil {
-			mt := metav1.NewTime(t)
-			opts.SinceTime = &mt
-		}
 	}
 
 	req := cs.CoreV1().Pods(namespace).GetLogs(podName, opts)
@@ -284,6 +194,8 @@ func readBoundedLogPage(source io.Reader, byteLimit int64, maxLines int) (string
 }
 
 // StreamPodLogs streams logs from a pod container and calls the callback for each line.
+// A stream that ends, cleanly or not, is reopened from the last received
+// timestamp for as long as the container is running.
 // It continues until the context is canceled or the pod terminates.
 // Transient disconnects (unexpected EOF, connection reset) are retried automatically
 // using the last received timestamp to avoid duplicate lines.
@@ -296,8 +208,14 @@ func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containe
 	const maxConsecutiveFailures = 5
 	const reconnectDelay = 2 * time.Second
 
+	// A stream that closes cleanly, at once and empty, several times in a row
+	// is treated as finished even if the container still reports running.
+	const maxRapidCleanCloses = 5
+	const rapidCloseWindow = 5 * time.Second
+
 	var lastTimestamp string
 	consecutiveFailures := 0
+	rapidCleanCloses := 0
 	firstConnect := true
 
 	for {
@@ -345,6 +263,7 @@ func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containe
 		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
 		linesReceived := 0
+		openedAt := time.Now()
 		for scanner.Scan() {
 			select {
 			case <-ctx.Done():
@@ -375,9 +294,24 @@ func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containe
 
 		scanErr := scanner.Err()
 
-		// Clean EOF (scanErr == nil): pod/container terminated normally — don't reconnect
+		// Clean EOF (scanErr == nil): normally the container terminated. Some
+		// proxies also end long-lived responses cleanly, so the stream is only
+		// finished when the container is no longer running.
 		if scanErr == nil {
-			return nil
+			if linesReceived == 0 && time.Since(openedAt) < rapidCloseWindow {
+				rapidCleanCloses++
+			} else {
+				rapidCleanCloses = 0
+			}
+			if rapidCleanCloses >= maxRapidCleanCloses || !c.logContainerRunning(ctx, cs, namespace, podName, containerName) {
+				return nil
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(reconnectDelay):
+			}
+			continue
 		}
 
 		// Context cancelled
@@ -407,6 +341,38 @@ func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containe
 		case <-time.After(reconnectDelay):
 		}
 	}
+}
+
+// logContainerRunning reports whether a followed log stream that ended cleanly
+// should be reopened: the pod still exists and the container (any container
+// when containerName is empty) is running. Lookup failures count as not
+// running, which keeps the previous behaviour of ending the stream.
+func (c *Client) logContainerRunning(ctx context.Context, cs kubernetes.Interface, namespace, podName, containerName string) bool {
+	lookupCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	pod, err := cs.CoreV1().Pods(namespace).Get(lookupCtx, podName, metav1.GetOptions{})
+	if err != nil {
+		return false
+	}
+	return podContainerRunning(pod, containerName)
+}
+
+func podContainerRunning(pod *v1.Pod, containerName string) bool {
+	if pod == nil || pod.DeletionTimestamp != nil {
+		return false
+	}
+	groups := [][]v1.ContainerStatus{pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses, pod.Status.EphemeralContainerStatuses}
+	for _, statuses := range groups {
+		for i := range statuses {
+			if containerName != "" && statuses[i].Name != containerName {
+				continue
+			}
+			if statuses[i].State.Running != nil {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // timestampedLogLine represents a log line with parsed timestamp for sorting
@@ -618,93 +584,9 @@ func (c *Client) GetAllContainersLogsAll(namespace, podName string, containerNam
 	return strings.Join(resultLines, "\n"), nil
 }
 
-// GetAllContainersLogsFromStart fetches the first N lines from all containers, merged by timestamp
-func (c *Client) GetAllContainersLogsFromStart(namespace, podName string, containerNames []string, timestamps bool, previous bool, lineLimit int) (string, error) {
-	allLogs, err := c.GetAllContainersLogsAll(namespace, podName, containerNames, timestamps, previous)
-	if err != nil {
-		return "", err
-	}
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
-	lines := strings.Split(allLogs, "\n")
-	if len(lines) <= lineLimit {
-		return allLogs, nil
-	}
-	return strings.Join(lines[:lineLimit], "\n"), nil
-}
-
-// GetAllContainersLogsBefore fetches logs before a given timestamp from all containers
-func (c *Client) GetAllContainersLogsBefore(namespace, podName string, containerNames []string, timestamps bool, previous bool, beforeTime string, lineLimit int) (string, bool, error) {
-	// Fetch all logs with timestamps to properly merge and find position
-	allLogs, err := c.GetAllContainersLogsAll(namespace, podName, containerNames, true, previous)
-	if err != nil {
-		return "", false, err
-	}
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
-
-	lines := strings.Split(allLogs, "\n")
-
-	// Normalize beforeTime
-	compareLen := 30
-	if len(beforeTime) < compareLen {
-		compareLen = len(beforeTime)
-	}
-	beforeTimePrefix := beforeTime[:compareLen]
-
-	// Find cutoff index
-	cutoffIndex := -1
-	for i, line := range lines {
-		if len(line) >= 30 {
-			lineTime := line[:30]
-			if lineTime >= beforeTimePrefix {
-				cutoffIndex = i
-				break
-			}
-		}
-	}
-
-	var resultLines []string
-	hasMoreBefore := false
-
-	if cutoffIndex == -1 {
-		if len(lines) > lineLimit {
-			resultLines = lines[len(lines)-lineLimit:]
-			hasMoreBefore = true
-		} else {
-			resultLines = lines
-		}
-	} else if cutoffIndex == 0 {
-		return "", false, nil
-	} else {
-		startIndex := cutoffIndex - lineLimit
-		if startIndex < 0 {
-			startIndex = 0
-		} else {
-			hasMoreBefore = true
-		}
-		resultLines = lines[startIndex:cutoffIndex]
-	}
-
-	// Strip timestamps if caller doesn't want them
-	if !timestamps {
-		for i, line := range resultLines {
-			if len(line) > 31 {
-				resultLines[i] = line[31:]
-			}
-		}
-	}
-
-	return strings.Join(resultLines, "\n"), hasMoreBefore, nil
-}
-
 // GetAllContainersLogsAfter fetches logs after a given timestamp from all containers
 func (c *Client) GetAllContainersLogsAfter(namespace, podName string, containerNames []string, timestamps bool, previous bool, afterTime string, lineLimit int) (string, bool, error) {
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
+	lineLimit = clampLogLimit(lineLimit)
 	allLogs, err := c.getAllContainersLogs(namespace, podName, containerNames, true, previous, nextLogSinceTime(afterTime), lineLimit+1)
 	if err != nil {
 		return "", false, err
@@ -1097,89 +979,9 @@ func (c *Client) GetAllPodsLogsAll(namespace string, pods []PodContainerPair, al
 	return strings.Join(resultLines, "\n"), nil
 }
 
-// GetAllPodsLogsFromStart fetches the first N lines from multiple pods, merged by timestamp
-func (c *Client) GetAllPodsLogsFromStart(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, lineLimit int) (string, error) {
-	allLogs, err := c.GetAllPodsLogsAll(namespace, pods, allContainers, timestamps, previous)
-	if err != nil {
-		return "", err
-	}
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
-	lines := strings.Split(allLogs, "\n")
-	if len(lines) <= lineLimit {
-		return allLogs, nil
-	}
-	return strings.Join(lines[:lineLimit], "\n"), nil
-}
-
-// GetAllPodsLogsBefore fetches logs before a given timestamp from multiple pods
-func (c *Client) GetAllPodsLogsBefore(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, beforeTime string, lineLimit int) (string, bool, error) {
-	allLogs, err := c.GetAllPodsLogsAll(namespace, pods, allContainers, true, previous)
-	if err != nil {
-		return "", false, err
-	}
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
-
-	lines := strings.Split(allLogs, "\n")
-
-	compareLen := 30
-	if len(beforeTime) < compareLen {
-		compareLen = len(beforeTime)
-	}
-	beforeTimePrefix := beforeTime[:compareLen]
-
-	cutoffIndex := -1
-	for i, line := range lines {
-		if len(line) >= 30 {
-			lineTime := line[:30]
-			if lineTime >= beforeTimePrefix {
-				cutoffIndex = i
-				break
-			}
-		}
-	}
-
-	var resultLines []string
-	hasMoreBefore := false
-
-	if cutoffIndex == -1 {
-		if len(lines) > lineLimit {
-			resultLines = lines[len(lines)-lineLimit:]
-			hasMoreBefore = true
-		} else {
-			resultLines = lines
-		}
-	} else if cutoffIndex == 0 {
-		return "", false, nil
-	} else {
-		startIndex := cutoffIndex - lineLimit
-		if startIndex < 0 {
-			startIndex = 0
-		} else {
-			hasMoreBefore = true
-		}
-		resultLines = lines[startIndex:cutoffIndex]
-	}
-
-	if !timestamps {
-		for i, line := range resultLines {
-			if len(line) > 31 {
-				resultLines[i] = line[31:]
-			}
-		}
-	}
-
-	return strings.Join(resultLines, "\n"), hasMoreBefore, nil
-}
-
 // GetAllPodsLogsAfter fetches logs after a given timestamp from multiple pods
 func (c *Client) GetAllPodsLogsAfter(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, afterTime string, lineLimit int) (string, bool, error) {
-	if lineLimit <= 0 {
-		lineLimit = 200
-	}
+	lineLimit = clampLogLimit(lineLimit)
 	allLogs, err := c.getAllPodsLogs(namespace, pods, allContainers, true, previous, nextLogSinceTime(afterTime), lineLimit+1)
 	if err != nil {
 		return "", false, err

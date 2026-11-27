@@ -1,0 +1,2877 @@
+{
+ "type": "configmaps",
+ "now": 1748779200000,
+ "columns": ["name","namespace","keys","age","keyCount","binaryKeys","size"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "keys": "select",
+  "age": "numeric",
+  "keyCount": "select",
+  "binaryKeys": "select",
+  "size": "select"
+ },
+ "fixtures": [
+  {
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T21:20:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   }
+  },
+  {
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T00:16:00Z"
+   },
+   "data": {
+    "z": "tab\t"
+   }
+  },
+  {
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T15:38:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   }
+  },
+  {
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T17:57:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   }
+  },
+  {
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T16:15:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   }
+  },
+  {
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T13:56:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "binaryData": {
+    "5": "",
+    "blob.bin": "AAEC"
+   }
+  },
+  {
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T08:00:00Z"
+   },
+   "binaryData": {
+    "5": "",
+    "blob.bin": "AAEC"
+   }
+  },
+  {
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T21:10:00Z"
+   },
+   "data": {
+    "9": "café",
+    "z": "line\nbreak"
+   }
+  },
+  {
+   "metadata": {
+    "name": "kube-root-ca.crt",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T11:10:00Z"
+   },
+   "data": {
+    "ca.crt": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
+  },
+  {
+   "metadata": {
+    "name": "empty",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T11:09:00Z"
+   }
+  },
+  {
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T06:15:00Z"
+   },
+   "data": {
+    "a.yaml": "😀",
+    "dup": "back\\slash"
+   },
+   "binaryData": {
+    "5": "",
+    "blob.bin": "AAEC"
+   }
+  },
+  {
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T01:31:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   }
+  },
+  {
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T06:00:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "100": "<tag>&"
+   }
+  },
+  {
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-29T23:12:00Z"
+   },
+   "data": {
+    "100": "line\nbreak",
+    "a.yaml": "back\\slash",
+    "config": "tab\t"
+   }
+  },
+  {
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T10:49:00Z"
+   },
+   "data": {
+    "9": "café",
+    "a.yaml": "tab\t"
+   }
+  },
+  {
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T18:12:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   }
+  },
+  {
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-06-01T07:16:00Z"
+   },
+   "data": {
+    "a.yaml": "<tag>&",
+    "z": "<tag>&"
+   }
+  },
+  {
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T19:23:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "9": "<tag>&",
+    "dup": "tab\t",
+    "kéy": "😀",
+    "z": "value with \"quotes\""
+   }
+  },
+  {
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T05:53:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "KEY": "<tag>&",
+    "dup": "back\\slash"
+   }
+  },
+  {
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T00:39:00Z"
+   },
+   "data": {
+    "KEY": "value with \"quotes\"",
+    "key with space": "<tag>&",
+    "kéy": "v",
+    "z": "tab\t"
+   }
+  },
+  {
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T16:48:00Z"
+   },
+   "data": {
+    "a.yaml": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T10:28:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "z": "café"
+   }
+  },
+  {
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T15:04:00Z"
+   },
+   "data": {
+    "9": "v",
+    "key with space": "<tag>&",
+    "z": "<tag>&"
+   }
+  },
+  {
+   "metadata": {
+    "name": "numeric-keys",
+    "namespace": "prod",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T11:08:00Z"
+   },
+   "data": {
+    "9": "3",
+    "10": "2",
+    "007": "5",
+    "4294967295": "6",
+    "a": "4",
+    "b": "1"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T04:03:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "100": "line\nbreak",
+    "a.yaml": "back\\slash",
+    "config": "😀",
+    "key with space": "value with \"quotes\""
+   }
+  },
+  {
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-30T12:05:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "kéy": "value with \"quotes\""
+   }
+  },
+  {
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T19:36:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "9": "tab\t",
+    "config": "back\\slash"
+   }
+  },
+  {
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T11:07:00Z"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-31T21:48:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "9": "😀",
+    "kéy": "v"
+   },
+   "binaryData": {
+    "5": "",
+    "blob.bin": "AAEC"
+   }
+  },
+  {
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-06-01T00:54:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "KEY": "😀",
+    "config": "😀",
+    "dup": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T00:26:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "100": "café"
+   }
+  },
+  {
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T04:59:00Z"
+   },
+   "data": {
+    "10": "back\\slash",
+    "z": "café"
+   }
+  },
+  {
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T11:07:00Z"
+   },
+   "data": {
+    "k": "v"
+   }
+  },
+  {
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T12:57:00Z",
+    "labels": {
+     "1": "one",
+     "app": "x"
+    }
+   },
+   "data": {
+    "KEY": "value with \"quotes\"",
+    "a.yaml": "back\\slash",
+    "key with space": "café"
+   }
+  },
+  {
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T04:16:00Z"
+   },
+   "data": {
+    "9": "line\nbreak",
+    "10": "back\\slash",
+    "config": "tab\t"
+   }
+  },
+  {
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "étude",
+    "creationTimestamp": "2025-06-01T11:22:00Z"
+   },
+   "binaryData": {
+    "5": "",
+    "blob.bin": "AAEC"
+   }
+  },
+  {
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T23:03:00Z"
+   },
+   "data": {
+    "10": "café",
+    "KEY": "v",
+    "key with space": "line\nbreak"
+   },
+   "binaryData": {
+    "5": "",
+    "blob.bin": "AAEC"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-3"],
+ "cells": {
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "Prod",
+   "keys": "",
+   "age": "2025-05-30T21:20:00Z",
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "Prod",
+   "keys": "z",
+   "age": "2025-05-31T00:16:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 15
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-31T15:38:00Z",
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-30T17:57:00Z",
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-31T16:15:00Z",
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-30T13:56:00Z",
+   "keyCount": 0,
+   "binaryKeys": 2,
+   "size": 28
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-30T08:00:00Z",
+   "keyCount": 0,
+   "binaryKeys": 2,
+   "size": 28
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "default",
+   "keys": "9, z",
+   "age": "2025-05-30T21:10:00Z",
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 32
+  },
+  "uid-edge-1": {
+   "name": "kube-root-ca.crt",
+   "namespace": "default",
+   "keys": "ca.crt",
+   "age": "2025-06-01T11:10:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 55
+  },
+  "uid-edge-2": {
+   "name": "empty",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-06-01T11:09:00Z",
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-edge-3": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "keys": "",
+   "age": null,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "kube-system",
+   "keys": "a.yaml, dup",
+   "age": "2025-06-01T06:15:00Z",
+   "keyCount": 2,
+   "binaryKeys": 2,
+   "size": 61
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "kube-system",
+   "keys": "",
+   "age": "2025-06-01T01:31:00Z",
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "kube-system",
+   "keys": "100",
+   "age": "2025-05-30T06:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 18
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "kube-system",
+   "keys": "100, a.yaml, config",
+   "age": "2025-05-29T23:12:00Z",
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 63
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "kube-system",
+   "keys": "9, a.yaml",
+   "age": "2025-06-01T10:49:00Z",
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 31
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "kube-system",
+   "keys": "",
+   "age": "2025-05-31T18:12:00Z",
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "kube-system",
+   "keys": "a.yaml, z",
+   "age": "2025-06-01T07:16:00Z",
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 34
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "kube-system",
+   "keys": "9, dup, kéy, z",
+   "age": "2025-05-30T19:23:00Z",
+   "keyCount": 4,
+   "binaryKeys": 0,
+   "size": 69
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "prod",
+   "keys": "KEY, dup",
+   "age": "2025-05-30T05:53:00Z",
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 38
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "prod",
+   "keys": "KEY, key with space, kéy, z",
+   "age": "2025-05-31T00:39:00Z",
+   "keyCount": 4,
+   "binaryKeys": 0,
+   "size": 81
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "prod",
+   "keys": "a.yaml",
+   "age": "2025-05-30T16:48:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 16
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "prod",
+   "keys": "z",
+   "age": "2025-06-01T10:28:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 14
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "prod",
+   "keys": "9, key with space, z",
+   "age": "2025-05-31T15:04:00Z",
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 50
+  },
+  "uid-edge-4": {
+   "name": "numeric-keys",
+   "namespace": "prod",
+   "keys": "9, 10, 007, 4294967295, a, b",
+   "age": "2025-06-01T11:08:00Z",
+   "keyCount": 6,
+   "binaryKeys": 0,
+   "size": 63
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "team-a",
+   "keys": "100, a.yaml, config, key with space",
+   "age": "2025-05-30T04:03:00Z",
+   "keyCount": 4,
+   "binaryKeys": 0,
+   "size": 101
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-a",
+   "keys": "kéy",
+   "age": "2025-05-30T12:05:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 33
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "team-a",
+   "keys": "9, config",
+   "age": "2025-05-31T19:36:00Z",
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 38
+  },
+  "uid-edge-5": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "keys": "k",
+   "age": "2025-06-01T11:07:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "team-b",
+   "keys": "9, kéy",
+   "age": "2025-05-31T21:48:00Z",
+   "keyCount": 2,
+   "binaryKeys": 2,
+   "size": 46
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "team-b",
+   "keys": "KEY, config, dup",
+   "age": "2025-06-01T00:54:00Z",
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 38
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "team-b",
+   "keys": "100",
+   "age": "2025-05-30T00:26:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 16
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "team-b",
+   "keys": "10, z",
+   "age": "2025-05-30T04:59:00Z",
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 33
+  },
+  "uid-edge-6": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "keys": "k",
+   "age": "2025-06-01T11:07:00Z",
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "étude",
+   "keys": "KEY, a.yaml, key with space",
+   "age": "2025-05-30T12:57:00Z",
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 80
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "étude",
+   "keys": "9, 10, config",
+   "age": "2025-05-31T04:16:00Z",
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 57
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "étude",
+   "keys": "",
+   "age": "2025-06-01T11:22:00Z",
+   "keyCount": 0,
+   "binaryKeys": 2,
+   "size": 28
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "étude",
+   "keys": "10, KEY, key with space",
+   "age": "2025-05-30T23:03:00Z",
+   "keyCount": 3,
+   "binaryKeys": 2,
+   "size": 80
+  }
+ },
+ "filterValues": {
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "Prod",
+   "keys": "",
+   "age": "2025-05-30T21:20:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "Prod",
+   "keys": "z",
+   "age": "2025-05-31T00:16:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-31T15:38:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-30T17:57:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-31T16:15:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-30T13:56:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-05-30T08:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "default",
+   "keys": "9, z",
+   "age": "2025-05-30T21:10:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-edge-1": {
+   "name": "kube-root-ca.crt",
+   "namespace": "default",
+   "keys": "ca.crt",
+   "age": "2025-06-01T11:10:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-edge-2": {
+   "name": "empty",
+   "namespace": "default",
+   "keys": "",
+   "age": "2025-06-01T11:09:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-edge-3": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "keys": "",
+   "age": "",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "kube-system",
+   "keys": "a.yaml, dup",
+   "age": "2025-06-01T06:15:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "kube-system",
+   "keys": "",
+   "age": "2025-06-01T01:31:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "kube-system",
+   "keys": "100",
+   "age": "2025-05-30T06:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "kube-system",
+   "keys": "100, a.yaml, config",
+   "age": "2025-05-29T23:12:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "kube-system",
+   "keys": "9, a.yaml",
+   "age": "2025-06-01T10:49:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "kube-system",
+   "keys": "",
+   "age": "2025-05-31T18:12:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "kube-system",
+   "keys": "a.yaml, z",
+   "age": "2025-06-01T07:16:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "kube-system",
+   "keys": "9, dup, kéy, z",
+   "age": "2025-05-30T19:23:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "prod",
+   "keys": "KEY, dup",
+   "age": "2025-05-30T05:53:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "prod",
+   "keys": "KEY, key with space, kéy, z",
+   "age": "2025-05-31T00:39:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "prod",
+   "keys": "a.yaml",
+   "age": "2025-05-30T16:48:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "prod",
+   "keys": "z",
+   "age": "2025-06-01T10:28:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "prod",
+   "keys": "9, key with space, z",
+   "age": "2025-05-31T15:04:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-edge-4": {
+   "name": "numeric-keys",
+   "namespace": "prod",
+   "keys": "9, 10, 007, 4294967295, a, b",
+   "age": "2025-06-01T11:08:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "keys": "k",
+   "age": "2025-05-30T10:00:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "team-a",
+   "keys": "100, a.yaml, config, key with space",
+   "age": "2025-05-30T04:03:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "team-a",
+   "keys": "kéy",
+   "age": "2025-05-30T12:05:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "team-a",
+   "keys": "9, config",
+   "age": "2025-05-31T19:36:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-edge-5": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "keys": "k",
+   "age": "2025-06-01T11:07:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "team-b",
+   "keys": "9, kéy",
+   "age": "2025-05-31T21:48:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "team-b",
+   "keys": "KEY, config, dup",
+   "age": "2025-06-01T00:54:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "team-b",
+   "keys": "100",
+   "age": "2025-05-30T00:26:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "team-b",
+   "keys": "10, z",
+   "age": "2025-05-30T04:59:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-edge-6": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "keys": "k",
+   "age": "2025-06-01T11:07:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "étude",
+   "keys": "KEY, a.yaml, key with space",
+   "age": "2025-05-30T12:57:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "étude",
+   "keys": "9, 10, config",
+   "age": "2025-05-31T04:16:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "étude",
+   "keys": "",
+   "age": "2025-06-01T11:22:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "étude",
+   "keys": "10, KEY, key with space",
+   "age": "2025-05-30T23:03:00Z",
+   "keyCount": "",
+   "binaryKeys": "",
+   "size": ""
+  }
+ },
+ "numeric": {
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 38.666666666666664,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 35.733333333333334,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 15
+  },
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 20.366666666666667,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 42.05,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 19.75,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 46.06666666666667,
+   "keyCount": 0,
+   "binaryKeys": 2,
+   "size": 28
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 52,
+   "keyCount": 0,
+   "binaryKeys": 2,
+   "size": 28
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 38.833333333333336,
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 32
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 0.8333333333333334,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 55
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 0.85,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": null,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 5.75,
+   "keyCount": 2,
+   "binaryKeys": 2,
+   "size": 61
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 10.483333333333333,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 54,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 18
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 60.8,
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 63
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 1.1833333333333333,
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 31
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 17.8,
+   "keyCount": 0,
+   "binaryKeys": 0,
+   "size": 4
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 4.733333333333333,
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 34
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 40.61666666666667,
+   "keyCount": 4,
+   "binaryKeys": 0,
+   "size": 69
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 54.11666666666667,
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 38
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 35.35,
+   "keyCount": 4,
+   "binaryKeys": 0,
+   "size": 81
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 43.2,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 16
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 1.5333333333333334,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 14
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 20.933333333333334,
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 50
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 0.8666666666666667,
+   "keyCount": 6,
+   "binaryKeys": 0,
+   "size": 63
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 50,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 55.95,
+   "keyCount": 4,
+   "binaryKeys": 0,
+   "size": 101
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 47.916666666666664,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 33
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 16.4,
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 38
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 0.8833333333333333,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 14.2,
+   "keyCount": 2,
+   "binaryKeys": 2,
+   "size": 46
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 11.1,
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 38
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 59.56666666666667,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 16
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 55.016666666666666,
+   "keyCount": 2,
+   "binaryKeys": 0,
+   "size": 33
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 0.8833333333333333,
+   "keyCount": 1,
+   "binaryKeys": 0,
+   "size": 11
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 47.05,
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 80
+  },
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 31.733333333333334,
+   "keyCount": 3,
+   "binaryKeys": 0,
+   "size": 57
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 0.6333333333333333,
+   "keyCount": 0,
+   "binaryKeys": 2,
+   "size": 28
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "keys": null,
+   "age": 36.95,
+   "keyCount": 3,
+   "binaryKeys": 2,
+   "size": 80
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-0029","uid-edge-2","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-edge-1","uid-0011","uid-0031","uid-edge-4","uid-0026","uid-0027","uid-edge-5","uid-edge-6","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-5","uid-edge-6","uid-0027","uid-0026","uid-edge-4","uid-0031","uid-0011","uid-edge-1","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-edge-2","uid-0029","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0017","uid-0011","uid-edge-1","uid-edge-2","uid-0018","uid-0000","uid-0030","uid-0009","uid-0021","uid-0028","uid-0015","uid-0023","uid-0001","uid-0003","uid-0022","uid-0029","uid-0005","uid-0014","uid-edge-4","uid-0010","uid-0027","uid-0006","uid-0007","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-edge-5","uid-0016","uid-0013","uid-0008","uid-edge-6","uid-0019","uid-0002","uid-0025","uid-0020","uid-0026","uid-0024","uid-0031","uid-0012"],
+   "desc": ["uid-0026","uid-0024","uid-0031","uid-0012","uid-edge-6","uid-0019","uid-0002","uid-0025","uid-0020","uid-edge-5","uid-0016","uid-0013","uid-0008","uid-edge-4","uid-0010","uid-0027","uid-0006","uid-0007","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0015","uid-0023","uid-0001","uid-0003","uid-0022","uid-0029","uid-0005","uid-0014","uid-edge-1","uid-edge-2","uid-0018","uid-0000","uid-0030","uid-0009","uid-0021","uid-0028","uid-0017","uid-0011"]
+  },
+  "keys": {
+   "asc": ["uid-0026","uid-edge-2","uid-0003","uid-0022","uid-0018","uid-0000","uid-0011","uid-0009","uid-0021","uid-0028","uid-0031","uid-0025","uid-0005","uid-0020","uid-0014","uid-0008","uid-edge-4","uid-0024","uid-0015","uid-0016","uid-0029","uid-0027","uid-0002","uid-0030","uid-0012","uid-0019","uid-0004","uid-0006","uid-0007","uid-0001","uid-0023","uid-edge-1","uid-edge-5","uid-edge-6","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0013","uid-0010","uid-0017"],
+   "desc": ["uid-0010","uid-0017","uid-0013","uid-edge-5","uid-edge-6","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-1","uid-0023","uid-0001","uid-0007","uid-0006","uid-0004","uid-0019","uid-0012","uid-0030","uid-0002","uid-0027","uid-0029","uid-0016","uid-0015","uid-0024","uid-edge-4","uid-0008","uid-0014","uid-0005","uid-0020","uid-0025","uid-0031","uid-0026","uid-edge-2","uid-0003","uid-0022","uid-0018","uid-0000","uid-0011","uid-0009","uid-0021","uid-0028"]
+  },
+  "age": {
+   "asc": ["uid-0014","uid-0020","uid-0008","uid-0025","uid-0004","uid-0005","uid-0028","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0013","uid-0012","uid-0021","uid-0007","uid-0009","uid-0029","uid-0030","uid-0011","uid-0031","uid-0017","uid-0006","uid-0024","uid-0027","uid-0000","uid-0018","uid-0022","uid-0016","uid-0002","uid-0019","uid-0003","uid-0001","uid-0023","uid-0010","uid-0015","uid-edge-5","uid-edge-6","uid-edge-4","uid-edge-2","uid-edge-1","uid-0026"],
+   "desc": ["uid-0026","uid-edge-1","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-6","uid-0015","uid-0010","uid-0023","uid-0001","uid-0003","uid-0019","uid-0002","uid-0016","uid-0022","uid-0018","uid-0000","uid-0027","uid-0024","uid-0006","uid-0017","uid-0031","uid-0011","uid-0030","uid-0029","uid-0009","uid-0007","uid-0021","uid-0012","uid-0013","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0028","uid-0005","uid-0004","uid-0025","uid-0008","uid-0020","uid-0014"]
+  },
+  "keyCount": {
+   "asc": ["uid-0026","uid-edge-2","uid-0003","uid-0022","uid-0018","uid-0000","uid-0011","uid-0009","uid-0021","uid-0028","uid-edge-1","uid-edge-5","uid-edge-6","uid-0010","uid-0017","uid-0007","uid-0013","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0020","uid-0015","uid-0023","uid-0001","uid-0002","uid-0016","uid-0030","uid-0004","uid-0025","uid-0019","uid-0027","uid-0024","uid-0031","uid-0012","uid-0014","uid-0006","uid-0029","uid-0008","uid-edge-4"],
+   "desc": ["uid-edge-4","uid-0006","uid-0029","uid-0008","uid-0019","uid-0027","uid-0024","uid-0031","uid-0012","uid-0014","uid-0015","uid-0023","uid-0001","uid-0002","uid-0016","uid-0030","uid-0004","uid-0025","uid-edge-1","uid-edge-5","uid-edge-6","uid-0010","uid-0017","uid-0007","uid-0013","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0020","uid-0026","uid-edge-2","uid-0003","uid-0022","uid-0018","uid-0000","uid-0011","uid-0009","uid-0021","uid-0028"]
+  },
+  "binaryKeys": {
+   "asc": ["uid-edge-1","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-6","uid-0015","uid-0010","uid-0023","uid-0003","uid-0019","uid-0016","uid-0022","uid-0018","uid-0000","uid-0027","uid-0024","uid-0006","uid-0017","uid-0011","uid-0030","uid-0029","uid-0009","uid-0007","uid-0012","uid-0013","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0004","uid-0025","uid-0008","uid-0020","uid-0014","uid-0026","uid-0001","uid-0002","uid-0031","uid-0021","uid-0028"],
+   "desc": ["uid-0026","uid-0001","uid-0002","uid-0031","uid-0021","uid-0028","uid-edge-1","uid-edge-2","uid-edge-4","uid-edge-5","uid-edge-6","uid-0015","uid-0010","uid-0023","uid-0003","uid-0019","uid-0016","uid-0022","uid-0018","uid-0000","uid-0027","uid-0024","uid-0006","uid-0017","uid-0011","uid-0030","uid-0029","uid-0009","uid-0007","uid-0012","uid-0013","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0005","uid-0004","uid-0025","uid-0008","uid-0020","uid-0014"]
+  },
+  "size": {
+   "asc": ["uid-edge-2","uid-0003","uid-0022","uid-0018","uid-0000","uid-0011","uid-0009","uid-edge-5","uid-edge-6","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0010","uid-0017","uid-0007","uid-0020","uid-0005","uid-0026","uid-0021","uid-0028","uid-0015","uid-0030","uid-0013","uid-0025","uid-0023","uid-0019","uid-0016","uid-0004","uid-0002","uid-0027","uid-edge-1","uid-0024","uid-0001","uid-edge-4","uid-0014","uid-0029","uid-0031","uid-0012","uid-0006","uid-0008"],
+   "desc": ["uid-0008","uid-0006","uid-0031","uid-0012","uid-0029","uid-edge-4","uid-0014","uid-0001","uid-0024","uid-edge-1","uid-0027","uid-0002","uid-0019","uid-0016","uid-0004","uid-0023","uid-0013","uid-0025","uid-0030","uid-0015","uid-0026","uid-0021","uid-0028","uid-0005","uid-0007","uid-0020","uid-0017","uid-0010","uid-edge-5","uid-edge-6","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-edge-2","uid-0003","uid-0022","uid-0018","uid-0000","uid-0011","uid-0009"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0005","uid-0004","uid-0006"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0017","uid-0018","uid-0003","uid-0005","uid-0004","uid-0006","uid-0016","uid-0019"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-edge-1","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0005","uid-0007","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0021","uid-0022","uid-0020"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0021","uid-0022"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0005","uid-0004","uid-0006"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0009","uid-0007","uid-0010","uid-0008"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0005","uid-0006"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0009","uid-0001","uid-0003","uid-0023","uid-tie-00","uid-0016"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0002"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0001","uid-0014","uid-0015","uid-0016","uid-0002"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0002"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0001","uid-0003","uid-0005","uid-0004","uid-0006","uid-0002"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": ["uid-0011","uid-0000","uid-0009","uid-0018","uid-0021","uid-0003","uid-0005","uid-0022","uid-0029","uid-0004","uid-0010","uid-0008","uid-0013","uid-0016","uid-0002","uid-0019","uid-0020","uid-0012"]
+  },
+  {
+   "query": "l:10=ten",
+   "matches": []
+  },
+  {
+   "query": "labels:tier",
+   "matches": []
+  },
+  {
+   "query": "annotation:note",
+   "matches": []
+  },
+  {
+   "query": "a:a/b",
+   "matches": []
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0011","uid-0017","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0011","uid-0017","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-5"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": ["uid-0014","uid-0027","uid-0019","uid-0012","uid-0024","uid-0031"]
+  },
+  {
+   "query": "count:2",
+   "matches": ["uid-0030","uid-0001","uid-0015","uid-0023","uid-0004","uid-0016","uid-0002","uid-0025"]
+  },
+  {
+   "query": "datakeys:0",
+   "matches": ["uid-0005","uid-0014","uid-edge-4","uid-0008","uid-0020","uid-0025","uid-0024","uid-0031"]
+  },
+  {
+   "query": "keys:config",
+   "matches": ["uid-0014","uid-0008","uid-0016","uid-0019","uid-0024"]
+  },
+  {
+   "query": "key:10",
+   "matches": ["uid-0005","uid-0014","uid-edge-4","uid-0008","uid-0020","uid-0025","uid-0024","uid-0031"]
+  },
+  {
+   "query": "binary:blob",
+   "matches": ["uid-0021","uid-0028","uid-0001","uid-0002","uid-0026","uid-0031"]
+  },
+  {
+   "query": "binarykey:5",
+   "matches": ["uid-0021","uid-0028","uid-0001","uid-0002","uid-0026","uid-0031"]
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0021","uid-0022","uid-0027","uid-tie-12","uid-0025","uid-0024"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0025","uid-0024"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0021","uid-0022","uid-0027","uid-tie-12","uid-0025","uid-0024"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0005","uid-0004","uid-0006","uid-tie-09","uid-tie-10"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0016","uid-0002"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0017","uid-0009","uid-0018","uid-edge-1","uid-edge-3","uid-0003","uid-0005","uid-0023","uid-0004","uid-0006","uid-tie-00","uid-tie-01","uid-0013","uid-0016","uid-edge-5","uid-0019","uid-0020","uid-edge-6","uid-0031"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0003","uid-0005","uid-0004","uid-0006"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0021","uid-0022","uid-0027","uid-tie-12","uid-0025","uid-0024"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0011","uid-0017","uid-0009","uid-0021","uid-0028","uid-0030","uid-0005","uid-0014","uid-0029","uid-0004","uid-0006","uid-0007","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0020","uid-0025","uid-0012","uid-0024","uid-0031"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0000","uid-0018","uid-0001","uid-0003","uid-0022","uid-0023","uid-0027","uid-0016","uid-0002","uid-0019"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-edge-1","uid-edge-2","uid-0014","uid-edge-4","uid-edge-5","uid-edge-6","uid-0026"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-edge-1","uid-edge-2","uid-0001","uid-0003","uid-0015","uid-0023","uid-0010","uid-edge-4","uid-edge-5","uid-0019","uid-edge-6","uid-0026"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0011","uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-0001","uid-0003","uid-0005","uid-0014","uid-0015","uid-0022","uid-0023","uid-0029","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0008","uid-0013","uid-0016","uid-edge-5","uid-0002","uid-0019","uid-0020","uid-0025","uid-edge-6","uid-0012","uid-0024","uid-0026","uid-0031"]
+  },
+  {
+   "name": "namespace select default|prod",
+   "filters": {
+    "namespace": {
+     "type": "select",
+     "values": ["default","prod"]
+    }
+   },
+   "matches": ["uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-0030","uid-edge-1","uid-edge-2","uid-edge-3","uid-0004","uid-0006","uid-0007","uid-0010","uid-0027","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "keys select config|",
+   "filters": {
+    "keys": {
+     "type": "select",
+     "values": ["config",""]
+    }
+   },
+   "matches": ["uid-0011","uid-0000","uid-0009","uid-0018","uid-0021","uid-0028","uid-edge-2","uid-edge-3","uid-0003","uid-0022","uid-0026"]
+  },
+  {
+   "name": "keyCount numeric",
+   "filters": {
+    "keyCount": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0030","uid-0001","uid-0014","uid-0015","uid-0023","uid-0029","uid-0004","uid-0006","uid-0027","uid-edge-4","uid-0008","uid-0016","uid-0002","uid-0019","uid-0025","uid-0012","uid-0024","uid-0031"]
+  },
+  {
+   "name": "size numeric",
+   "filters": {
+    "size": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 30
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0030","uid-edge-1","uid-0001","uid-0014","uid-0015","uid-0023","uid-0029","uid-0004","uid-0006","uid-0027","uid-edge-4","uid-0008","uid-0013","uid-0016","uid-0002","uid-0019","uid-0025","uid-0012","uid-0024","uid-0031"]
+  },
+  {
+   "name": "binaryKeys regex",
+   "filters": {
+    "binaryKeys": {
+     "type": "regex",
+     "conditions": ["^[1-9]"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "keys regex",
+   "filters": {
+    "keys": {
+     "type": "regex",
+     "conditions": ["config","10"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0005","uid-0014","uid-edge-4","uid-0008","uid-0016","uid-0019","uid-0020","uid-0025","uid-0024","uid-0031"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0017","uid-0000","uid-0009","uid-0018","uid-0021","uid-0001","uid-0003","uid-0005","uid-0022","uid-0004","uid-0006","uid-tie-00","uid-tie-01","uid-0013","uid-0016","uid-0002","uid-0019","uid-0020","uid-0025","uid-0024","uid-0031"]
+  }
+ ],
+ "uniqueValues": {
+  "keys": {
+   "values": ["10, KEY, key with space","10, z","100","100, a.yaml, config","100, a.yaml, config, key with space","9, 10, 007, 4294967295, a, b","9, 10, config","9, a.yaml","9, config","9, dup, kéy, z","9, kéy","9, key with space, z","9, z","a.yaml","a.yaml, dup","a.yaml, z","ca.crt","k","kéy","KEY, a.yaml, key with space","KEY, config, dup","KEY, dup","KEY, key with space, kéy, z","z"],
+   "counts": {
+    "100": 2,
+    "z": 2,
+    "9, z": 1,
+    "ca.crt": 1,
+    "a.yaml, dup": 1,
+    "100, a.yaml, config": 1,
+    "9, a.yaml": 1,
+    "a.yaml, z": 1,
+    "9, dup, kéy, z": 1,
+    "KEY, dup": 1,
+    "KEY, key with space, kéy, z": 1,
+    "a.yaml": 1,
+    "9, key with space, z": 1,
+    "9, 10, 007, 4294967295, a, b": 1,
+    "k": 15,
+    "100, a.yaml, config, key with space": 1,
+    "kéy": 1,
+    "9, config": 1,
+    "9, kéy": 1,
+    "KEY, config, dup": 1,
+    "10, z": 1,
+    "KEY, a.yaml, key with space": 1,
+    "9, 10, config": 1,
+    "10, KEY, key with space": 1
+   }
+  },
+  "keyCount": null,
+  "binaryKeys": null,
+  "size": null
+ }
+}

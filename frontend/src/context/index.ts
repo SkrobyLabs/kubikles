@@ -1,7 +1,8 @@
 // Context providers and hooks - barrel export
-export { K8sProvider, useK8s } from './K8sContext'
+export { K8sProvider, useK8s, useK8sActions } from './K8sContext'
+export type { K8sActions } from './K8sContext'
 export { UIProvider, useUI } from './UIContext'
-export { MenuProvider, useMenu } from './MenuContext'
+export { MenuProvider, useMenu, useMenuOpen, useMenuPlacement, useMenuActions } from './MenuContext'
 export { DebugProvider, useDebug, DEBUG_SOURCE, CATEGORY_COLORS } from './DebugContext'
 export type { DebugCategory, DebugLogEntry } from './DebugContext'
 export { ConfigProvider, useConfig } from './ConfigContext'

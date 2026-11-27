@@ -19,7 +19,9 @@ import (
 	"kubikles/pkg/helm"
 	"kubikles/pkg/issuedetector"
 	"kubikles/pkg/k8s"
+	"kubikles/pkg/rows"
 	"kubikles/pkg/server"
+	"kubikles/pkg/store"
 	"kubikles/pkg/terminal"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -38,6 +40,10 @@ type App struct {
 	terminalManager       *terminal.Manager
 	aiManager             *ai.Manager
 	watcherManager        *ResourceWatcherManager
+	store                 *store.Manager    // shared list+watch cache; see app_store.go
+	views                 *rows.ViewManager // windowed list views over the store; see app_views.go
+	viewNotifier          *ViewNotifier
+	overlays              *overlaySources // metrics sources behind overlay columns; see app_overlays.go
 	portForwardManager    *PortForwardManager
 	ingressForwardManager *IngressForwardManager
 	eventCoalescer        *EventCoalescer
@@ -71,6 +77,8 @@ type App struct {
 	emitter events.Emitter
 	// Embedded browser session
 	embeddedBrowser embeddedBrowserState
+	// Bulk read transport (token, setting, probe report)
+	bulk bulkState
 }
 
 // Watcher event types: see app_watchers.go (ResourceEvent, WatcherErrorEvent, WatcherStatusEvent)
@@ -120,10 +128,12 @@ func (a *App) startup(ctx context.Context) {
 	debug.Init(a.emitter)
 
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
+	a.initStore()
 	a.portForwardManager = NewPortForwardManager(a)
 	a.ingressForwardManager = NewIngressForwardManager(a)
 	a.eventCoalescer = NewEventCoalescer(a, 16*time.Millisecond) // 60fps frame batching
-	a.logCoalescer = NewLogCoalescer(a, 16*time.Millisecond)     // 60fps log batching
+	a.hookViewForeground()
+	a.logCoalescer = NewLogCoalescer(a, 16*time.Millisecond) // 60fps log batching
 	a.loadPrometheusConfigs()
 	// Initialize theme manager
 	configDir, _ := os.UserConfigDir()
@@ -174,9 +184,11 @@ func (a *App) startupServerMode(ctx context.Context) {
 		debug.Init(a.emitter)
 	}
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
+	a.initStore()
 	a.portForwardManager = NewPortForwardManager(a)
 	a.ingressForwardManager = NewIngressForwardManager(a)
 	a.eventCoalescer = NewEventCoalescer(a, 16*time.Millisecond)
+	a.hookViewForeground()
 	a.logCoalescer = NewLogCoalescer(a, 16*time.Millisecond)
 	a.loadPrometheusConfigs()
 
@@ -225,6 +237,7 @@ func (a *App) getDisconnectListeners() []server.DisconnectListener {
 	if a.terminalManager != nil {
 		listeners = append(listeners, a.terminalManager)
 	}
+	listeners = append(listeners, viewDisconnect{a}, logStreamDisconnect{a})
 	return listeners
 }
 
@@ -245,12 +258,31 @@ type ListProgress struct {
 // listProgressCallback creates a progress callback that emits "list-progress" events.
 func (a *App) listProgressCallback(resourceType string) func(loaded, total int) {
 	return func(loaded, total int) {
-		debug.LogK8s("list-progress", map[string]interface{}{"resource": resourceType, "loaded": loaded, "total": total})
+		if debug.IsEnabled() {
+			debug.LogK8s("list-progress", map[string]interface{}{"resource": resourceType, "loaded": loaded, "total": total})
+		}
 		a.emitEvent("list-progress", ListProgress{
 			ResourceType: resourceType,
 			Loaded:       loaded,
 			Total:        total,
 		})
+	}
+}
+
+// SetWindowVisible tells the backend whether the UI can currently be seen
+// (false when the window is minimized, hidden or its tab is in the background).
+// While hidden, resource-event and log coalescing drop to a slow cadence so
+// no bridge calls or JS work are spent on updates nobody can see; becoming
+// visible again restores normal cadence and flushes buffered updates at once.
+func (a *App) SetWindowVisible(visible bool) {
+	if a.overlays != nil {
+		a.overlays.setVisible(visible)
+	}
+	if a.eventCoalescer != nil {
+		a.eventCoalescer.SetBackground(!visible)
+	}
+	if a.logCoalescer != nil {
+		a.logCoalescer.SetBackground(!visible)
 	}
 }
 
@@ -286,6 +318,7 @@ func (a *App) shutdown(ctx context.Context) {
 	if a.watcherManager != nil {
 		a.watcherManager.StopAll()
 	}
+	a.closeStore()
 
 	// Close all terminal sessions
 	if a.terminalManager != nil {

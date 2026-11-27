@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { TabActiveContext } from '../shared/log-viewer/TabActiveContext';
 import { BookmarkIcon } from '@heroicons/react/24/solid';
 import { PencilSquareIcon, ShareIcon, DocumentTextIcon, CommandLineIcon, FolderIcon } from '@heroicons/react/24/outline';
 import { useConfig } from '~/context';
@@ -327,7 +328,9 @@ export default function BottomPanel({
                             tabIndex={-1}
                             onScrollCapture={(e) => handleScrollCapture(tab.id, e)}
                         >
-                            {tab.content}
+                            <TabActiveContext.Provider value={isActive}>
+                                {tab.content}
+                            </TabActiveContext.Provider>
                         </div>
                     );
                 })}

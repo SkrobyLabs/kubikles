@@ -5,6 +5,7 @@ import Logger from '../utils/Logger';
 import { runContextSwitchTransaction } from './contextSwitch';
 import { isImmediateWatchClosure, isStreamTransportError, restoreConnectionMode, restorePollingInterval, WatchFailureWindow, type ConnectionMode } from '../utils/streamingCompatibility';
 import { startCompletionPolling } from '../utils/completionPolling';
+import { getWindowVisibleSnapshot, subscribeWindowVisibility } from '../utils/windowVisibility';
 import { useNotification } from './NotificationContext';
 import { runWithPollingBudget } from '../utils/pollingBudget';
 
@@ -122,6 +123,32 @@ interface K8sContextValue {
 // ============================================================================
 
 const K8sContext = createContext<K8sContextValue | undefined>(undefined);
+
+/**
+ * Functions from K8sContextValue that never change identity. Components that
+ * only call actions (refresh, switch, ...) should use useK8sActions() so they
+ * are not re-rendered by namespace/CRD/connection state changes.
+ */
+export type K8sActions = Pick<K8sContextValue,
+    'switchContext' | 'refreshContexts' | 'refreshContextsIfChanged' | 'refreshNamespaces' |
+    'setSelectedNamespaces' | 'triggerRefresh' | 'ensureCRDsLoaded' | 'retryConnection' |
+    'checkConnectionError' | 'setConnectionMode' | 'setPollingInterval' | 'registerPolling'>;
+
+const K8S_ACTION_KEYS: (keyof K8sActions)[] = [
+    'switchContext', 'refreshContexts', 'refreshContextsIfChanged', 'refreshNamespaces',
+    'setSelectedNamespaces', 'triggerRefresh', 'ensureCRDsLoaded', 'retryConnection',
+    'checkConnectionError', 'setConnectionMode', 'setPollingInterval', 'registerPolling',
+];
+
+const K8sActionsContext = createContext<K8sActions | undefined>(undefined);
+
+export const useK8sActions = (): K8sActions => {
+    const actions = useContext(K8sActionsContext);
+    if (!actions) {
+        throw new Error('useK8sActions must be used within a K8sProvider');
+    }
+    return actions;
+};
 
 export const useK8s = (): K8sContextValue => {
     const context = useContext(K8sContext);
@@ -331,11 +358,30 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // One completion-scheduled clock for resource refreshes. Slow requests finish
     // before the next interval starts; log following has its own cadence.
+    // Ticks while the window is hidden are skipped; one catch-up poll runs on show.
     useEffect(() => {
         if (!currentContext || connectionMode !== 'polling') return;
-        return startCompletionPolling(async () => {
+        const pollAll = async () => {
             await Promise.allSettled([...pollingSubscribers.current].map(poll => poll()));
+        };
+        let missed = false;
+        const unsubscribe = subscribeWindowVisibility((visible: boolean) => {
+            if (visible && missed) {
+                missed = false;
+                void pollAll();
+            }
+        });
+        const stop = startCompletionPolling(async () => {
+            if (!getWindowVisibleSnapshot()) {
+                missed = true;
+                return;
+            }
+            await pollAll();
         }, pollingInterval, () => 0.5);
+        return () => {
+            unsubscribe();
+            stop();
+        };
     }, [currentContext, connectionMode, pollingInterval]);
 
     // Track when each context was last accessed (for sorting)
@@ -946,6 +992,13 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         Logger.debug("Triggered resource refresh", undefined, 'k8s');
     }, []);
 
+    // Server mode: events emitted while the WebSocket was down (or after the
+    // server dropped this slow client) are gone, so re-list active views.
+    useEffect(() => {
+        const cancel = EventsOn('ws:reconnected', () => triggerRefresh());
+        return () => { if (typeof cancel === 'function') cancel(); };
+    }, [triggerRefresh]);
+
     const retryConnection = useCallback((): void => {
         Logger.info("Retrying connection...", undefined, 'k8s');
         setConnectionError(null);
@@ -1082,9 +1135,22 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerPolling,
     ]);
 
+    // Stable wrappers: created once, always forward to the latest implementation.
+    const latestActionsRef = useRef<K8sActions>(value);
+    latestActionsRef.current = value;
+    const actions = useMemo(() => {
+        const out: any = {};
+        for (const key of K8S_ACTION_KEYS) {
+            out[key] = (...args: any[]) => (latestActionsRef.current[key] as any)(...args);
+        }
+        return out as K8sActions;
+    }, []);
+
     return (
         <K8sContext.Provider value={value}>
-            {children}
+            <K8sActionsContext.Provider value={actions}>
+                {children}
+            </K8sActionsContext.Provider>
         </K8sContext.Provider>
     );
 };

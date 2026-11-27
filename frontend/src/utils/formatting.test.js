@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatAge, formatBytes, formatChartTime } from './formatting';
+import { formatAge, formatBytes, formatChartTime, formatWhen, nextAgeChangeMs } from './formatting';
 
 describe('formatAge', () => {
     beforeEach(() => {
@@ -24,9 +24,14 @@ describe('formatAge', () => {
         expect(formatAge('2024-01-15T11:59:55.000Z')).toBe('5s');
     });
 
+    it('keeps seconds for the first ten minutes', () => {
+        expect(formatAge('2024-01-15T11:59:00.000Z')).toBe('1m 0s');
+        expect(formatAge('2024-01-15T11:55:00.000Z')).toBe('5m 0s');
+        expect(formatAge('2024-01-15T11:50:01.000Z')).toBe('9m 59s');
+        expect(formatAge('2024-01-15T11:50:00.000Z')).toBe('10m');
+    });
+
     it('formats minutes', () => {
-        // 5 minutes ago
-        expect(formatAge('2024-01-15T11:55:00.000Z')).toBe('5m');
         // 45 minutes ago
         expect(formatAge('2024-01-15T11:15:00.000Z')).toBe('45m');
     });
@@ -53,8 +58,8 @@ describe('formatAge', () => {
     });
 
     it('handles edge case at 60 seconds', () => {
-        // Exactly 60 seconds should show 1m
-        expect(formatAge('2024-01-15T11:59:00.000Z')).toBe('1m');
+        // Exactly 60 seconds rolls over to minutes and keeps its seconds
+        expect(formatAge('2024-01-15T11:59:00.000Z')).toBe('1m 0s');
     });
 
     it('handles edge case at 60 minutes', () => {
@@ -94,5 +99,46 @@ describe('formatChartTime', () => {
         expect(short).toContain(':');
         // time-only: no month abbreviation like "Jun"
         expect(short).not.toMatch(/[A-Za-z]{3}/);
+    });
+});
+
+describe('nextAgeChangeMs', () => {
+    const now = new Date('2024-01-15T12:00:00.000Z').getTime();
+    it('waits for the next whole second while seconds are shown', () => {
+        expect(nextAgeChangeMs('2024-01-15T11:59:55.400Z', now)).toBe(400);
+        expect(nextAgeChangeMs('2024-01-15T11:51:00.250Z', now)).toBe(250);
+    });
+    it('waits for the next whole minute, then the next whole hour', () => {
+        expect(nextAgeChangeMs('2024-01-15T11:29:40.000Z', now)).toBe(40_000);
+        expect(nextAgeChangeMs('2024-01-13T11:30:00.000Z', now)).toBe(30 * 60_000);
+    });
+    it('retries shortly for a missing or future timestamp', () => {
+        expect(nextAgeChangeMs(undefined, now)).toBe(1000);
+        expect(nextAgeChangeMs('2024-01-15T12:00:05.000Z', now)).toBe(1000);
+    });
+});
+
+describe('formatWhen', () => {
+    // Local-time constructors keep these independent of the machine's time zone, and the locale
+    // is passed in so they do not depend on the machine's language either.
+    const now = new Date(2026, 10, 28, 13, 31, 0);
+    const iso = (...parts) => new Date(...parts).toISOString();
+
+    it('shows only the time for today', () => {
+        expect(formatWhen(iso(2026, 10, 28, 13, 11, 18), now, 'en-GB')).toBe('13:11:18');
+        expect(formatWhen(iso(2026, 10, 28, 0, 0, 5), now, 'en-GB')).toBe('00:00:05');
+    });
+    it('adds day and month for another day this year', () => {
+        expect(formatWhen(iso(2026, 10, 27, 23, 57, 59), now, 'en-GB')).toBe('27/11, 23:57:59');
+    });
+    it('adds the year for another year', () => {
+        expect(formatWhen(iso(2025, 2, 4, 8, 5, 9), now, 'en-GB')).toBe('04/03/2025, 08:05:09');
+    });
+    it('follows the date order of the locale', () => {
+        expect(formatWhen(iso(2026, 10, 27, 23, 57, 59), now, 'en-US')).toBe('11/27, 23:57:59');
+    });
+    it('returns an empty string for a missing or invalid timestamp', () => {
+        expect(formatWhen(undefined, now)).toBe('');
+        expect(formatWhen('not a date', now)).toBe('');
     });
 });

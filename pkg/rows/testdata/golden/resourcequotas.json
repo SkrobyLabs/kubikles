@@ -1,0 +1,3204 @@
+{
+ "type": "resourcequotas",
+ "now": 1748779200000,
+ "columns": ["name","namespace","resources","age"],
+ "filterTypes": {
+  "name": "regex",
+  "namespace": "regex",
+  "resources": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "10",
+     "memory": "512Mi",
+     "requests.cpu": "2"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "10",
+     "memory": "512Mi",
+     "requests.cpu": "2"
+    },
+    "used": {
+     "count/deployments.apps": "5",
+     "memory": "10Gi",
+     "requests.cpu": "2"
+    }
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-30T15:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "memory": "512Mi",
+     "pods": "100",
+     "requests.cpu": "2"
+    }
+   },
+   "status": {
+    "hard": {
+     "memory": "512Mi",
+     "pods": "100",
+     "requests.cpu": "2"
+    },
+    "used": {
+     "memory": "4Gi",
+     "pods": "100",
+     "requests.cpu": "1"
+    }
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-05-31T12:50:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5"
+    },
+    "scopes": ["BestEffort"]
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5"
+    },
+    "used": {
+     "count/deployments.apps": "5"
+    }
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "namespace": "Prod",
+    "creationTimestamp": "2025-06-01T05:02:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    },
+    "used": {
+     "requests.cpu": "2"
+    }
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-30T02:11:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "memory": "1Gi",
+     "pods": "100"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "memory": "1Gi",
+     "pods": "100"
+    },
+    "used": {
+     "cpu": "1",
+     "limits.memory": "8Gi",
+     "memory": "10Gi",
+     "pods": "100"
+    }
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "namespace": "default",
+    "creationTimestamp": "2025-05-31T03:20:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "1",
+     "limits.memory": "8Gi",
+     "memory": "512Mi"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "1",
+     "limits.memory": "8Gi",
+     "memory": "512Mi"
+    },
+    "used": {
+     "count/deployments.apps": "5",
+     "limits.memory": "8Gi",
+     "memory": "1Gi"
+    }
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "namespace": "default",
+    "creationTimestamp": "2025-06-01T03:47:00Z"
+   }
+  },
+  {
+   "spec": {},
+   "status": {},
+   "metadata": {
+    "name": "no-hard",
+    "namespace": "default",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "2",
+     "memory": "4Gi",
+     "pods": "10"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "2",
+     "memory": "4Gi",
+     "pods": "10"
+    },
+    "used": {
+     "cpu": "500m",
+     "memory": "1Gi",
+     "pods": "3"
+    }
+   },
+   "metadata": {
+    "name": "three-resources",
+    "namespace": "default",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "pods": "10"
+    },
+    "scopes": ["Terminating"]
+   },
+   "status": {
+    "hard": {
+     "pods": "10"
+    },
+    "used": {
+     "pods": "10"
+    }
+   },
+   "metadata": {
+    "name": "scoped",
+    "namespace": "default",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "1"
+    },
+    "scopes": ["BestEffort","NotTerminating","PriorityClass"]
+   },
+   "status": {
+    "hard": {
+     "cpu": "1"
+    }
+   },
+   "metadata": {
+    "name": "multi-scope",
+    "namespace": "default",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "requests.cpu": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "requests.cpu": "1"
+    },
+    "used": {
+     "requests.cpu": "1"
+    }
+   },
+   "metadata": {
+    "name": "annotated",
+    "namespace": "default",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z",
+    "annotations": {
+     "note": "Hello World",
+     "a/b": "c=d"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "1"
+    }
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "namespace": "default",
+    "uid": "uid-edge-8",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "memory": "512Mi",
+     "pods": "50",
+     "requests.cpu": "1",
+     "services.loadbalancers": "1"
+    },
+    "scopes": ["NotTerminating","NotBestEffort"]
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "memory": "512Mi",
+     "pods": "50",
+     "requests.cpu": "1",
+     "services.loadbalancers": "1"
+    },
+    "used": {
+     "memory": "10Gi",
+     "pods": "50",
+     "requests.cpu": "2",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T03:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "pods": "50"
+    },
+    "scopes": ["NotTerminating","NotBestEffort"]
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "pods": "50"
+    },
+    "used": {
+     "count/deployments.apps": "5",
+     "pods": "10"
+    }
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T05:57:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "4",
+     "limits.memory": "8Gi",
+     "memory": "4Gi",
+     "requests.cpu": "2"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "4",
+     "limits.memory": "8Gi",
+     "memory": "4Gi",
+     "requests.cpu": "2"
+    },
+    "used": {
+     "count/deployments.apps": "5",
+     "cpu": "10",
+     "memory": "4Gi"
+    }
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-30T00:01:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "limits.memory": "8Gi",
+     "memory": "512Mi",
+     "pods": "10"
+    }
+   },
+   "status": {
+    "hard": {
+     "limits.memory": "8Gi",
+     "memory": "512Mi",
+     "pods": "10"
+    },
+    "used": {
+     "memory": "4Gi",
+     "pods": "50"
+    }
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T00:20:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "1",
+     "limits.memory": "8Gi"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "1",
+     "limits.memory": "8Gi"
+    },
+    "used": {
+     "cpu": "500m",
+     "limits.memory": "8Gi"
+    }
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T07:41:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "limits.memory": "8Gi",
+     "memory": "4Gi",
+     "requests.cpu": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "limits.memory": "8Gi",
+     "memory": "4Gi",
+     "requests.cpu": "1"
+    },
+    "used": {
+     "limits.memory": "8Gi",
+     "requests.cpu": "2"
+    }
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T15:23:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "pods": "10",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "pods": "10",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "limits.memory": "8Gi",
+     "pods": "10"
+    }
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T14:42:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "pods": "50",
+     "requests.cpu": "2"
+    }
+   },
+   "status": {
+    "hard": {
+     "pods": "50",
+     "requests.cpu": "2"
+    },
+    "used": {
+     "requests.cpu": "2"
+    }
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "namespace": "kube-system",
+    "creationTimestamp": "2025-05-31T13:15:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "500m",
+     "limits.memory": "8Gi",
+     "pods": "50"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "500m",
+     "limits.memory": "8Gi",
+     "pods": "50"
+    },
+    "used": {
+     "limits.memory": "8Gi"
+    }
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T12:43:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "500m",
+     "memory": "512Mi",
+     "pods": "100",
+     "services.loadbalancers": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "500m",
+     "memory": "512Mi",
+     "pods": "100",
+     "services.loadbalancers": "1"
+    },
+    "used": {
+     "cpu": "500m",
+     "services.loadbalancers": "1"
+    }
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T22:55:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "limits.memory": "8Gi",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "limits.memory": "8Gi",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "limits.memory": "8Gi",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-29T23:52:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "limits.memory": "8Gi",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "limits.memory": "8Gi",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T21:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "pods": "100",
+     "requests.cpu": "2"
+    }
+   },
+   "status": {
+    "hard": {
+     "pods": "100",
+     "requests.cpu": "2"
+    },
+    "used": {
+     "pods": "50",
+     "requests.cpu": "2"
+    }
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-31T22:25:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "memory": "10Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "memory": "10Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    }
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "namespace": "prod",
+    "creationTimestamp": "2025-06-01T10:29:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "10",
+     "memory": "1Gi",
+     "services.loadbalancers": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "10",
+     "memory": "1Gi",
+     "services.loadbalancers": "1"
+    },
+    "used": {
+     "count/deployments.apps": "5",
+     "cpu": "500m",
+     "memory": "512Mi"
+    }
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T15:48:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "limits.memory": "8Gi",
+     "memory": "1Gi",
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "limits.memory": "8Gi",
+     "memory": "1Gi",
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    },
+    "used": {
+     "limits.memory": "8Gi",
+     "memory": "10Gi",
+     "requests.cpu": "2"
+    }
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-30T16:56:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "4"
+    },
+    "scopes": ["NotTerminating","NotBestEffort"]
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "4"
+    },
+    "used": {
+     "count/deployments.apps": "5"
+    }
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "namespace": "prod",
+    "creationTimestamp": "2025-05-29T23:37:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "10",
+     "limits.memory": "8Gi",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    },
+    "used": {
+     "cpu": "500m",
+     "requests.cpu": "1",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "namespace": "prod"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "1",
+     "memory": "4Gi",
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "1",
+     "memory": "4Gi",
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    },
+    "used": {
+     "cpu": "1",
+     "requests.cpu": "2",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-31T21:24:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "memory": "1Gi",
+     "services.loadbalancers": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "memory": "1Gi",
+     "services.loadbalancers": "1"
+    },
+    "used": {
+     "count/deployments.apps": "5",
+     "memory": "1Gi",
+     "services.loadbalancers": "1"
+    }
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "namespace": "team-a",
+    "creationTimestamp": "2025-05-29T18:17:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "1"
+    },
+    "used": {
+     "cpu": "1"
+    }
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-a",
+    "uid": "uid-edge-6",
+    "creationTimestamp": "2025-06-01T10:35:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "pods": "50",
+     "requests.cpu": "2"
+    },
+    "scopes": ["NotTerminating","NotBestEffort"]
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "pods": "50",
+     "requests.cpu": "2"
+    },
+    "used": {
+     "count/deployments.apps": "5",
+     "pods": "10",
+     "requests.cpu": "2"
+    }
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "namespace": "team-b",
+    "creationTimestamp": "2025-05-30T18:29:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "1"
+    },
+    "used": {
+     "cpu": "1"
+    }
+   },
+   "metadata": {
+    "name": "same-name",
+    "namespace": "team-b",
+    "uid": "uid-edge-7",
+    "creationTimestamp": "2025-06-01T10:34:00Z"
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "requests.cpu": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "requests.cpu": "1"
+    }
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T23:52:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "limits.memory": "8Gi",
+     "memory": "1Gi",
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    }
+   },
+   "status": {
+    "hard": {
+     "limits.memory": "8Gi",
+     "memory": "1Gi",
+     "requests.cpu": "2",
+     "services.loadbalancers": "1"
+    },
+    "used": {
+     "limits.memory": "8Gi",
+     "memory": "4Gi",
+     "services.loadbalancers": "0"
+    }
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T10:39:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "2",
+     "memory": "512Mi",
+     "requests.cpu": "2"
+    },
+    "scopes": ["BestEffort"]
+   },
+   "status": {
+    "hard": {
+     "cpu": "2",
+     "memory": "512Mi",
+     "requests.cpu": "2"
+    },
+    "used": {
+     "cpu": "2",
+     "requests.cpu": "2"
+    }
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T20:38:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "1",
+     "memory": "10Gi"
+    }
+   },
+   "status": {
+    "hard": {
+     "count/deployments.apps": "5",
+     "cpu": "1",
+     "memory": "10Gi"
+    },
+    "used": {
+     "count/deployments.apps": "5",
+     "memory": "4Gi"
+    }
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-31T17:36:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "hard": {
+     "cpu": "4",
+     "memory": "512Mi",
+     "requests.cpu": "2"
+    }
+   },
+   "status": {
+    "hard": {
+     "cpu": "4",
+     "memory": "512Mi",
+     "requests.cpu": "2"
+    },
+    "used": {
+     "cpu": "2",
+     "memory": "512Mi",
+     "requests.cpu": "1"
+    }
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "namespace": "étude",
+    "creationTimestamp": "2025-05-30T13:46:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {},
+   "status": {},
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "namespace": "étude",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-8"],
+ "cells": {
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "Prod",
+   "resources": 4,
+   "age": "2025-05-30T15:35:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "Prod",
+   "resources": 3,
+   "age": "2025-05-31T12:50:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "Prod",
+   "resources": 1,
+   "age": "2025-06-01T05:02:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "default",
+   "resources": 2,
+   "age": "2025-05-30T02:11:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "default",
+   "resources": 4,
+   "age": "2025-05-31T03:20:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "default",
+   "resources": 4,
+   "age": "2025-06-01T03:47:00Z"
+  },
+  "uid-edge-1": {
+   "name": "no-hard",
+   "namespace": "default",
+   "resources": 0,
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "three-resources",
+   "namespace": "default",
+   "resources": 3,
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "scoped",
+   "namespace": "default",
+   "resources": 1,
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "multi-scope",
+   "namespace": "default",
+   "resources": 1,
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "annotated",
+   "namespace": "default",
+   "resources": 1,
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-8": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "resources": 1,
+   "age": null
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "kube-system",
+   "resources": 5,
+   "age": "2025-05-31T03:39:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "kube-system",
+   "resources": 4,
+   "age": "2025-05-30T05:57:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "kube-system",
+   "resources": 5,
+   "age": "2025-05-30T00:01:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "kube-system",
+   "resources": 3,
+   "age": "2025-05-31T00:20:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "kube-system",
+   "resources": 2,
+   "age": "2025-05-31T07:41:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "kube-system",
+   "resources": 4,
+   "age": "2025-05-31T15:23:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "kube-system",
+   "resources": 4,
+   "age": "2025-05-31T14:42:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "kube-system",
+   "resources": 2,
+   "age": "2025-05-31T13:15:00Z"
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "prod",
+   "resources": 3,
+   "age": "2025-05-30T12:43:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T22:55:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "prod",
+   "resources": 3,
+   "age": "2025-05-29T23:52:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "prod",
+   "resources": 2,
+   "age": "2025-05-31T21:38:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "prod",
+   "resources": 2,
+   "age": "2025-05-31T22:25:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "prod",
+   "resources": 3,
+   "age": "2025-06-01T10:29:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T15:48:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T16:56:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "prod",
+   "resources": 2,
+   "age": "2025-05-29T23:37:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "resources": 4,
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "team-a",
+   "resources": 5,
+   "age": "2025-05-31T21:24:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "team-a",
+   "resources": 3,
+   "age": "2025-05-29T18:17:00Z"
+  },
+  "uid-edge-6": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "resources": 1,
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "team-b",
+   "resources": 3,
+   "age": "2025-05-30T18:29:00Z"
+  },
+  "uid-edge-7": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "resources": 1,
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "étude",
+   "resources": 1,
+   "age": "2025-05-30T23:52:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "étude",
+   "resources": 4,
+   "age": "2025-05-31T10:39:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "étude",
+   "resources": 3,
+   "age": "2025-05-31T20:38:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "étude",
+   "resources": 3,
+   "age": "2025-05-31T17:36:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "étude",
+   "resources": 3,
+   "age": "2025-05-30T13:46:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "étude",
+   "resources": 0,
+   "age": "2025-06-01T10:36:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0024": {
+   "name": "éclair",
+   "namespace": "Prod",
+   "resources": "",
+   "age": "2025-05-30T15:35:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "namespace": "Prod",
+   "resources": "",
+   "age": "2025-05-31T12:50:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "namespace": "Prod",
+   "resources": "",
+   "age": "2025-06-01T05:02:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "namespace": "default",
+   "resources": "",
+   "age": "2025-05-30T02:11:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "namespace": "default",
+   "resources": "",
+   "age": "2025-05-31T03:20:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "namespace": "default",
+   "resources": "",
+   "age": "2025-06-01T03:47:00Z"
+  },
+  "uid-edge-1": {
+   "name": "no-hard",
+   "namespace": "default",
+   "resources": "",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "three-resources",
+   "namespace": "default",
+   "resources": "",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "scoped",
+   "namespace": "default",
+   "resources": "",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "multi-scope",
+   "namespace": "default",
+   "resources": "",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "annotated",
+   "namespace": "default",
+   "resources": "",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-8": {
+   "name": "no-timestamp",
+   "namespace": "default",
+   "resources": "",
+   "age": ""
+  },
+  "uid-0003": {
+   "name": "beta",
+   "namespace": "kube-system",
+   "resources": "",
+   "age": "2025-05-31T03:39:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "namespace": "kube-system",
+   "resources": "",
+   "age": "2025-05-30T05:57:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "namespace": "kube-system",
+   "resources": "",
+   "age": "2025-05-30T00:01:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "namespace": "kube-system",
+   "resources": "",
+   "age": "2025-05-31T00:20:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "namespace": "kube-system",
+   "resources": "",
+   "age": "2025-05-31T07:41:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "namespace": "kube-system",
+   "resources": "",
+   "age": "2025-05-31T15:23:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "namespace": "kube-system",
+   "resources": "",
+   "age": "2025-05-31T14:42:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "namespace": "kube-system",
+   "resources": "",
+   "age": "2025-05-31T13:15:00Z"
+  },
+  "uid-0000": {
+   "name": "alpha",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T12:43:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T22:55:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-29T23:52:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-31T21:38:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-31T22:25:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-06-01T10:29:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T15:48:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T16:56:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-29T23:37:00Z"
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "namespace": "prod",
+   "resources": "",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "namespace": "team-a",
+   "resources": "",
+   "age": "2025-05-31T21:24:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "namespace": "team-a",
+   "resources": "",
+   "age": "2025-05-29T18:17:00Z"
+  },
+  "uid-edge-6": {
+   "name": "same-name",
+   "namespace": "team-a",
+   "resources": "",
+   "age": "2025-06-01T10:35:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "namespace": "team-b",
+   "resources": "",
+   "age": "2025-05-30T18:29:00Z"
+  },
+  "uid-edge-7": {
+   "name": "same-name",
+   "namespace": "team-b",
+   "resources": "",
+   "age": "2025-06-01T10:34:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "namespace": "étude",
+   "resources": "",
+   "age": "2025-05-30T23:52:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "namespace": "étude",
+   "resources": "",
+   "age": "2025-05-31T10:39:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "namespace": "étude",
+   "resources": "",
+   "age": "2025-05-31T20:38:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "namespace": "étude",
+   "resources": "",
+   "age": "2025-05-31T17:36:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "namespace": "étude",
+   "resources": "",
+   "age": "2025-05-30T13:46:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "namespace": "étude",
+   "resources": "",
+   "age": "2025-06-01T10:36:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0024": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 44.416666666666664
+  },
+  "uid-0027": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 23.166666666666668
+  },
+  "uid-0029": {
+   "name": null,
+   "namespace": null,
+   "resources": 1,
+   "age": 6.966666666666667
+  },
+  "uid-0007": {
+   "name": null,
+   "namespace": null,
+   "resources": 2,
+   "age": 57.81666666666667
+  },
+  "uid-0008": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 32.666666666666664
+  },
+  "uid-0012": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 8.216666666666667
+  },
+  "uid-edge-1": {
+   "name": null,
+   "namespace": null,
+   "resources": 0,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-2": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "namespace": null,
+   "resources": 1,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "namespace": null,
+   "resources": 1,
+   "age": 1.3833333333333333
+  },
+  "uid-edge-5": {
+   "name": null,
+   "namespace": null,
+   "resources": 1,
+   "age": 1.4
+  },
+  "uid-edge-8": {
+   "name": null,
+   "namespace": null,
+   "resources": 1,
+   "age": null
+  },
+  "uid-0003": {
+   "name": null,
+   "namespace": null,
+   "resources": 5,
+   "age": 32.35
+  },
+  "uid-0004": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 54.05
+  },
+  "uid-0006": {
+   "name": null,
+   "namespace": null,
+   "resources": 5,
+   "age": 59.983333333333334
+  },
+  "uid-0009": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 35.666666666666664
+  },
+  "uid-0016": {
+   "name": null,
+   "namespace": null,
+   "resources": 2,
+   "age": 28.316666666666666
+  },
+  "uid-0019": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 20.616666666666667
+  },
+  "uid-0028": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 21.3
+  },
+  "uid-0031": {
+   "name": null,
+   "namespace": null,
+   "resources": 2,
+   "age": 22.75
+  },
+  "uid-0000": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 47.28333333333333
+  },
+  "uid-0005": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 37.083333333333336
+  },
+  "uid-0010": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 60.13333333333333
+  },
+  "uid-0011": {
+   "name": null,
+   "namespace": null,
+   "resources": 2,
+   "age": 14.366666666666667
+  },
+  "uid-0013": {
+   "name": null,
+   "namespace": null,
+   "resources": 2,
+   "age": 13.583333333333334
+  },
+  "uid-0014": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 1.5166666666666666
+  },
+  "uid-0021": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 44.2
+  },
+  "uid-0022": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 43.06666666666667
+  },
+  "uid-0030": {
+   "name": null,
+   "namespace": null,
+   "resources": 2,
+   "age": 60.38333333333333
+  },
+  "uid-tie-00": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 50
+  },
+  "uid-0002": {
+   "name": null,
+   "namespace": null,
+   "resources": 5,
+   "age": 14.6
+  },
+  "uid-0023": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 65.71666666666667
+  },
+  "uid-edge-6": {
+   "name": null,
+   "namespace": null,
+   "resources": 1,
+   "age": 1.4166666666666667
+  },
+  "uid-0017": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 41.516666666666666
+  },
+  "uid-edge-7": {
+   "name": null,
+   "namespace": null,
+   "resources": 1,
+   "age": 1.4333333333333333
+  },
+  "uid-0001": {
+   "name": null,
+   "namespace": null,
+   "resources": 1,
+   "age": 36.13333333333333
+  },
+  "uid-0015": {
+   "name": null,
+   "namespace": null,
+   "resources": 4,
+   "age": 25.35
+  },
+  "uid-0018": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 15.366666666666667
+  },
+  "uid-0020": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 18.4
+  },
+  "uid-0025": {
+   "name": null,
+   "namespace": null,
+   "resources": 3,
+   "age": 46.233333333333334
+  },
+  "uid-0026": {
+   "name": null,
+   "namespace": null,
+   "resources": 0,
+   "age": 1.4
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-edge-5","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-0029","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-edge-4","uid-0031","uid-edge-1","uid-0026","uid-0027","uid-edge-6","uid-edge-7","uid-edge-3","uid-edge-2","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-2","uid-edge-3","uid-edge-6","uid-edge-7","uid-0027","uid-0026","uid-edge-1","uid-0031","uid-edge-4","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-0029","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-edge-5","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "namespace": {
+   "asc": ["uid-0029","uid-0027","uid-0024","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-0012","uid-0008","uid-0007","uid-0019","uid-0028","uid-0031","uid-0016","uid-0003","uid-0009","uid-0004","uid-0006","uid-0014","uid-0013","uid-0011","uid-0005","uid-0022","uid-0021","uid-0000","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0010","uid-0030","uid-edge-6","uid-0002","uid-0023","uid-edge-7","uid-0017","uid-0026","uid-0018","uid-0020","uid-0015","uid-0001","uid-0025"],
+   "desc": ["uid-0026","uid-0018","uid-0020","uid-0015","uid-0001","uid-0025","uid-edge-7","uid-0017","uid-edge-6","uid-0002","uid-0023","uid-0014","uid-0013","uid-0011","uid-0005","uid-0022","uid-0021","uid-0000","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0010","uid-0030","uid-0019","uid-0028","uid-0031","uid-0016","uid-0003","uid-0009","uid-0004","uid-0006","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-0012","uid-0008","uid-0007","uid-0029","uid-0027","uid-0024"]
+  },
+  "resources": {
+   "asc": ["uid-edge-1","uid-0026","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0029","uid-0001","uid-0013","uid-0011","uid-0031","uid-0016","uid-0007","uid-0030","uid-edge-2","uid-0014","uid-0018","uid-0020","uid-0027","uid-0009","uid-0017","uid-0025","uid-0000","uid-0010","uid-0023","uid-0012","uid-0019","uid-0028","uid-0015","uid-0008","uid-0005","uid-0022","uid-0021","uid-0024","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0002","uid-0003","uid-0006"],
+   "desc": ["uid-0002","uid-0003","uid-0006","uid-0012","uid-0019","uid-0028","uid-0015","uid-0008","uid-0005","uid-0022","uid-0021","uid-0024","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-edge-2","uid-0014","uid-0018","uid-0020","uid-0027","uid-0009","uid-0017","uid-0025","uid-0000","uid-0010","uid-0023","uid-0013","uid-0011","uid-0031","uid-0016","uid-0007","uid-0030","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-edge-7","uid-0029","uid-0001","uid-edge-1","uid-0026"]
+  },
+  "age": {
+   "asc": ["uid-0023","uid-0030","uid-0010","uid-0006","uid-0007","uid-0004","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0000","uid-0025","uid-0024","uid-0021","uid-0022","uid-0017","uid-0005","uid-0001","uid-0009","uid-0008","uid-0003","uid-0016","uid-0015","uid-0027","uid-0031","uid-0028","uid-0019","uid-0020","uid-0018","uid-0002","uid-0011","uid-0013","uid-0012","uid-0029","uid-0014","uid-edge-7","uid-edge-6","uid-edge-5","uid-0026","uid-edge-4","uid-edge-3","uid-edge-2","uid-edge-1"],
+   "desc": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-0026","uid-edge-6","uid-edge-7","uid-0014","uid-0029","uid-0012","uid-0013","uid-0011","uid-0002","uid-0018","uid-0020","uid-0019","uid-0028","uid-0031","uid-0027","uid-0015","uid-0016","uid-0003","uid-0008","uid-0009","uid-0001","uid-0005","uid-0017","uid-0022","uid-0021","uid-0024","uid-0025","uid-0000","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0004","uid-0007","uid-0006","uid-0010","uid-0030","uid-0023"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0004","uid-0006","uid-0005"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0003","uid-0004","uid-0006","uid-0016","uid-0019","uid-0005","uid-0017","uid-0018"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0012","uid-0011"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0007","uid-0005","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0021","uid-0022","uid-0020"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0021","uid-0022"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0004","uid-0006","uid-0005"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0008","uid-0009","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-edge-5","uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-edge-5","uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0016","uid-0000"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0006","uid-0005"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0003","uid-0009","uid-0016","uid-tie-00","uid-0023","uid-0001"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-0006","uid-0005"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0016","uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0016","uid-0000","uid-0014","uid-0002","uid-0001","uid-0015"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0016","uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-edge-5","uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0003","uid-0004","uid-0006","uid-0000","uid-0005","uid-0002","uid-0001"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-edge-6","uid-edge-7"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0007","uid-0010","uid-0014","uid-0030","uid-0002","uid-0017","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0007","uid-0010","uid-0014","uid-0030","uid-0002","uid-0017","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": ["uid-edge-5"]
+  },
+  {
+   "query": "a:a/b",
+   "matches": ["uid-edge-5"]
+  },
+  {
+   "query": "ns:prod",
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": ["uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7"]
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": ["uid-edge-6"]
+  },
+  {
+   "query": "NS:default",
+   "matches": ["uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8"]
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": ["uid-0007","uid-0016","uid-0031","uid-0011","uid-0013","uid-0030"]
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0024","uid-0027","uid-0021","uid-0022","uid-tie-12","uid-0025"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0024","uid-0027","uid-0021","uid-0022","uid-tie-12","uid-0025"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0004","uid-0006","uid-0005","uid-tie-09","uid-tie-10"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0006","uid-0005"]
+  },
+  {
+   "query": "hard:cpu=2",
+   "matches": ["uid-0024","uid-0027","uid-0007","uid-edge-2","uid-0006","uid-0031","uid-0013","uid-0022","uid-0002","uid-0017","uid-0015","uid-0018","uid-0025"]
+  },
+  {
+   "query": "limits:memory=4Gi",
+   "matches": ["uid-edge-2","uid-0006","uid-0019","uid-0002"]
+  },
+  {
+   "query": "resources:pods=10",
+   "matches": ["uid-0027","uid-0008","uid-edge-2","uid-edge-3","uid-0009","uid-0028","uid-0005","uid-0013"]
+  },
+  {
+   "query": "hard:/requests\\.cpu=1/",
+   "matches": ["uid-edge-5","uid-0003","uid-0019","uid-0014","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0001"]
+  },
+  {
+   "query": "used:cpu=500m",
+   "matches": ["uid-edge-2","uid-0016","uid-0005","uid-0021","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "usage:pods",
+   "matches": ["uid-0027","uid-0008","uid-edge-2","uid-edge-3","uid-0003","uid-0004","uid-0009","uid-0028","uid-0013","uid-0017"]
+  },
+  {
+   "query": "scopes:BestEffort",
+   "matches": ["uid-0029","uid-edge-4","uid-0003","uid-0004","uid-0030","uid-0017","uid-0018"]
+  },
+  {
+   "query": "scope:/^Not/",
+   "matches": ["uid-0003","uid-0004","uid-0030","uid-0017"]
+  },
+  {
+   "query": "resourcecount:3",
+   "matches": ["uid-0027","uid-edge-2","uid-0009","uid-0000","uid-0010","uid-0014","uid-0023","uid-0017","uid-0018","uid-0020","uid-0025"]
+  },
+  {
+   "query": "count:0",
+   "matches": ["uid-edge-1","uid-0026"]
+  },
+  {
+   "query": "count:1",
+   "matches": ["uid-0029","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-edge-6","uid-edge-7","uid-0001"]
+  },
+  {
+   "query": "hard:\"cpu=2 memory=4Gi\"",
+   "matches": ["uid-edge-2"]
+  },
+  {
+   "query": "scopes:\"BestEffort NotTerminating PriorityClass\"",
+   "matches": ["uid-edge-4"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-edge-5","uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-edge-5","uid-0016","uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0031","uid-0005","uid-0013","uid-tie-00","uid-tie-01","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0018","uid-0020"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-0001"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0006","uid-0005"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0021","uid-0022","uid-tie-12","uid-0025"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0024","uid-0007","uid-0008","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0000","uid-0005","uid-0010","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0023","uid-0017","uid-0001","uid-0015","uid-0025"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0027","uid-0029","uid-0012","uid-0016","uid-0019","uid-0028","uid-0031","uid-0011","uid-0013","uid-0002","uid-0015","uid-0018","uid-0020"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0010","uid-0030","uid-0023"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0029","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-0014","uid-edge-6","uid-edge-7","uid-0026"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0029","uid-0007","uid-0008","uid-0012","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0015","uid-0018","uid-0020","uid-0025","uid-0026"]
+  },
+  {
+   "name": "resources select 2",
+   "filters": {
+    "resources": {
+     "type": "select",
+     "values": ["2"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "namespace regex",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["^team"]
+    }
+   },
+   "matches": ["uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7"]
+  },
+  {
+   "name": "namespace regex and name",
+   "filters": {
+    "namespace": {
+     "type": "regex",
+     "conditions": ["prod","e"],
+     "logic": "or"
+    },
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    }
+   },
+   "matches": ["uid-0024","uid-edge-1","uid-edge-5","uid-edge-8","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0031","uid-0000","uid-0005","uid-0013","uid-0021","uid-0022","uid-tie-00","uid-tie-01","uid-0002","uid-0023","uid-edge-6","uid-0017","uid-edge-7","uid-0001","uid-0018","uid-0020","uid-0025"]
+  },
+  {
+   "name": "resources numeric",
+   "filters": {
+    "resources": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0024","uid-0027","uid-0007","uid-0008","uid-0012","uid-edge-2","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0028","uid-0031","uid-0000","uid-0005","uid-0010","uid-0011","uid-0013","uid-0014","uid-0021","uid-0022","uid-0030","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12","uid-0002","uid-0023","uid-0017","uid-0015","uid-0018","uid-0020","uid-0025"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0024","uid-0003","uid-0004","uid-0006","uid-0009","uid-0016","uid-0019","uid-0031","uid-0000","uid-0005","uid-0013","uid-0021","uid-0022","uid-tie-00","uid-tie-01","uid-0002","uid-0023","uid-0017","uid-0001","uid-0018","uid-0020","uid-0025"]
+  }
+ ],
+ "uniqueValues": {
+  "resources": null
+ }
+}

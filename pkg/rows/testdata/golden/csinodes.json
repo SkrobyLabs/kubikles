@@ -1,0 +1,2827 @@
+{
+ "type": "csinodes",
+ "now": 1748779200000,
+ "columns": ["name","driverCount","driverNames","age"],
+ "filterTypes": {
+  "name": "regex",
+  "driverCount": "select",
+  "driverNames": "select",
+  "age": "numeric"
+ },
+ "fixtures": [
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "alpha",
+    "uid": "uid-0000",
+    "creationTimestamp": "2025-05-30T10:00:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-0-24",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "Alpha",
+    "uid": "uid-0001",
+    "creationTimestamp": "2025-05-31T23:16:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-0-24",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "ALPHA",
+    "uid": "uid-0002",
+    "creationTimestamp": "2025-05-31T03:16:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-0-70",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "beta",
+    "uid": "uid-0003",
+    "creationTimestamp": "2025-05-31T07:43:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-0-18",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-37",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-2-92",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "Zeta.io/csi",
+      "nodeID": "node-3-3",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "Beta-2",
+    "uid": "uid-0004",
+    "creationTimestamp": "2025-06-01T07:32:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "beta-10",
+    "uid": "uid-0005",
+    "creationTimestamp": "2025-05-29T22:10:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "beta-9",
+    "uid": "uid-0006",
+    "creationTimestamp": "2025-05-30T16:40:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-0-95",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-1-89",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "Zeta.io/csi",
+      "nodeID": "node-2-34",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "10-item",
+    "uid": "uid-0007",
+    "creationTimestamp": "2025-05-31T21:26:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-18",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-1-13",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-2-78",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-3-13",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "9-item",
+    "uid": "uid-0008",
+    "creationTimestamp": "2025-06-01T11:17:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-0-44",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-1-30",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-2-57",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "Zeta.io/csi",
+      "nodeID": "node-3-60",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "item-a",
+    "uid": "uid-0009",
+    "creationTimestamp": "2025-05-31T04:02:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-0-89",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-1-42",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "item_b",
+    "uid": "uid-0010",
+    "creationTimestamp": "2025-06-01T11:12:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "kube-system",
+    "uid": "uid-0011",
+    "creationTimestamp": "2025-05-31T22:20:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-31",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-85",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "kube-public",
+    "uid": "uid-0012",
+    "creationTimestamp": "2025-06-01T09:51:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-7",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "Zeta.io/csi",
+      "nodeID": "node-1-8",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-90",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "default",
+    "uid": "uid-0013",
+    "creationTimestamp": "2025-05-31T21:12:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "x",
+    "uid": "uid-0014",
+    "creationTimestamp": "2025-05-30T02:22:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-0-51",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-1-74",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-29",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "Zeta.io/csi",
+      "nodeID": "node-3-63",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "X",
+    "uid": "uid-0015",
+    "creationTimestamp": "2025-05-30T18:28:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "zeta",
+    "uid": "uid-0016",
+    "creationTimestamp": "2025-06-01T01:04:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-77",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-66",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "eta.v1",
+    "uid": "uid-0017",
+    "creationTimestamp": "2025-05-31T14:23:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "eta-v1",
+    "uid": "uid-0018",
+    "creationTimestamp": "2025-05-30T12:35:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-0-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "eta v2",
+    "uid": "uid-0019",
+    "creationTimestamp": "2025-05-30T09:28:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "cafe",
+    "uid": "uid-0020",
+    "creationTimestamp": "2025-05-31T12:47:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "café",
+    "uid": "uid-0021",
+    "creationTimestamp": "2025-05-30T05:38:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "Café",
+    "uid": "uid-0022",
+    "creationTimestamp": "2025-05-31T14:25:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-40",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "zebra",
+    "uid": "uid-0023",
+    "creationTimestamp": "2025-05-31T22:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "Zeta.io/csi",
+      "nodeID": "node-0-34",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-89",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "Zeta.io/csi",
+      "nodeID": "node-2-98",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-3-9",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "éclair",
+    "uid": "uid-0024",
+    "creationTimestamp": "2025-06-01T11:18:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-95",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-1-76",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-2-6",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "Éclair",
+    "uid": "uid-0025",
+    "creationTimestamp": "2025-05-30T15:16:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "resume",
+    "uid": "uid-0026",
+    "creationTimestamp": "2025-05-31T07:09:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-0-39",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-1-65",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-2-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "Zeta.io/csi",
+      "nodeID": "node-3-98",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "résumé",
+    "uid": "uid-0027",
+    "creationTimestamp": "2025-05-30T07:19:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-0-7",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-1-80",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-56",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-3-22",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "日本語",
+    "uid": "uid-0028",
+    "creationTimestamp": "2025-05-31T15:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "emoji-😀",
+    "uid": "uid-0029",
+    "creationTimestamp": "2025-05-31T06:24:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-0-4",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-1-64",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-2-97",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-3-17",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "Ａfullwidth",
+    "uid": "uid-0030",
+    "creationTimestamp": "2025-05-30T13:15:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-0-84",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-1-74",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "name.with.dots",
+    "uid": "uid-0031",
+    "creationTimestamp": "2025-05-29T19:13:00Z",
+    "labels": {
+     "10": "ten",
+     "tier": "x"
+    }
+   }
+  },
+  {
+   "spec": {
+    "drivers": null
+   },
+   "metadata": {
+    "name": "null-drivers",
+    "uid": "uid-edge-1",
+    "creationTimestamp": "2025-06-01T10:40:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "one",
+      "nodeID": "n1"
+     }
+    ]
+   },
+   "metadata": {
+    "name": "one-driver",
+    "uid": "uid-edge-2",
+    "creationTimestamp": "2025-06-01T10:39:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "one",
+      "nodeID": "n1"
+     },
+     {
+      "name": "two",
+      "nodeID": "n2"
+     }
+    ]
+   },
+   "metadata": {
+    "name": "two-drivers",
+    "uid": "uid-edge-3",
+    "creationTimestamp": "2025-06-01T10:38:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "one",
+      "nodeID": "n1"
+     },
+     {
+      "name": "two",
+      "nodeID": "n2"
+     },
+     {
+      "name": "three",
+      "nodeID": "n3"
+     }
+    ]
+   },
+   "metadata": {
+    "name": "three-drivers",
+    "uid": "uid-edge-4",
+    "creationTimestamp": "2025-06-01T10:37:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "only",
+      "nodeID": ""
+     }
+    ]
+   },
+   "metadata": {
+    "name": "empty-node-id",
+    "uid": "uid-edge-5",
+    "creationTimestamp": "2025-06-01T10:36:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "one",
+      "nodeID": "n1"
+     }
+    ]
+   },
+   "metadata": {
+    "name": "no-timestamp",
+    "uid": "uid-edge-6",
+    "creationTimestamp": null
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-a",
+    "uid": "uid-tie-00",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-A",
+    "uid": "uid-tie-01",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-á",
+    "uid": "uid-tie-02",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-à",
+    "uid": "uid-tie-03",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-ä",
+    "uid": "uid-tie-04",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-b",
+    "uid": "uid-tie-05",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "Tie-b",
+    "uid": "uid-tie-06",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie_b",
+    "uid": "uid-tie-07",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie b",
+    "uid": "uid-tie-08",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-10",
+    "uid": "uid-tie-09",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie-2",
+    "uid": "uid-tie-10",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tie z",
+    "uid": "uid-tie-11",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  },
+  {
+   "spec": {
+    "drivers": [
+     {
+      "name": "ebs.csi.aws.com",
+      "nodeID": "node-0-52",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "csi.example.com",
+      "nodeID": "node-1-96",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     },
+     {
+      "name": "disk.csi.azure.com",
+      "nodeID": "node-2-61",
+      "topologyKeys": ["topology.kubernetes.io/zone"]
+     }
+    ]
+   },
+   "metadata": {
+    "name": "tié",
+    "uid": "uid-tie-12",
+    "creationTimestamp": "2025-05-30T10:00:00Z"
+   }
+  }
+ ],
+ "noSort": ["uid-edge-6"],
+ "cells": {
+  "uid-0000": {
+   "name": "alpha",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "driverCount": 1,
+   "driverNames": "csi.example.com",
+   "age": "2025-05-31T23:16:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "driverCount": 1,
+   "driverNames": "disk.csi.azure.com",
+   "age": "2025-05-31T03:16:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "driverCount": 1,
+   "driverNames": "csi.example.com",
+   "age": "2025-05-31T07:43:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "driverCount": 4,
+   "driverNames": "disk.csi.azure.com, +3 more",
+   "age": "2025-06-01T07:32:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-29T22:10:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-30T16:40:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "driverCount": 3,
+   "driverNames": "csi.example.com, +2 more",
+   "age": "2025-05-31T21:26:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "driverCount": 4,
+   "driverNames": "ebs.csi.aws.com, +3 more",
+   "age": "2025-06-01T11:17:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "driverCount": 4,
+   "driverNames": "disk.csi.azure.com, +3 more",
+   "age": "2025-05-31T04:02:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "driverCount": 2,
+   "driverNames": "disk.csi.azure.com, ebs.csi.aws.com",
+   "age": "2025-06-01T11:12:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-31T22:20:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "driverCount": 2,
+   "driverNames": "ebs.csi.aws.com, csi.example.com",
+   "age": "2025-06-01T09:51:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-31T21:12:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-30T02:22:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "driverCount": 4,
+   "driverNames": "csi.example.com, +3 more",
+   "age": "2025-05-30T18:28:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-06-01T01:04:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "driverCount": 2,
+   "driverNames": "ebs.csi.aws.com, csi.example.com",
+   "age": "2025-05-31T14:23:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-30T12:35:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "driverCount": 1,
+   "driverNames": "csi.example.com",
+   "age": "2025-05-30T09:28:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-31T12:47:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-30T05:38:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-31T14:25:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "driverCount": 1,
+   "driverNames": "ebs.csi.aws.com",
+   "age": "2025-05-31T22:38:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "driverCount": 4,
+   "driverNames": "Zeta.io/csi, +3 more",
+   "age": "2025-06-01T11:18:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T15:16:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-31T07:09:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "driverCount": 4,
+   "driverNames": "disk.csi.azure.com, +3 more",
+   "age": "2025-05-30T07:19:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "driverCount": 4,
+   "driverNames": "csi.example.com, +3 more",
+   "age": "2025-05-31T15:36:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-05-31T06:24:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "driverCount": 4,
+   "driverNames": "csi.example.com, +3 more",
+   "age": "2025-05-30T13:15:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "driverCount": 2,
+   "driverNames": "disk.csi.azure.com, disk.csi.azure.com",
+   "age": "2025-05-29T19:13:00Z"
+  },
+  "uid-edge-1": {
+   "name": "null-drivers",
+   "driverCount": 0,
+   "driverNames": "-",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "one-driver",
+   "driverCount": 1,
+   "driverNames": "one",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "two-drivers",
+   "driverCount": 2,
+   "driverNames": "one, two",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "three-drivers",
+   "driverCount": 3,
+   "driverNames": "one, +2 more",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "empty-node-id",
+   "driverCount": 1,
+   "driverNames": "only",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "no-timestamp",
+   "driverCount": 1,
+   "driverNames": "one",
+   "age": null
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "driverCount": 3,
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  }
+ },
+ "filterValues": {
+  "uid-0000": {
+   "name": "alpha",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-0001": {
+   "name": "Alpha",
+   "driverCount": "",
+   "driverNames": "csi.example.com",
+   "age": "2025-05-31T23:16:00Z"
+  },
+  "uid-0002": {
+   "name": "ALPHA",
+   "driverCount": "",
+   "driverNames": "disk.csi.azure.com",
+   "age": "2025-05-31T03:16:00Z"
+  },
+  "uid-0003": {
+   "name": "beta",
+   "driverCount": "",
+   "driverNames": "csi.example.com",
+   "age": "2025-05-31T07:43:00Z"
+  },
+  "uid-0004": {
+   "name": "Beta-2",
+   "driverCount": "",
+   "driverNames": "disk.csi.azure.com, +3 more",
+   "age": "2025-06-01T07:32:00Z"
+  },
+  "uid-0005": {
+   "name": "beta-10",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-29T22:10:00Z"
+  },
+  "uid-0006": {
+   "name": "beta-9",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-30T16:40:00Z"
+  },
+  "uid-0007": {
+   "name": "10-item",
+   "driverCount": "",
+   "driverNames": "csi.example.com, +2 more",
+   "age": "2025-05-31T21:26:00Z"
+  },
+  "uid-0008": {
+   "name": "9-item",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +3 more",
+   "age": "2025-06-01T11:17:00Z"
+  },
+  "uid-0009": {
+   "name": "item-a",
+   "driverCount": "",
+   "driverNames": "disk.csi.azure.com, +3 more",
+   "age": "2025-05-31T04:02:00Z"
+  },
+  "uid-0010": {
+   "name": "item_b",
+   "driverCount": "",
+   "driverNames": "disk.csi.azure.com, ebs.csi.aws.com",
+   "age": "2025-06-01T11:12:00Z"
+  },
+  "uid-0011": {
+   "name": "kube-system",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-31T22:20:00Z"
+  },
+  "uid-0012": {
+   "name": "kube-public",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, csi.example.com",
+   "age": "2025-06-01T09:51:00Z"
+  },
+  "uid-0013": {
+   "name": "default",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-31T21:12:00Z"
+  },
+  "uid-0014": {
+   "name": "x",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-30T02:22:00Z"
+  },
+  "uid-0015": {
+   "name": "X",
+   "driverCount": "",
+   "driverNames": "csi.example.com, +3 more",
+   "age": "2025-05-30T18:28:00Z"
+  },
+  "uid-0016": {
+   "name": "zeta",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-06-01T01:04:00Z"
+  },
+  "uid-0017": {
+   "name": "eta.v1",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, csi.example.com",
+   "age": "2025-05-31T14:23:00Z"
+  },
+  "uid-0018": {
+   "name": "eta-v1",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-30T12:35:00Z"
+  },
+  "uid-0019": {
+   "name": "eta v2",
+   "driverCount": "",
+   "driverNames": "csi.example.com",
+   "age": "2025-05-30T09:28:00Z"
+  },
+  "uid-0020": {
+   "name": "cafe",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-31T12:47:00Z"
+  },
+  "uid-0021": {
+   "name": "café",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-30T05:38:00Z"
+  },
+  "uid-0022": {
+   "name": "Café",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-31T14:25:00Z"
+  },
+  "uid-0023": {
+   "name": "zebra",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com",
+   "age": "2025-05-31T22:38:00Z"
+  },
+  "uid-0024": {
+   "name": "éclair",
+   "driverCount": "",
+   "driverNames": "Zeta.io/csi, +3 more",
+   "age": "2025-06-01T11:18:00Z"
+  },
+  "uid-0025": {
+   "name": "Éclair",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T15:16:00Z"
+  },
+  "uid-0026": {
+   "name": "resume",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-31T07:09:00Z"
+  },
+  "uid-0027": {
+   "name": "résumé",
+   "driverCount": "",
+   "driverNames": "disk.csi.azure.com, +3 more",
+   "age": "2025-05-30T07:19:00Z"
+  },
+  "uid-0028": {
+   "name": "日本語",
+   "driverCount": "",
+   "driverNames": "csi.example.com, +3 more",
+   "age": "2025-05-31T15:36:00Z"
+  },
+  "uid-0029": {
+   "name": "emoji-😀",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-05-31T06:24:00Z"
+  },
+  "uid-0030": {
+   "name": "Ａfullwidth",
+   "driverCount": "",
+   "driverNames": "csi.example.com, +3 more",
+   "age": "2025-05-30T13:15:00Z"
+  },
+  "uid-0031": {
+   "name": "name.with.dots",
+   "driverCount": "",
+   "driverNames": "disk.csi.azure.com, disk.csi.azure.com",
+   "age": "2025-05-29T19:13:00Z"
+  },
+  "uid-edge-1": {
+   "name": "null-drivers",
+   "driverCount": "",
+   "driverNames": "-",
+   "age": "2025-06-01T10:40:00Z"
+  },
+  "uid-edge-2": {
+   "name": "one-driver",
+   "driverCount": "",
+   "driverNames": "one",
+   "age": "2025-06-01T10:39:00Z"
+  },
+  "uid-edge-3": {
+   "name": "two-drivers",
+   "driverCount": "",
+   "driverNames": "one, two",
+   "age": "2025-06-01T10:38:00Z"
+  },
+  "uid-edge-4": {
+   "name": "three-drivers",
+   "driverCount": "",
+   "driverNames": "one, +2 more",
+   "age": "2025-06-01T10:37:00Z"
+  },
+  "uid-edge-5": {
+   "name": "empty-node-id",
+   "driverCount": "",
+   "driverNames": "only",
+   "age": "2025-06-01T10:36:00Z"
+  },
+  "uid-edge-6": {
+   "name": "no-timestamp",
+   "driverCount": "",
+   "driverNames": "one",
+   "age": ""
+  },
+  "uid-tie-00": {
+   "name": "tie-a",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-01": {
+   "name": "tie-A",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-02": {
+   "name": "tie-á",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-03": {
+   "name": "tie-à",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-04": {
+   "name": "tie-ä",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-05": {
+   "name": "tie-b",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-06": {
+   "name": "Tie-b",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-07": {
+   "name": "tie_b",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-08": {
+   "name": "tie b",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-09": {
+   "name": "tie-10",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-10": {
+   "name": "tie-2",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-11": {
+   "name": "tie z",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  },
+  "uid-tie-12": {
+   "name": "tié",
+   "driverCount": "",
+   "driverNames": "ebs.csi.aws.com, +2 more",
+   "age": "2025-05-30T10:00:00Z"
+  }
+ },
+ "numeric": {
+  "uid-0000": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-0001": {
+   "name": null,
+   "driverCount": 1,
+   "driverNames": null,
+   "age": 12.733333333333333
+  },
+  "uid-0002": {
+   "name": null,
+   "driverCount": 1,
+   "driverNames": null,
+   "age": 32.733333333333334
+  },
+  "uid-0003": {
+   "name": null,
+   "driverCount": 1,
+   "driverNames": null,
+   "age": 28.283333333333335
+  },
+  "uid-0004": {
+   "name": null,
+   "driverCount": 4,
+   "driverNames": null,
+   "age": 4.466666666666667
+  },
+  "uid-0005": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 61.833333333333336
+  },
+  "uid-0006": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 43.333333333333336
+  },
+  "uid-0007": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 14.566666666666666
+  },
+  "uid-0008": {
+   "name": null,
+   "driverCount": 4,
+   "driverNames": null,
+   "age": 0.7166666666666667
+  },
+  "uid-0009": {
+   "name": null,
+   "driverCount": 4,
+   "driverNames": null,
+   "age": 31.966666666666665
+  },
+  "uid-0010": {
+   "name": null,
+   "driverCount": 2,
+   "driverNames": null,
+   "age": 0.8
+  },
+  "uid-0011": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 13.666666666666666
+  },
+  "uid-0012": {
+   "name": null,
+   "driverCount": 2,
+   "driverNames": null,
+   "age": 2.15
+  },
+  "uid-0013": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 14.8
+  },
+  "uid-0014": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 57.63333333333333
+  },
+  "uid-0015": {
+   "name": null,
+   "driverCount": 4,
+   "driverNames": null,
+   "age": 41.53333333333333
+  },
+  "uid-0016": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 10.933333333333334
+  },
+  "uid-0017": {
+   "name": null,
+   "driverCount": 2,
+   "driverNames": null,
+   "age": 21.616666666666667
+  },
+  "uid-0018": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 47.416666666666664
+  },
+  "uid-0019": {
+   "name": null,
+   "driverCount": 1,
+   "driverNames": null,
+   "age": 50.53333333333333
+  },
+  "uid-0020": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 23.216666666666665
+  },
+  "uid-0021": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 54.36666666666667
+  },
+  "uid-0022": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 21.583333333333332
+  },
+  "uid-0023": {
+   "name": null,
+   "driverCount": 1,
+   "driverNames": null,
+   "age": 13.366666666666667
+  },
+  "uid-0024": {
+   "name": null,
+   "driverCount": 4,
+   "driverNames": null,
+   "age": 0.7
+  },
+  "uid-0025": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 44.733333333333334
+  },
+  "uid-0026": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 28.85
+  },
+  "uid-0027": {
+   "name": null,
+   "driverCount": 4,
+   "driverNames": null,
+   "age": 52.68333333333333
+  },
+  "uid-0028": {
+   "name": null,
+   "driverCount": 4,
+   "driverNames": null,
+   "age": 20.4
+  },
+  "uid-0029": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 29.6
+  },
+  "uid-0030": {
+   "name": null,
+   "driverCount": 4,
+   "driverNames": null,
+   "age": 46.75
+  },
+  "uid-0031": {
+   "name": null,
+   "driverCount": 2,
+   "driverNames": null,
+   "age": 64.78333333333333
+  },
+  "uid-edge-1": {
+   "name": null,
+   "driverCount": 0,
+   "driverNames": null,
+   "age": 1.3333333333333333
+  },
+  "uid-edge-2": {
+   "name": null,
+   "driverCount": 1,
+   "driverNames": null,
+   "age": 1.35
+  },
+  "uid-edge-3": {
+   "name": null,
+   "driverCount": 2,
+   "driverNames": null,
+   "age": 1.3666666666666667
+  },
+  "uid-edge-4": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 1.3833333333333333
+  },
+  "uid-edge-5": {
+   "name": null,
+   "driverCount": 1,
+   "driverNames": null,
+   "age": 1.4
+  },
+  "uid-edge-6": {
+   "name": null,
+   "driverCount": 1,
+   "driverNames": null,
+   "age": null
+  },
+  "uid-tie-00": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-01": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-02": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-03": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-04": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-05": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-06": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-07": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-08": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-09": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-10": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-11": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  },
+  "uid-tie-12": {
+   "name": null,
+   "driverCount": 3,
+   "driverNames": null,
+   "age": 50
+  }
+ },
+ "sortOrders": {
+  "name": {
+   "asc": ["uid-0007","uid-0008","uid-0002","uid-0001","uid-0004","uid-0022","uid-tie-06","uid-0015","uid-0000","uid-0003","uid-0005","uid-0006","uid-0020","uid-0021","uid-0013","uid-0029","uid-edge-5","uid-0019","uid-0018","uid-0017","uid-0009","uid-0010","uid-0012","uid-0011","uid-0031","uid-edge-1","uid-edge-2","uid-0026","uid-0027","uid-edge-4","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-01","uid-tie-00","uid-tie-05","uid-tie-03","uid-tie-02","uid-tie-04","uid-tie-07","uid-tie-11","uid-tie-12","uid-edge-3","uid-0014","uid-0023","uid-0016","uid-0025","uid-0024","uid-0028","uid-0030"],
+   "desc": ["uid-0030","uid-0028","uid-0024","uid-0025","uid-0016","uid-0023","uid-0014","uid-edge-3","uid-tie-12","uid-tie-11","uid-tie-07","uid-tie-04","uid-tie-02","uid-tie-03","uid-tie-05","uid-tie-00","uid-tie-01","uid-tie-10","uid-tie-09","uid-tie-08","uid-edge-4","uid-0027","uid-0026","uid-edge-2","uid-edge-1","uid-0031","uid-0011","uid-0012","uid-0010","uid-0009","uid-0017","uid-0018","uid-0019","uid-edge-5","uid-0029","uid-0013","uid-0021","uid-0020","uid-0006","uid-0005","uid-0003","uid-0000","uid-0015","uid-tie-06","uid-0022","uid-0004","uid-0001","uid-0002","uid-0008","uid-0007"]
+  },
+  "driverCount": {
+   "asc": ["uid-edge-1","uid-0016","uid-0011","uid-0022","uid-0020","uid-0026","uid-0029","uid-0006","uid-0018","uid-0000","uid-0021","uid-0014","uid-0005","uid-edge-2","uid-edge-5","uid-0001","uid-0023","uid-0003","uid-0002","uid-0019","uid-0010","uid-edge-3","uid-0012","uid-0017","uid-0031","uid-edge-4","uid-0007","uid-0013","uid-0025","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0024","uid-0008","uid-0004","uid-0028","uid-0009","uid-0015","uid-0030","uid-0027"],
+   "desc": ["uid-0024","uid-0008","uid-0004","uid-0028","uid-0009","uid-0015","uid-0030","uid-0027","uid-edge-4","uid-0007","uid-0013","uid-0025","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0010","uid-edge-3","uid-0012","uid-0017","uid-0031","uid-edge-2","uid-edge-5","uid-0001","uid-0023","uid-0003","uid-0002","uid-0019","uid-edge-1","uid-0016","uid-0011","uid-0022","uid-0020","uid-0026","uid-0029","uid-0006","uid-0018","uid-0000","uid-0021","uid-0014","uid-0005"]
+  },
+  "driverNames": {
+   "asc": ["uid-edge-1","uid-0016","uid-0011","uid-0022","uid-0020","uid-0026","uid-0029","uid-0006","uid-0018","uid-0000","uid-0021","uid-0014","uid-0005","uid-0024","uid-0001","uid-0003","uid-0019","uid-0007","uid-0028","uid-0015","uid-0030","uid-0002","uid-0004","uid-0009","uid-0027","uid-0031","uid-0010","uid-0023","uid-0013","uid-0025","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0008","uid-0012","uid-0017","uid-edge-2","uid-edge-4","uid-edge-3","uid-edge-5"],
+   "desc": ["uid-edge-5","uid-edge-3","uid-edge-4","uid-edge-2","uid-0012","uid-0017","uid-0008","uid-0013","uid-0025","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0023","uid-0010","uid-0031","uid-0004","uid-0009","uid-0027","uid-0002","uid-0028","uid-0015","uid-0030","uid-0007","uid-0001","uid-0003","uid-0019","uid-0024","uid-edge-1","uid-0016","uid-0011","uid-0022","uid-0020","uid-0026","uid-0029","uid-0006","uid-0018","uid-0000","uid-0021","uid-0014","uid-0005"]
+  },
+  "age": {
+   "asc": ["uid-0031","uid-0005","uid-0014","uid-0021","uid-0027","uid-0019","uid-0000","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0018","uid-0030","uid-0025","uid-0006","uid-0015","uid-0002","uid-0009","uid-0029","uid-0026","uid-0003","uid-0020","uid-0017","uid-0022","uid-0028","uid-0013","uid-0007","uid-0011","uid-0023","uid-0001","uid-0016","uid-0004","uid-0012","uid-edge-5","uid-edge-4","uid-edge-3","uid-edge-2","uid-edge-1","uid-0010","uid-0008","uid-0024"],
+   "desc": ["uid-0024","uid-0008","uid-0010","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-0012","uid-0004","uid-0016","uid-0001","uid-0023","uid-0011","uid-0007","uid-0013","uid-0028","uid-0022","uid-0017","uid-0020","uid-0003","uid-0026","uid-0029","uid-0009","uid-0002","uid-0015","uid-0006","uid-0025","uid-0030","uid-0018","uid-0000","uid-tie-12","uid-tie-08","uid-tie-11","uid-tie-07","uid-tie-09","uid-tie-10","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-0019","uid-0027","uid-0021","uid-0014","uid-0005","uid-0031"]
+  }
+ },
+ "searchCases": [
+  {
+   "query": "alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "ALP",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "beta",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": "eta",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006","uid-0016","uid-0017","uid-0018","uid-0019"]
+  },
+  {
+   "query": "kube",
+   "matches": ["uid-0011","uid-0012"]
+  },
+  {
+   "query": "x",
+   "matches": ["uid-0014","uid-0015"]
+  },
+  {
+   "query": "",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "   ",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "zzzz-no-match",
+   "matches": []
+  },
+  {
+   "query": "10",
+   "matches": ["uid-0005","uid-0007","uid-tie-09"]
+  },
+  {
+   "query": "caf",
+   "matches": ["uid-0020","uid-0021","uid-0022"]
+  },
+  {
+   "query": "CAFÉ",
+   "matches": ["uid-0021","uid-0022"]
+  },
+  {
+   "query": "emoji",
+   "matches": ["uid-0029"]
+  },
+  {
+   "query": "name:alp",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:\"beta\"",
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:'item'",
+   "matches": ["uid-0007","uid-0008","uid-0009","uid-0010"]
+  },
+  {
+   "query": "n:/^a/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^A/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "name:/alpha|zeta/",
+   "matches": ["uid-0000","uid-0016"]
+  },
+  {
+   "query": "name:/ALPHA/",
+   "matches": ["uid-0002"]
+  },
+  {
+   "query": "/ALPHA/i",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "/^beta-\\d+$/",
+   "matches": ["uid-0005","uid-0006"]
+  },
+  {
+   "query": "/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/(/",
+   "matches": []
+  },
+  {
+   "query": "name:/[/i",
+   "matches": []
+  },
+  {
+   "query": "/(?<=a)l/",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "name:/^(?!alpha).*a$/",
+   "matches": ["uid-0001","uid-0003","uid-0009","uid-0016","uid-0023","uid-tie-00"]
+  },
+  {
+   "query": "name:/a.b/s",
+   "matches": []
+  },
+  {
+   "query": "name:/^b/y",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "name:/a/gg",
+   "matches": []
+  },
+  {
+   "query": "name:/a/x",
+   "matches": []
+  },
+  {
+   "query": "name:alpha OR name:zeta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "query": "alpha OR zeta OR x",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0014","uid-0015","uid-0016"]
+  },
+  {
+   "query": "alpha or zeta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "query": "name:/^a/ OR name:/^b/ kube",
+   "matches": ["uid-0000"]
+  },
+  {
+   "query": "alpha  OR  beta",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "query": " OR alpha",
+   "matches": []
+  },
+  {
+   "query": "alpha OR ",
+   "matches": []
+  },
+  {
+   "query": "foo:bar",
+   "matches": []
+  },
+  {
+   "query": "foo:bar OR alpha",
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "query": "uid:uid-0003",
+   "matches": ["uid-0003"]
+  },
+  {
+   "query": "uid:edge",
+   "matches": ["uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6"]
+  },
+  {
+   "query": "label:app=web",
+   "matches": []
+  },
+  {
+   "query": "l:app=",
+   "matches": []
+  },
+  {
+   "query": "l:10=ten",
+   "matches": ["uid-0000","uid-0004","uid-0006","uid-0008","uid-0016","uid-0018","uid-0021","uid-0025","uid-0031"]
+  },
+  {
+   "query": "labels:tier",
+   "matches": ["uid-0000","uid-0004","uid-0006","uid-0008","uid-0016","uid-0018","uid-0021","uid-0025","uid-0031"]
+  },
+  {
+   "query": "annotation:note",
+   "matches": []
+  },
+  {
+   "query": "a:a/b",
+   "matches": []
+  },
+  {
+   "query": "ns:prod",
+   "matches": []
+  },
+  {
+   "query": "namespace:Prod",
+   "matches": []
+  },
+  {
+   "query": "ns:/^team/",
+   "matches": []
+  },
+  {
+   "query": "ns:team-a name:same",
+   "matches": []
+  },
+  {
+   "query": "NS:default",
+   "matches": []
+  },
+  {
+   "query": "status:active",
+   "matches": []
+  },
+  {
+   "query": "phase:terminating",
+   "matches": []
+  },
+  {
+   "query": "state:weird",
+   "matches": []
+  },
+  {
+   "query": "finalizer:kube",
+   "matches": []
+  },
+  {
+   "query": "type:opaque",
+   "matches": []
+  },
+  {
+   "query": "type:/^kubernetes\\.io/",
+   "matches": []
+  },
+  {
+   "query": "secrettype:tls",
+   "matches": []
+  },
+  {
+   "query": "keycount:3",
+   "matches": []
+  },
+  {
+   "query": "count:2",
+   "matches": []
+  },
+  {
+   "query": "datakeys:0",
+   "matches": []
+  },
+  {
+   "query": "keys:config",
+   "matches": []
+  },
+  {
+   "query": "key:10",
+   "matches": []
+  },
+  {
+   "query": "binary:blob",
+   "matches": []
+  },
+  {
+   "query": "binarykey:5",
+   "matches": []
+  },
+  {
+   "query": "value:1000",
+   "matches": []
+  },
+  {
+   "query": "priority:7",
+   "matches": []
+  },
+  {
+   "query": "default:true",
+   "matches": []
+  },
+  {
+   "query": "isdefault:false",
+   "matches": []
+  },
+  {
+   "query": "preemption:never",
+   "matches": []
+  },
+  {
+   "query": "desc:critical",
+   "matches": []
+  },
+  {
+   "query": "description:batch",
+   "matches": []
+  },
+  {
+   "query": "globaldefault:true",
+   "matches": []
+  },
+  {
+   "query": "reason:backoff",
+   "matches": []
+  },
+  {
+   "query": "r:/^Fail/",
+   "matches": []
+  },
+  {
+   "query": "message:probe",
+   "matches": []
+  },
+  {
+   "query": "msg:/503/",
+   "matches": []
+  },
+  {
+   "query": "m:\"restarting failed\"",
+   "matches": []
+  },
+  {
+   "query": "object:pod",
+   "matches": []
+  },
+  {
+   "query": "obj:/^Node\\//",
+   "matches": []
+  },
+  {
+   "query": "involved:deployment",
+   "matches": []
+  },
+  {
+   "query": "objectkind:pod",
+   "matches": []
+  },
+  {
+   "query": "ok:node",
+   "matches": []
+  },
+  {
+   "query": "objectname:alpha",
+   "matches": []
+  },
+  {
+   "query": "on:beta",
+   "matches": []
+  },
+  {
+   "query": "source:kubelet",
+   "matches": []
+  },
+  {
+   "query": "src:/\\/node-1$/",
+   "matches": []
+  },
+  {
+   "query": "c:1",
+   "matches": []
+  },
+  {
+   "query": "kind:warning",
+   "matches": []
+  },
+  {
+   "query": "t:normal",
+   "matches": []
+  },
+  {
+   "query": "name:\"unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:'unterminated",
+   "matches": []
+  },
+  {
+   "query": "name:,",
+   "matches": []
+  },
+  {
+   "query": "name:/",
+   "matches": []
+  },
+  {
+   "query": "a:b:c",
+   "matches": []
+  },
+  {
+   "query": "http://x",
+   "matches": []
+  },
+  {
+   "query": "a-b:c",
+   "matches": []
+  },
+  {
+   "query": "x:y z",
+   "matches": []
+  },
+  {
+   "query": "/abc",
+   "matches": []
+  },
+  {
+   "query": "abc/",
+   "matches": []
+  },
+  {
+   "query": "name:/a/ , beta",
+   "matches": []
+  },
+  {
+   "query": "name:é",
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "query": "name:Éclair",
+   "matches": ["uid-0024","uid-0025"]
+  },
+  {
+   "query": "name:/é/i",
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "query": "name:/^\\p{L}/u",
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "name:/\\w+-\\d/",
+   "matches": ["uid-0004","uid-0005","uid-0006","uid-tie-09","uid-tie-10"]
+  },
+  {
+   "query": "name:/\\bbeta\\b/",
+   "matches": ["uid-0003","uid-0005","uid-0006"]
+  },
+  {
+   "query": "drivercount:2",
+   "matches": ["uid-0010","uid-0012","uid-0017","uid-0031","uid-edge-3"]
+  },
+  {
+   "query": "drivers:0",
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0011","uid-0014","uid-0016","uid-0018","uid-0020","uid-0021","uid-0022","uid-0026","uid-0029","uid-edge-1"]
+  },
+  {
+   "query": "numDrivers:1",
+   "matches": []
+  },
+  {
+   "query": "numdrivers:1",
+   "matches": []
+  },
+  {
+   "query": "drivernames:ebs",
+   "matches": ["uid-0008","uid-0009","uid-0010","uid-0012","uid-0013","uid-0017","uid-0023","uid-0025","uid-0027","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "driver:/^one,two/",
+   "matches": ["uid-edge-3","uid-edge-4"]
+  },
+  {
+   "query": "nodeids:n1",
+   "matches": ["uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-6"]
+  },
+  {
+   "query": "nodeid:/^node-0/",
+   "matches": ["uid-0001","uid-0002","uid-0003","uid-0004","uid-0007","uid-0008","uid-0009","uid-0010","uid-0012","uid-0013","uid-0015","uid-0017","uid-0019","uid-0023","uid-0024","uid-0025","uid-0027","uid-0028","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "query": "driver:csi OR nodeid:n3",
+   "matches": ["uid-0001","uid-0002","uid-0003","uid-0004","uid-0007","uid-0008","uid-0009","uid-0010","uid-0012","uid-0013","uid-0015","uid-0017","uid-0019","uid-0023","uid-0024","uid-0025","uid-0027","uid-0028","uid-0030","uid-0031","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  }
+ ],
+ "columnFilterCases": [
+  {
+   "name": "name regex",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^a","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0016"]
+  },
+  {
+   "name": "name regex and",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a","e"],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006","uid-0009","uid-0013","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0023","uid-0031","uid-edge-6","uid-tie-00","uid-tie-01"]
+  },
+  {
+   "name": "name regex invalid ignored",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["("]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex invalid or valid",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["(","zeta"],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex empty conditions",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": []
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "name regex empty conditions or",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": [],
+     "logic": "or"
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "name regex pattern field",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "pattern": "ALPHA"
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002"]
+  },
+  {
+   "name": "name regex lookahead",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["^(?=.*a)b"]
+    }
+   },
+   "matches": ["uid-0003","uid-0004","uid-0005","uid-0006"]
+  },
+  {
+   "name": "name regex unicode",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["é"]
+    }
+   },
+   "matches": ["uid-0021","uid-0022","uid-0024","uid-0025","uid-0027","uid-tie-12"]
+  },
+  {
+   "name": "unknown column ignored",
+   "filters": {
+    "nope": {
+     "type": "select",
+     "values": ["x"]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-edge-6","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age older than a day",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 24
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0002","uid-0003","uid-0005","uid-0006","uid-0009","uid-0014","uid-0015","uid-0018","uid-0019","uid-0021","uid-0025","uid-0026","uid-0027","uid-0029","uid-0030","uid-0031","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age between",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">=",
+       "value": 2
+      },
+      {
+       "operator": "<",
+       "value": 30
+      }
+     ],
+     "logic": "and"
+    }
+   },
+   "matches": ["uid-0001","uid-0003","uid-0004","uid-0007","uid-0011","uid-0012","uid-0013","uid-0016","uid-0017","uid-0020","uid-0022","uid-0023","uid-0026","uid-0028","uid-0029"]
+  },
+  {
+   "name": "age either",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "<",
+       "value": 1
+      },
+      {
+       "operator": ">",
+       "value": 60
+      }
+     ],
+     "logic": "or"
+    }
+   },
+   "matches": ["uid-0005","uid-0008","uid-0010","uid-0024","uid-0031"]
+  },
+  {
+   "name": "age unknown operator",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "~",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "age single operator fields",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "operator": "<=",
+     "value": 12
+    }
+   },
+   "matches": ["uid-0004","uid-0008","uid-0010","uid-0012","uid-0016","uid-0024","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5"]
+  },
+  {
+   "name": "age equals NaN never",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "=",
+       "value": null
+      }
+     ]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "age not equals",
+   "filters": {
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": "!=",
+       "value": 0
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0004","uid-0005","uid-0006","uid-0007","uid-0008","uid-0009","uid-0010","uid-0011","uid-0012","uid-0013","uid-0014","uid-0015","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0024","uid-0025","uid-0026","uid-0027","uid-0028","uid-0029","uid-0030","uid-0031","uid-edge-1","uid-edge-2","uid-edge-3","uid-edge-4","uid-edge-5","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "driverNames select -",
+   "filters": {
+    "driverNames": {
+     "type": "select",
+     "values": ["-"]
+    }
+   },
+   "matches": ["uid-0000","uid-0005","uid-0006","uid-0011","uid-0014","uid-0016","uid-0018","uid-0020","uid-0021","uid-0022","uid-0026","uid-0029","uid-edge-1"]
+  },
+  {
+   "name": "driverNames select one, two",
+   "filters": {
+    "driverNames": {
+     "type": "select",
+     "values": ["one, two"]
+    }
+   },
+   "matches": ["uid-edge-3"]
+  },
+  {
+   "name": "driverCount select 2",
+   "filters": {
+    "driverCount": {
+     "type": "select",
+     "values": ["2"]
+    }
+   },
+   "matches": []
+  },
+  {
+   "name": "driverCount numeric",
+   "filters": {
+    "driverCount": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 1
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0004","uid-0007","uid-0008","uid-0009","uid-0010","uid-0012","uid-0013","uid-0015","uid-0017","uid-0024","uid-0025","uid-0027","uid-0028","uid-0030","uid-0031","uid-edge-3","uid-edge-4","uid-tie-00","uid-tie-01","uid-tie-02","uid-tie-03","uid-tie-04","uid-tie-05","uid-tie-06","uid-tie-07","uid-tie-08","uid-tie-09","uid-tie-10","uid-tie-11","uid-tie-12"]
+  },
+  {
+   "name": "combined name and age",
+   "filters": {
+    "name": {
+     "type": "regex",
+     "conditions": ["a"]
+    },
+    "age": {
+     "type": "numeric",
+     "conditions": [
+      {
+       "operator": ">",
+       "value": 5
+      }
+     ]
+    }
+   },
+   "matches": ["uid-0000","uid-0001","uid-0002","uid-0003","uid-0005","uid-0006","uid-0009","uid-0013","uid-0016","uid-0017","uid-0018","uid-0019","uid-0020","uid-0021","uid-0022","uid-0023","uid-0025","uid-0031","uid-tie-00","uid-tie-01"]
+  }
+ ],
+ "uniqueValues": {
+  "driverCount": null,
+  "driverNames": {
+   "values": ["-","csi.example.com","csi.example.com, +2 more","csi.example.com, +3 more","disk.csi.azure.com","disk.csi.azure.com, +3 more","disk.csi.azure.com, disk.csi.azure.com","disk.csi.azure.com, ebs.csi.aws.com","ebs.csi.aws.com","ebs.csi.aws.com, +2 more","ebs.csi.aws.com, +3 more","ebs.csi.aws.com, csi.example.com","one","one, +2 more","one, two","only","Zeta.io/csi, +3 more"],
+   "counts": {
+    "-": 13,
+    "csi.example.com": 3,
+    "disk.csi.azure.com": 1,
+    "disk.csi.azure.com, +3 more": 3,
+    "csi.example.com, +2 more": 1,
+    "ebs.csi.aws.com, +3 more": 1,
+    "disk.csi.azure.com, ebs.csi.aws.com": 1,
+    "ebs.csi.aws.com, csi.example.com": 2,
+    "ebs.csi.aws.com, +2 more": 15,
+    "csi.example.com, +3 more": 3,
+    "ebs.csi.aws.com": 1,
+    "Zeta.io/csi, +3 more": 1,
+    "disk.csi.azure.com, disk.csi.azure.com": 1,
+    "one": 2,
+    "one, two": 1,
+    "one, +2 more": 1,
+    "only": 1
+   }
+  }
+ }
+}

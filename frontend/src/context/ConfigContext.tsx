@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { SetRequestCancellationEnabled, SetForceHTTP1, SetClientPoolSize } from 'wailsjs/go/main/App';
+import { SetRequestCancellationEnabled, SetForceHTTP1, SetClientPoolSize, SetBulkTransport, SetLegacyEventDedupe } from 'wailsjs/go/main/App';
+import { refreshBulkInfo } from '../lib/bulk/transport';
+import { runBulkProbe } from '../lib/bulk/probe';
 import { validateConfig } from '~/lib/validation';
 import type { SidebarLayoutSection } from '~/constants/menuStructure';
 
@@ -55,6 +57,10 @@ interface PerformanceConfig {
     enableRequestCancellation: boolean;
     forceHttp1: boolean;
     clientPoolSize: number;
+    bulkTransport: 'auto' | 'off';
+    viewStore: boolean;
+    viewWorker: 'auto' | 'off';
+    legacyEventDedupe: boolean;
 }
 
 interface DebugConfig {
@@ -156,7 +162,19 @@ const defaultConfig: AppConfig = {
         forceHttp1: false,
         // Additional K8s client connections for better parallelism.
         // 0 = just main connection. Requires context switch.
-        clientPoolSize: 0
+        clientPoolSize: 0,
+        // Same-origin fetch transport for heavy read calls. "auto" uses it where the
+        // in-app probe passes and falls back to the normal bindings per call;
+        // "off" always uses the bindings.
+        bulkTransport: 'auto',
+        // Windowed lists served by Go row views (experimental). Falls back to the
+        // normal lists when the backend has views disabled (KUBIKLES_VIEWS=0).
+        viewStore: false,
+        // Run the windowed-list engine in a Web Worker where the in-app probe shows it works.
+        // "off" keeps the engine on the main thread. Applies to lists opened afterwards.
+        viewWorker: 'auto',
+        // Drop watch updates that change nothing but resourceVersion on lists still on the legacy path.
+        legacyEventDedupe: false
     },
     debug: {
         // Show debug download button in log viewer. Downloads logs with source
@@ -317,6 +335,26 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             console.error('Failed to set HTTP/1 setting:', err);
         });
     }, [config.performance?.forceHttp1]);
+
+    // Sync bulk transport setting to backend and frontend transport
+    useEffect(() => {
+        const mode = config.performance?.bulkTransport === 'off' ? 'off' : 'auto';
+        SetBulkTransport(mode)
+            .then(() => refreshBulkInfo())
+            .then((flipped: boolean) => {
+                if (flipped && mode === 'auto') void runBulkProbe();
+            })
+            .catch((err: any) => {
+                console.error('Failed to set bulk transport setting:', err);
+            });
+    }, [config.performance?.bulkTransport]);
+
+    // Sync legacy watch-event dedupe to backend
+    useEffect(() => {
+        SetLegacyEventDedupe(config.performance?.legacyEventDedupe === true).catch((err: any) => {
+            console.error('Failed to set legacy event dedupe setting:', err);
+        });
+    }, [config.performance?.legacyEventDedupe]);
 
     // Sync client pool size setting to backend
     useEffect(() => {

@@ -34,6 +34,7 @@ func (a *App) GetNodeMetrics() (*k8s.NodeMetricsResult, error) {
 	if a.k8sClient == nil {
 		return &k8s.NodeMetricsResult{Available: false}, nil
 	}
+	a.pinMetricsShards("nodes")
 	return a.k8sClient.GetNodeMetrics()
 }
 
@@ -41,6 +42,7 @@ func (a *App) GetPodMetrics() (*k8s.PodMetricsResult, error) {
 	if a.k8sClient == nil {
 		return &k8s.PodMetricsResult{Available: false}, nil
 	}
+	a.pinMetricsShards("pods", "nodes")
 	return a.k8sClient.GetPodMetrics()
 }
 

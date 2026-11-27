@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import CSINodeActionsMenu from './CSINodeActionsMenu';
 import { useCSINodes } from '~/hooks/resources';
@@ -10,14 +12,23 @@ import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteCSINode, GetCSINodeYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { csiNodeSemantics, getDriverCount, getDriverNames } from './semantics';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildCSINodeViewColumns } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
+
+const CSINODE_INITIAL_SORT = { key: 'age', direction: 'desc' };
+const CSINODE_VIEW_OPTIONS = { sort: CSINODE_INITIAL_SORT, columns: defaultViewColumns('csinodes') };
+const NO_DATA: any[] = [];
 
 export default function CSINodeList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { csiNodes, loading, loadState } = useCSINodes(currentContext, isVisible) as any;
-    const { handleShowDetails, handleEditYaml } = useCSINodeActions();
+    const { csiNodes, loading, loadState, view } = useCSINodes(currentContext, isVisible, CSINODE_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml } = useStableCallbacks(useCSINodeActions());
     const selection = useSelection();
+    const withObject = useWithFullObject(view ?? null);
+    // Details need the object itself; windowed rows only carry identity and cells.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     // Unified bulk actions (also used for single delete)
     const {
@@ -33,22 +44,8 @@ export default function CSINodeList({ isVisible }: { isVisible: boolean }) {
 
     });
 
-    const getDriverCount = (csiNode: any) => {
-        const drivers = csiNode.spec?.drivers || [];
-        return drivers.length;
-    };
-
-    const getDriverNames = (csiNode: any) => {
-        const drivers = csiNode.spec?.drivers || [];
-        if (drivers.length === 0) return '-';
-        if (drivers.length <= 2) {
-            return drivers.map((d: any) => d.name).join(', ');
-        }
-        return `${drivers[0].name}, +${drivers.length - 1} more`;
-    };
-
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: csiNodeSemantics.name.getValue },
         {
             key: 'driverCount',
             label: 'Drivers',
@@ -57,20 +54,19 @@ export default function CSINodeList({ isVisible }: { isVisible: boolean }) {
                     {getDriverCount(item)}
                 </span>
             ),
-            getValue: (item: any) => getDriverCount(item)
+            getValue: csiNodeSemantics.driverCount.getValue
         },
-        { key: 'driverNames', label: 'Driver Names', render: (item: any) => getDriverNames(item), getValue: (item: any) => getDriverNames(item) },
-        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
+        { key: 'driverNames', label: 'Driver Names', render: (item: any) => getDriverNames(item), getValue: csiNodeSemantics.driverNames.getValue },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: csiNodeSemantics.age.getValue },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <CSINodeActionsMenu
+                <MenuBound
+                    as={CSINodeActionsMenu}
+                    menuId={`csinode-${item.metadata.uid}`}
                     csiNode={item}
-                    isOpen={activeMenuId === `csinode-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `csinode-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onDelete={(csiNode: any) => openBulkDelete([csiNode])}
                 />
@@ -79,19 +75,27 @@ export default function CSINodeList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete]);
+    ], [handleEditYaml, openBulkDelete]);
+
+    const viewColumns = useMemo(
+        () => buildCSINodeViewColumns({
+            onEditYaml: handleEditYaml,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [handleEditYaml, openBulkDelete]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="CSI Nodes"
-                columns={columns}
-                data={csiNodes}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : csiNodes}
                 isLoading={loading}
                 showNamespaceSelector={false}
-                initialSort={{ key: 'age', direction: 'desc' }}
+                initialSort={CSINODE_INITIAL_SORT}
                 resourceType="csinodes"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

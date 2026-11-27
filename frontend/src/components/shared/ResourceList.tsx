@@ -1,90 +1,64 @@
 import ResourceLoadingStatus from './ResourceLoadingStatus';
 import type { ResourceLoadState } from '~/hooks/useResource';
-import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, forwardRef } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import { TableVirtuoso } from 'react-virtuoso';
 import { MagnifyingGlassIcon, InformationCircleIcon, FunnelIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { EventsOn } from 'wailsjs/runtime/runtime';
-import {
-    DndContext,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-    arrayMove,
-    SortableContext,
-    horizontalListSortingStrategy,
-} from '@dnd-kit/sortable';
 import SearchSelect from './SearchSelect';
 import BulkActionBar from './BulkActionBar';
-import ColumnConfigurator from './ColumnConfigurator';
 import RefreshControls from './RefreshControls';
 import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '~/utils/search';
 import { namespaceSelection } from '~/utils/namespaceQuery';
 import { useSavedViews } from '~/hooks/useSavedViews';
 import type { SavedView } from '~/hooks/useSavedViews';
-import { useConfig, useK8s, useUI } from '~/context';
+import { useConfig, useUI } from '~/context';
+import { useK8sActions } from '~/context/K8sContext';
 import { type ColumnDef, type ColumnWidths, MIN_COLUMN_WIDTHS, DEFAULT_COLUMN_WIDTHS, calculateColumnWidths, formatCount } from './resourceListColumns';
-import { SearchHighlightOverlay, TriStateCheckbox, RowCheckbox, SortableHeader } from './ResourceListControls';
+import { SearchHighlightOverlay } from './ResourceListControls';
+import ResourceListHeader from './ResourceListHeader';
+import { RowCells, SkeletonCells, virtuosoComponents } from './ResourceListRows';
+import type { ViewHandle, ViewSnapshot } from '~/lib/views/viewClient';
+import { resolveSchema, filterTypeIn, columnKeysIn } from '~/lib/views/schema';
+import { toColumnFilterSpecs } from '~/lib/views/viewColumns';
+import { refItem } from '~/lib/views/rowItem';
+import type { Facet } from '~/lib/views/protocol';
+import {
+    type ColumnFilter,
+    type ColumnFiltersMap,
+    type SortConfig,
+    PREDEFINED_COLUMN_VALUES,
+    compileColumnFilters,
+    computeColumnUniqueValues,
+    detectColumnFilterTypes,
+    selectColumnHasFilterValues,
+    sortItems,
+} from './resourceListPipeline';
 
-interface ResourceTableContext {
-    highlightedUid?: string | null;
-    selectable: boolean;
-    selection?: SelectionState;
-    onRowClick?: (item: any) => void;
-}
+// Heartbeat for time-dependent cells (age) now that rows are memoised.
+const ROW_CLOCK_MS = 5000;
 
-// Component types must stay stable across resource updates. Replacing them remounts
-// the table and resets the hovered row (including any native cell tooltip).
-const virtuosoComponents = {
-    Table: ({ style, context, ...props }: any) => (
-        <table
-            {...props}
-            className="text-left border-collapse w-full"
-            style={{ ...style, tableLayout: 'fixed' as const }}
-        />
-    ),
-    TableHead: forwardRef<HTMLTableSectionElement>(({ context, ...props }: any, ref) => (
-        <thead {...props} ref={ref} className="bg-surface sticky top-0 z-10" />
-    )),
-    TableBody: forwardRef<HTMLTableSectionElement>(({ context, ...props }: any, ref) => (
-        <tbody {...props} ref={ref} className="divide-y divide-border" />
-    )),
-    TableRow: ({ item, context, ...props }: any) => {
-        const { highlightedUid, selectable, selection, onRowClick } = context as ResourceTableContext;
-        const isHighlighted = highlightedUid === item?.metadata?.uid;
-        const isSelected = selectable && selection?.isSelected(item?.metadata?.uid);
-        return (
-            <tr
-                {...props}
-                className={`transition-colors ${
-                    isSelected
-                        ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_24%,transparent)]'
-                        : isHighlighted
-                            ? 'bg-white/5'
-                            : 'hover:bg-white/5'
-                } ${onRowClick ? 'cursor-pointer' : ''}`}
-                onClick={() => onRowClick && onRowClick(item)}
-            />
-        );
-    }
-};
+// Pixels rendered beyond the viewport.
+const VIRTUOSO_OVERSCAN_PX = 400;
 
-// Internal filter type used by columnFilters state
-interface ColumnFilter {
-    type: 'select' | 'regex' | 'numeric';
-    values?: Set<string>;
-    conditions?: any[];
-    pattern?: string;
-    logic?: 'and' | 'or';
-    operator?: string;
-    value?: number;
-}
+// Rows are keyed by identity, not index, so per-row state (an open actions menu, hover) stays
+// attached to the same resource across re-sorts. Non-Kubernetes rows (Helm releases) have no
+// uid and fall back to namespace/name.
+/**
+ * View-mode scroller. The app styles scrollbars as an 8px classic bar, which appears and disappears
+ * as a search shrinks the list below one screen; without a reserved gutter every column then shifts
+ * sideways by the bar width. scrollbar-gutter keeps the width constant (WebKit 18.2+, Chromium);
+ * overflow-y: scroll covers older WebKit builds where the property is not honoured.
+ */
+export const VIEW_SCROLLER_STYLE: React.CSSProperties = { height: '100%', overflowY: 'scroll', scrollbarGutter: 'stable' };
 
-type ColumnFiltersMap = Record<string, ColumnFilter>;
+/** Noun for the bulk action bar. Custom resource lists use an internal id ("cr-group-plural"), which is never shown. */
+export const bulkResourceLabel = (resourceType: string | null | undefined, title: string): string =>
+    resourceType && !resourceType.startsWith('cr-') ? resourceType : title.toLowerCase();
+
+const computeRowKey = (index: number, item: any): string | number =>
+    item?.metadata?.uid ?? (item?.name ? `${item.namespace ?? ''}/${item.name}` : index);
 
 // Position state for the column filter dropdown
 interface ColumnFilterPosition {
@@ -104,6 +78,14 @@ interface SelectionState {
     deselectAll: () => void;
     pruneSelection: (data: any[]) => void;
     selectedCount: number;
+    // Windowed (view) lists select by identity; these are only used with a `source`.
+    selectedIds?: Set<string>;
+    toggleRef?: (ref: any, index: number) => void;
+    addRefs?: (refs: any[], index?: number) => void;
+    setRefs?: (refs: any[]) => void;
+    getRefItems?: () => any[];
+    getLastIndex?: () => number | null;
+    pruneByUids?: (uids: Iterable<string>) => void;
 }
 
 // Resizing ref type
@@ -135,6 +117,8 @@ interface ResourceListProps {
     highlightedUid?: string | null;
     initialSort?: any;
     resourceType?: string | null;
+    /** Plural noun for the selection bar ("3 prometheusrules selected"). Defaults to the resource type, or the title for internal ids. */
+    selectionLabel?: string;
     onRowClick?: ((item: any) => void) | null;
     onRefresh?: (() => void) | null;
     customHeaderActions?: React.ReactNode | null;
@@ -146,7 +130,30 @@ interface ResourceListProps {
     onBulkExportYaml?: ((items: any[]) => void) | null;
     bulkCustomActions?: React.ReactNode | null;
     onFilteredUidsChange?: ((uids: Set<string>) => void) | null;
+    /**
+     * Changes whenever values read by columns marked `volatile` (e.g. live metrics) change.
+     * Sorting or filtering by a volatile column re-runs only while that column is in use;
+     * otherwise changes here never re-sort or re-filter the list.
+     */
+    volatileInputs?: unknown;
+    /**
+     * A backend view serving this list. When set, the rows come from the view (windowed,
+     * sorted, filtered and searched by the backend) and `data` is ignored.
+     */
+    source?: ViewHandle | null;
+    /** Schema columns always projected in view mode even when hidden (cells a visible column's render reads). */
+    viewPinnedColumns?: readonly string[];
+    /** Pinned columns that are data carriers only and never appear as columns. Defaults to all pinned columns. */
+    viewCarrierColumns?: readonly string[];
 }
+
+const EMPTY_ROWS: any[] = [];
+const STATIC_PIPELINE = Object.freeze({
+    data: EMPTY_ROWS, searchTerm: '', columnFilters: {} as ColumnFiltersMap,
+    sortConfig: { key: null, direction: 'asc' } as SortConfig, sortVolatile: undefined, filterVolatile: undefined,
+});
+const SEARCH_FILTER_PUSH_MS = 0;
+const FACET_REFRESH_MS = 1500;
 
 // Minimum column widths - ensure columns never get too narrow
 
@@ -205,7 +212,7 @@ function LargeDatasetBanner({ isLoading, progress, dataCount, threshold }: {
 
 export default function ResourceList({
     title,
-    columns,
+    columns: columnsProp,
     data,
     isLoading,
     loadState,
@@ -218,6 +225,7 @@ export default function ResourceList({
     highlightedUid = null,
     initialSort = null,
     resourceType = null,
+    selectionLabel,
     onRowClick = null,
     onRefresh = null,
     customHeaderActions = null,
@@ -231,10 +239,53 @@ export default function ResourceList({
     onBulkExportYaml = null,
     bulkCustomActions = null,
     onFilteredUidsChange = null,
+    volatileInputs,
+    source = null,
+    viewPinnedColumns,
+    viewCarrierColumns,
 }: ResourceListProps) {
+    // Pinned columns are always projected (see viewColumnKeys) because other columns render from
+    // their cells. Those that exist only for that purpose (carriers) are never shown or offered in
+    // the column picker; a pinned column that is also a real column (Replicas) stays available.
+    // Without an explicit carrier list every pinned column is treated as a carrier.
+    const columns = useMemo(() => {
+        const hidden = viewCarrierColumns ?? viewPinnedColumns;
+        if (!source || !hidden || hidden.length === 0) return columnsProp;
+        const carriers = new Set<string>(hidden);
+        return columnsProp.filter((col: any) => !carriers.has(col.key));
+    }, [columnsProp, viewPinnedColumns, viewCarrierColumns, source]);
     const { pendingSearch, consumePendingSearch } = useUI();
     const { getConfig } = useConfig();
-    const { refreshNamespaces } = useK8s();
+    const { refreshNamespaces } = useK8sActions();
+
+    // View mode: the backend owns sorting, filtering, searching and windowing.
+    const viewMode = !!source;
+    // The snapshot is tracked with plain state so a row of the table never reads a different
+    // source's counts: the stored pair is only used while it belongs to the current source.
+    const [viewHeld, setViewHeld] = useState<{ source: ViewHandle | null; snap: ViewSnapshot | null }>(
+        () => ({ source, snap: source ? source.getSnapshot() : null }));
+    useEffect(() => {
+        if (!source) { setViewHeld(held => (held.source === null ? held : { source: null, snap: null })); return; }
+        setViewHeld({ source, snap: source.getSnapshot() });
+        return source.subscribe(() => setViewHeld({ source, snap: source.getSnapshot() }));
+    }, [source]);
+    // A list mounting over a view that is already open (the node list after its topology diagram)
+    // asks for its window again: the same row range as before would otherwise fetch nothing.
+    useEffect(() => { source?.refresh(); }, [source]);
+    const viewSnap = source ? (viewHeld.source === source ? viewHeld.snap : source.getSnapshot()) : null;
+    // Custom resource views bring their own schema with the open result.
+    const viewSchema = viewSnap?.schema ?? null;
+    const activeSchema = useMemo(() => resolveSchema(resourceType || undefined, viewSchema), [resourceType, viewSchema]);
+    const viewFiltered = viewSnap?.filtered ?? 0;
+    const viewTotal = viewSnap?.total ?? 0;
+    const viewEpoch = viewSnap?.epoch ?? 0;
+    // Counts are zero until the view has opened and its first load has finished. The load state
+    // arrives through another path and can report "complete" a render earlier than these counts,
+    // which would show the empty message for a frame.
+    const viewPending = !!viewSnap && (viewSnap.status === 'idle' || viewSnap.status === 'opening'
+        || (viewSnap.status === 'open' && (viewSnap.state?.phase ?? 'loading') === 'loading'));
+    const sourceRef = useRef(source);
+    sourceRef.current = source;
 
     // Loading progress: prefer external prop, fall back to internal listener
     const [internalProgress, setInternalProgress] = useState<LoadingProgress | null>(null);
@@ -259,6 +310,19 @@ export default function ResourceList({
         // Initialize with columns marked as defaultHidden
         return new Set(columns.filter((col: any) => col.defaultHidden).map((col: any) => col.key));
     });
+    // A windowed list swaps its columns when the view opens, and the swapped-in set can carry
+    // columns the legacy set never had (cells another column renders from). Columns that appear
+    // later keep their default visibility instead of showing up in the table.
+    const seenColumnKeys = useRef<Set<string> | null>(null);
+    if (seenColumnKeys.current === null) seenColumnKeys.current = new Set(columns.map((col: any) => col.key));
+    useEffect(() => {
+        const seen = seenColumnKeys.current!;
+        const fresh = columns.filter((col: any) => !seen.has(col.key));
+        if (fresh.length === 0) return;
+        for (const col of fresh) seen.add(col.key);
+        const hide = fresh.filter((col: any) => col.defaultHidden).map((col: any) => col.key);
+        if (hide.length > 0) setHiddenColumns(prev => new Set([...prev, ...hide]));
+    }, [columns]);
     const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
     // Saved views
@@ -429,18 +493,33 @@ export default function ResourceList({
     const lastDataLengthRef = useRef(0);
 
     // Calculate column widths based on data - only recalculate when data changes significantly
+    // In view mode only the rows of the current window exist on this side, so widths come from them.
+    const widthData = useMemo(() => (source ? source.loadedRows() : data),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [source, viewEpoch, data]);
     const calculatedWidths = useMemo(() => {
         // Recalculate if data length changed by more than 10% or is new
-        const dataLengthChanged = Math.abs(data.length - lastDataLengthRef.current) > lastDataLengthRef.current * 0.1;
-        const isNewData = lastDataLengthRef.current === 0 && data.length > 0;
+        const dataLengthChanged = Math.abs(widthData.length - lastDataLengthRef.current) > lastDataLengthRef.current * 0.1;
+        const isNewData = lastDataLengthRef.current === 0 && widthData.length > 0;
 
         if (isNewData || dataLengthChanged) {
-            calculatedWidthsRef.current = calculateColumnWidths(columns, data, savedColumnWidths);
-            lastDataLengthRef.current = data.length;
+            const next = calculateColumnWidths(columns, widthData, savedColumnWidths);
+            if (source) {
+                // A view holds only the rows of its window, and a search or filter changes which
+                // rows those are. Widths measured from each new set would move every column, so
+                // in view mode a column only ever widens.
+                const prev = calculatedWidthsRef.current;
+                const merged: ColumnWidths = { ...next };
+                for (const key of Object.keys(prev)) merged[key] = Math.max(prev[key] ?? 0, next[key] ?? 0);
+                calculatedWidthsRef.current = merged;
+            } else {
+                calculatedWidthsRef.current = next;
+            }
+            lastDataLengthRef.current = widthData.length;
         }
 
         return calculatedWidthsRef.current;
-    }, [data, columns, savedColumnWidths]);
+    }, [widthData, columns, savedColumnWidths, source]);
 
     // Effective column widths: calculated widths, then defaults, then saved widths (highest priority)
     const columnWidths = useMemo(() => ({
@@ -462,8 +541,11 @@ export default function ResourceList({
         e.stopPropagation();
 
         const startX = e.clientX;
-        const th = (e.target as HTMLElement).parentElement;
-        const startWidth = th!.offsetWidth;
+        // The handle contains a hover marker; a press on it must still measure the header cell,
+        // not the handle (a few pixels wide), or the column collapses and trails the cursor.
+        const th = (e.target as HTMLElement).closest('th');
+        if (!th) return;
+        const startWidth = th.offsetWidth;
 
         resizingRef.current = { columnKey, startX, startWidth };
         document.body.style.cursor = 'col-resize';
@@ -560,105 +642,16 @@ export default function ResourceList({
         }
     }, [openColumnFilter, columnFilterPos]);
 
-    // Extract numeric value for numeric filters
-    const getNumericValue = useCallback((col: any, item: any) => {
-        if (col.getNumericValue) return col.getNumericValue(item);
-        // Auto-detect age column: convert creationTimestamp to hours
-        if (col.key === 'age') {
-            const ts = item.metadata?.creationTimestamp;
-            if (!ts) return NaN;
-            return (Date.now() - new Date(ts).getTime()) / 3600000;
-        }
-        if (col.getValue) {
-            const v = col.getValue(item);
-            return typeof v === 'number' ? v : NaN;
-        }
-        return NaN;
-    }, []);
-
-    // Extract column value for filtering (prefers getFilterValue over getValue)
-    const getColumnValue = useCallback((col: any, item: any) => {
-        if (col.getFilterValue) return String(col.getFilterValue(item) ?? '');
-        if (col.key === 'name') return item.metadata?.name || '';
-        if (col.key === 'namespace') return item.metadata?.namespace || '';
-        if (col.getValue) {
-            const v = col.getValue(item);
-            return typeof v === 'string' ? v : '';
-        }
-        return String(item[col.key] ?? '');
-    }, []);
-
     // Determine filter type per column: 'regex' | 'select' | 'numeric' | false
     const columnFilterTypes = useMemo(() => {
-        const types: Record<string, string | false> = {};
+        if (!viewMode || !resourceType) return detectColumnFilterTypes(columns);
+        // The generated schema is the single source of filter types in view mode.
+        const types: Record<string, any> = {};
         for (const col of columns) {
-            if (col.filterable === false || col.isColumnSelector || col.isSelectionColumn) {
-                types[col.key] = false;
-                continue;
-            }
-            if (col.filterType) { types[col.key] = col.filterType; continue; }
-            // Auto-detect
-            if (col.key === 'name' || col.key === 'namespace') { types[col.key] = 'regex'; continue; }
-            if (col.key === 'age') { types[col.key] = 'numeric'; continue; }
-            types[col.key] = 'select';
+            types[col.key] = col.filterable === false || col.isColumnSelector ? false : filterTypeIn(activeSchema, col.key);
         }
         return types;
-    }, [columns]);
-
-    // Predefined values for select-type columns by resource type
-    const PREDEFINED_COLUMN_VALUES = useMemo(() => ({
-        pods: {
-            status: [
-                'Running', 'Pending', 'Failed', 'Succeeded', 'CrashLoopBackOff', 'Terminating',
-                'Unknown', 'ErrImagePull', 'ImagePullBackOff', 'ContainerCreating', 'PodInitializing',
-                'Init:Error', 'Init:CrashLoopBackOff', 'Init:Running',
-            ],
-        },
-        deployments: {
-            status: ['Available', 'Progressing', 'Unavailable'],
-        },
-        services: {
-            type: ['ClusterIP', 'NodePort', 'LoadBalancer', 'ExternalName'],
-        },
-        jobs: {
-            status: ['Complete', 'Failed', 'Running', 'Suspended'],
-        },
-        cronjobs: {
-            suspend: ['true', 'false'],
-        },
-        nodes: {
-            status: ['Ready', 'NotReady', 'SchedulingDisabled'],
-        },
-        events: {
-            type: ['Normal', 'Warning'],
-        },
-    }), []);
-
-    // Compute unique values + counts for select-type filter columns from data, merged with predefined
-    const columnUniqueValues = useMemo(() => {
-        const result: Record<string, { values: string[]; counts: Record<string, number> }> = {};
-        const selectCols = columns.filter((c: any) => columnFilterTypes[c.key] === 'select');
-
-        for (const col of selectCols) {
-            const counts: Record<string, number> = {};
-            // Seed with predefined values (count = 0)
-            const predefined: string[] = (PREDEFINED_COLUMN_VALUES as any)[resourceType as string]?.[col.key] || [];
-            for (const v of predefined) counts[v] = 0;
-            // Count actual data values
-            for (const item of data) {
-                const val = getColumnValue(col, item);
-                if (val) counts[val] = (counts[val] || 0) + 1;
-            }
-            const allValues = Object.keys(counts);
-            if (allValues.length > 0 && allValues.length <= 200) {
-                // Sort: predefined first (in order), then dynamic values alphabetically
-                const predefinedSet = new Set(predefined);
-                const dynamic = allValues.filter((v: any) => !predefinedSet.has(v)).sort((a, b) => a.localeCompare(b));
-                result[col.key] = { values: [...predefined, ...dynamic], counts };
-            }
-        }
-        return result;
-    }, [data, columns, getColumnValue, columnFilterTypes, resourceType, PREDEFINED_COLUMN_VALUES]);
+    }, [columns, viewMode, resourceType, activeSchema]);
 
     // Toggle a value in a select-type column filter
     const toggleColumnFilter = useCallback((colKey: string, value: string) => {
@@ -757,15 +750,17 @@ export default function ResourceList({
     // Check if any column has active filters
     const hasActiveColumnFilters = Object.keys(columnFilters).length > 0;
 
-    const toggleColumn = (key: string) => {
-        const newHidden = new Set(hiddenColumns);
-        if (newHidden.has(key)) {
-            newHidden.delete(key);
-        } else {
-            newHidden.add(key);
-        }
-        setHiddenColumns(newHidden);
-    };
+    const toggleColumn = useCallback((key: string) => {
+        setHiddenColumns((prev: Set<string>) => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    }, []);
 
     // Show all columns
     const showAllColumns = useCallback(() => {
@@ -785,7 +780,7 @@ export default function ResourceList({
         return new Set(columns.filter((col: any) => col.defaultHidden).map((col: any) => col.key));
     }, [columns]);
 
-    const baseVisibleColumns = columns.filter((col: any) => !hiddenColumns.has(col.key));
+    const baseVisibleColumns = useMemo(() => columns.filter((col: any) => !hiddenColumns.has(col.key)), [columns, hiddenColumns]);
 
     // Apply column order — reorder data columns while keeping column-selector at end
     const orderedVisibleColumns = useMemo(() => {
@@ -811,135 +806,105 @@ export default function ResourceList({
         return result;
     }, [baseVisibleColumns, columnOrder]);
 
-    const handleSort = (key: string) => {
-        let direction = 'asc';
-        if (sortConfig.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
-        }
-        setSortConfig({ key, direction });
-    };
+    const handleSort = useCallback((key: string) => {
+        setSortConfig((prev: SortConfig) => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    }, []);
+
+    // Sorting or filtering by a volatile column (live metrics) must follow value changes;
+    // for every other column those changes are ignored so a metrics tick costs nothing here.
+    const sortColumn = sortConfig.key ? columns.find((c: any) => c.key === sortConfig.key) : undefined;
+    const sortVolatile = sortColumn?.volatile ? volatileInputs : undefined;
+    const filterVolatile = Object.keys(columnFilters).some(k => columns.find((c: any) => c.key === k)?.volatile)
+        ? volatileInputs
+        : undefined;
+
+    // The heavy derived data below is computed from a deferred snapshot of its inputs. Urgent
+    // updates (typing, header clicks, menus) render first and the filter/sort pass follows at
+    // low priority, so a burst of watch batches cannot block input. Rows are keyed by uid, so
+    // in-place item updates still show once the deferred render lands.
+    const pipelineInputs = useMemo(() => (viewMode ? STATIC_PIPELINE : {
+        data, searchTerm, columnFilters, sortConfig, sortVolatile, filterVolatile,
+    }), [viewMode, data, searchTerm, columnFilters, sortConfig, sortVolatile, filterVolatile]);
+    const lagging = useDeferredValue(pipelineInputs);
+    // A reset to empty (context or scope switch) must not keep serving the previous
+    // cluster's rows to selection and bulk actions while the low-priority render is pending.
+    const deferredInputs = data.length === 0 && lagging.data.length > 0 ? pipelineInputs : lagging;
+    const deferredData = deferredInputs.data;
 
     const filteredData = useMemo(() => {
-        let result = data;
+        if (viewMode) return EMPTY_ROWS;
+        let result = deferredData;
 
         // Apply search term filter
-        if (searchTerm) {
-            const filterFn = createFilter(resourceType as string, searchTerm);
+        if (deferredInputs.searchTerm) {
+            const filterFn = createFilter(resourceType as string, deferredInputs.searchTerm);
             result = result.filter(filterFn);
         }
 
-        // Apply per-column filters (select and regex)
-        if (hasActiveColumnFilters) {
-            result = result.filter((item: any) => {
-                for (const [colKey, filter] of Object.entries(columnFilters) as [string, ColumnFilter][]) {
-                    const col = columns.find((c: any) => c.key === colKey);
-                    if (!col) continue;
-                    const val = getColumnValue(col, item);
-                    if (filter.type === 'select') {
-                        if (!filter.values?.has(val)) return false;
-                    } else if (filter.type === 'regex') {
-                        const conditions = filter.conditions || [filter.pattern];
-                        const isAnd = filter.logic !== 'or';
-                        const results = conditions.map((pattern: any) => {
-                            try {
-                                return new RegExp(pattern, 'i').test(val);
-                            } catch { return true; }
-                        });
-                        if (isAnd ? results.some((r: boolean) => !r) : !results.some((r: boolean) => r)) return false;
-                    } else if (filter.type === 'numeric') {
-                        const numVal = getNumericValue(col, item);
-                        if (isNaN(numVal)) return false;
-                        const conditions = filter.conditions || [{ operator: filter.operator, value: filter.value }];
-                        const isAnd = filter.logic !== 'or';
-                        const checkCondition = (cond: any) => {
-                            const target = cond.value;
-                            switch (cond.operator) {
-                                case '>': return numVal > target;
-                                case '>=': return numVal >= target;
-                                case '<': return numVal < target;
-                                case '<=': return numVal <= target;
-                                case '=': return numVal === target;
-                                case '!=': return numVal !== target;
-                                default: return true;
-                            }
-                        };
-                        const results = conditions.map(checkCondition);
-                        if (isAnd ? results.some((r: boolean) => !r) : !results.some((r: boolean) => r)) return false;
-                    }
-                }
-                return true;
-            });
+        // Apply per-column filters (select, regex and numeric), compiled once per pass
+        if (Object.keys(deferredInputs.columnFilters).length > 0) {
+            const predicate = compileColumnFilters(columns, deferredInputs.columnFilters);
+            if (predicate) result = result.filter(predicate);
         }
 
         return result;
-    }, [data, searchTerm, resourceType, columnFilters, hasActiveColumnFilters, columns, getColumnValue, getNumericValue]);
+        // filterVolatile is a deliberate dependency: it re-runs the pass when live values change
+        // while a filter on a volatile column is active.
+    }, [viewMode, deferredData, deferredInputs.searchTerm, deferredInputs.columnFilters, deferredInputs.filterVolatile, resourceType, columns]);
 
     // Report filtered UIDs to parent (for notifications scoping, etc.)
-    // Use a ref to avoid re-calling when the actual UIDs haven't changed
+    // Compare against the previously reported set without allocating, and only build a new
+    // Set (and call the parent) when the UIDs really changed.
     const prevFilteredUidsRef = useRef<Set<string> | null>(null);
     useEffect(() => {
-        if (!onFilteredUidsChange) return;
-        const uidArray: string[] = filteredData.map((item: any) => item.metadata?.uid).filter(Boolean);
-        // Quick check: same length and same UIDs as last time?
+        if (!onFilteredUidsChange || viewMode) return;
         const prev = prevFilteredUidsRef.current;
-        if (prev && prev.size === uidArray.length && uidArray.every((uid: string) => prev.has(uid))) {
-            return; // No change
+        let count = 0;
+        let same = prev !== null;
+        for (const item of filteredData) {
+            const uid = item.metadata?.uid;
+            if (!uid) continue;
+            count++;
+            if (same && !prev!.has(uid)) same = false;
         }
-        const uids = new Set(uidArray);
+        if (same && prev!.size === count) return; // No change
+        const uids = new Set<string>();
+        for (const item of filteredData) {
+            const uid = item.metadata?.uid;
+            if (uid) uids.add(uid);
+        }
         prevFilteredUidsRef.current = uids;
         onFilteredUidsChange(uids);
-    }, [filteredData, onFilteredUidsChange]);
+    }, [filteredData, onFilteredUidsChange, viewMode]);
 
-    const sortedData = React.useMemo(() => {
-        if (!sortConfig.key) return filteredData;
-
-        return [...filteredData].sort((a, b) => {
-            const column = columns.find((col: any) => col.key === sortConfig.key);
-            if (!column) return 0;
-
-            const getValue = column.getValue || ((item: any) => item[column.key]);
-            const aValue = getValue(a);
-            const bValue = getValue(b);
-
-            if (aValue < bValue) {
-                return sortConfig.direction === 'asc' ? -1 : 1;
-            }
-            if (aValue > bValue) {
-                return sortConfig.direction === 'asc' ? 1 : -1;
-            }
-
-            // Tie-breakers (always ascending)
-
-            // 1. Age (if available and not primary sort)
-            if (sortConfig.key !== 'age') {
-                const aDate = a.metadata?.creationTimestamp;
-                const bDate = b.metadata?.creationTimestamp;
-                if (aDate && bDate && aDate !== bDate) {
-                    // User wants "Ascending Age" (Newest to Oldest)
-                    // Newest = Larger Timestamp
-                    return aDate > bDate ? -1 : 1;
-                }
-            }
-
-            // 2. Name (if not primary sort)
-            if (sortConfig.key !== 'name') {
-                const aName = a.metadata?.name || '';
-                const bName = b.metadata?.name || '';
-                return aName.localeCompare(bName);
-            }
-
-            return 0;
-        });
-    }, [filteredData, sortConfig, columns]);
+    const sortedData = useMemo(
+        () => (viewMode ? EMPTY_ROWS : sortItems(filteredData, columns, deferredInputs.sortConfig)),
+        // sortVolatile re-sorts live while sorted by a volatile column (see above).
+        [viewMode, filteredData, columns, deferredInputs.sortConfig, deferredInputs.sortVolatile],
+    );
+    // Rows the list currently shows, whichever side produced them.
+    const shownCount = viewMode ? viewFiltered : sortedData.length;
+    const knownCount = viewMode ? viewTotal : data.length;
 
     // Auto-open details for the first matching row after search + filter settles
     useEffect(() => {
+        if (viewMode) {
+            const first = source?.rowAt(0);
+            if (autoOpenDetailsRef.current && first && onRowClick) {
+                autoOpenDetailsRef.current = false;
+                requestAnimationFrame(() => onRowClick(first));
+            }
+            return;
+        }
         if (autoOpenDetailsRef.current && sortedData.length > 0 && onRowClick) {
             autoOpenDetailsRef.current = false;
             // Defer to let the UI render the list first
             requestAnimationFrame(() => onRowClick(sortedData[0]));
         }
-    }, [sortedData, onRowClick]);
+    }, [sortedData, onRowClick, viewMode, source, viewEpoch]);
 
     // Add selection checkbox column if selection is enabled
     const visibleColumns = useMemo(() => {
@@ -957,50 +922,97 @@ export default function ResourceList({
 
     // Prune stale selections when data changes (e.g. after bulk delete/restart)
     useEffect(() => {
+        if (viewMode) return;
         if (selectable && selection && selection.selectedCount > 0) {
             selection.pruneSelection(sortedData);
         }
-    }, [sortedData]);
+    }, [sortedData, viewMode]);
+
+    // View mode: the backend tracks the selected uids and reports the ones that left the scope.
+    const selectedIds = selection?.selectedIds;
+    useEffect(() => {
+        if (!source || !selectable || !selection || !selectedIds) return;
+        source.setSelection(selectedIds);
+    }, [source, selectable, selectedIds]);
+    useEffect(() => {
+        if (!source || !selection?.pruneByUids) return;
+        return source.onSelectionStale(uids => selectionRef.current?.pruneByUids?.(uids));
+    }, [source]);
 
     // Compute selection state for the current filtered/sorted data
     const selectionState = useMemo(() => {
         if (!selectable || !selection) return 'none';
+        if (viewMode) {
+            // Without the rows at hand, "all" means at least as many selected as rows shown.
+            if (selection.selectedCount === 0) return 'none';
+            return viewFiltered > 0 && selection.selectedCount >= viewFiltered ? 'all' : 'some';
+        }
         return selection.getSelectionState(sortedData);
-    }, [selectable, selection, sortedData]);
+    }, [selectable, selection, sortedData, viewMode, viewFiltered]);
+
+    // Click handlers read the latest rows/selection from refs so their identity (and with it
+    // the memoised header and row props) does not change on every data update.
+    const sortedDataRef = useRef(sortedData);
+    sortedDataRef.current = sortedData;
+    const selectionRef = useRef(selection);
+    selectionRef.current = selection;
 
     // Handle header checkbox click
     const handleHeaderCheckboxClick = useCallback(() => {
-        if (!selection) return;
-        selection.toggleAll(sortedData);
-    }, [selection, sortedData]);
+        const src = sourceRef.current;
+        const sel = selectionRef.current;
+        if (src && sel) {
+            // Same rule as the legacy toggle: anything selected clears, otherwise select every filtered row.
+            if (sel.selectedCount > 0) {
+                sel.deselectAll();
+            } else {
+                void src.selectAllRefs().then(refs => sel.setRefs?.(refs.map(r => refItem(r.uid, r.ns, r.name)))).catch(() => {});
+            }
+            return;
+        }
+        sel?.toggleAll(sortedDataRef.current);
+    }, []);
 
     // Handle row checkbox click
     const handleRowCheckboxClick = useCallback((e: any, item: any, index: number) => {
-        if (!selection) return;
         const uid = item?.metadata?.uid;
-        if (uid) {
-            selection.toggleItem(uid, index, sortedData, e.shiftKey);
+        if (!uid) return;
+        const src = sourceRef.current;
+        const sel = selectionRef.current;
+        if (src && sel) {
+            const last = sel.getLastIndex?.() ?? null;
+            if (e.shiftKey && last !== null) {
+                const from = Math.min(last, index);
+                const to = Math.max(last, index);
+                void src.refs(from, to).then(refs => sel.addRefs?.(refs.map(r => refItem(r.uid, r.ns, r.name)), index)).catch(() => {});
+            } else {
+                sel.toggleRef?.(refItem(uid, item.metadata.namespace ?? '', item.metadata.name), index);
+            }
+            return;
         }
-    }, [selection, sortedData]);
+        selectionRef.current?.toggleItem(uid, index, sortedDataRef.current, e.shiftKey);
+    }, []);
+
+    const selectedForBulk = useCallback((): any[] => {
+        if (!selection) return [];
+        return viewMode && selection.getRefItems ? selection.getRefItems() : selection.getSelectedItems(sortedData);
+    }, [selection, sortedData, viewMode]);
 
     // Bulk action handlers - pass selected items to callbacks
     const handleBulkDelete = useCallback(() => {
         if (!selection || !onBulkDelete) return;
-        const selectedItems = selection.getSelectedItems(sortedData);
-        onBulkDelete(selectedItems);
-    }, [selection, sortedData, onBulkDelete]);
+        onBulkDelete(selectedForBulk());
+    }, [selection, selectedForBulk, onBulkDelete]);
 
     const handleBulkRestart = useCallback(() => {
         if (!selection || !onBulkRestart) return;
-        const selectedItems = selection.getSelectedItems(sortedData);
-        onBulkRestart(selectedItems);
-    }, [selection, sortedData, onBulkRestart]);
+        onBulkRestart(selectedForBulk());
+    }, [selection, selectedForBulk, onBulkRestart]);
 
     const handleBulkExportYaml = useCallback(() => {
         if (!selection || !onBulkExportYaml) return;
-        const selectedItems = selection.getSelectedItems(sortedData);
-        onBulkExportYaml(selectedItems);
-    }, [selection, sortedData, onBulkExportYaml]);
+        onBulkExportYaml(selectedForBulk());
+    }, [selection, selectedForBulk, onBulkExportYaml]);
 
     const handleClearSelection = useCallback(() => {
         if (!selection) return;
@@ -1050,37 +1062,233 @@ export default function ResourceList({
         return false;
     }, [activeViewId, loadView, searchInput, currentNamespace, sortConfig, defaultSortConfig, hiddenColumns, defaultHiddenColumns, columnOrder, columnFilters]);
 
-    // DnD sensors for column reordering — 8px distance distinguishes click (sort) from drag (reorder)
-    const dndSensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    // Select-type columns whose funnel icon is worth showing. Only visible columns are
+    // considered, and columns with predefined values (status, type, ...) are always usable,
+    // so the common cases cost nothing; the rest scan the deferred data lazily.
+    const prevSelectFilterColumnsRef = useRef<ReadonlySet<string>>(new Set());
+    const selectFilterColumns = useMemo(() => {
+        const result = new Set<string>();
+        for (const col of visibleColumns) {
+            if (columnFilterTypes[col.key] !== 'select') continue;
+            if (viewMode) {
+                // The backend says which select columns currently have a usable set of values.
+                if ((viewSnap?.state?.filterable ?? viewSnap?.filterable)?.[col.key]) result.add(col.key);
+                continue;
+            }
+            const predefined = resourceType ? PREDEFINED_COLUMN_VALUES[resourceType]?.[col.key] : undefined;
+            if ((predefined && predefined.length > 0) || selectColumnHasFilterValues(col, deferredData, resourceType)) {
+                result.add(col.key);
+            }
+        }
+        // Keep the previous Set when nothing changed so the memoised header is not invalidated by data bursts.
+        const prev = prevSelectFilterColumnsRef.current;
+        if (prev.size === result.size && [...result].every(k => prev.has(k))) return prev;
+        prevSelectFilterColumnsRef.current = result;
+        return result;
+    }, [visibleColumns, columnFilterTypes, deferredData, resourceType, viewMode, viewSnap?.filterable, viewSnap?.state?.filterable]);
+
+    // Unique values and counts exist only for the open select dropdown, recomputed while it
+    // is open as data changes. Nothing is scanned when no dropdown is open.
+    const [facet, setFacet] = useState<Facet | null>(null);
+    const [facetLoading, setFacetLoading] = useState(false);
+    useEffect(() => {
+        if (!source || !openColumnFilter || columnFilterTypes[openColumnFilter] !== 'select') {
+            setFacet(null);
+            setFacetLoading(false);
+            return;
+        }
+        let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const load = () => {
+            setFacetLoading(true);
+            source.facet(openColumnFilter).then(f => {
+                if (!cancelled) setFacet(f);
+            }).catch(() => {
+                if (!cancelled) setFacet(null);
+            }).finally(() => {
+                if (!cancelled) setFacetLoading(false);
+            });
+        };
+        // Counts follow the data while the dropdown is open, at a gentle rate.
+        timer = setTimeout(load, facet && facet.column === openColumnFilter ? FACET_REFRESH_MS : 0);
+        return () => { cancelled = true; if (timer) clearTimeout(timer); };
+        // facet is read only to pick the delay
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [source, openColumnFilter, columnFilterTypes, viewTotal, viewFiltered]);
+    const openUniqueValues = useMemo(() => {
+        if (viewMode) {
+            if (!facet || facet.column !== openColumnFilter || facet.suppressed) return undefined;
+            return { values: facet.values, counts: facet.counts };
+        }
+        if (!openColumnFilter || columnFilterTypes[openColumnFilter] !== 'select') return undefined;
+        const col = columns.find((c: any) => c.key === openColumnFilter);
+        return col ? computeColumnUniqueValues(col, deferredData, resourceType) : undefined;
+    }, [openColumnFilter, columnFilterTypes, columns, deferredData, resourceType, viewMode, facet]);
+
+    // Search, column filters and sort go to the backend view. Search arrives already debounced
+    // (searchTerm), sort and filter toggles are pushed at once. The client drops no-op patches,
+    // so re-pushing everything when the view (re)opens is cheap.
+    const schemaKeys = useMemo(() => new Set(columnKeysIn(activeSchema)), [activeSchema]);
+    const filtersWire = useMemo(() => toColumnFilterSpecs(columnFilters as any, schemaKeys), [columnFilters, schemaKeys]);
+    // A filter on a column the view does not have (restored from a saved view made in the legacy
+    // list) cannot be applied. Leaving it would show a filter chip over unfiltered rows, and a
+    // select-all would then cover rows the user believes are filtered out, so it is removed.
+    useEffect(() => {
+        if (!source || schemaKeys.size === 0) return;
+        const unknown = Object.keys(columnFilters).filter(k => !schemaKeys.has(k));
+        if (unknown.length === 0) return;
+        setColumnFilters((prev: any) => {
+            const next = { ...prev };
+            for (const k of unknown) delete next[k];
+            return next;
+        });
+    }, [source, schemaKeys, columnFilters]);
+    const filtersWireKey = JSON.stringify(filtersWire);
+    const sortWireKey = sortConfig.key && schemaKeys.has(sortConfig.key) ? `${sortConfig.key}|${sortConfig.direction}` : '';
+    const viewColumnKeys = useMemo(
+        () => {
+            const keys = visibleColumns.map((c: any) => c.key).filter((k: string) => schemaKeys.has(k));
+            for (const k of viewPinnedColumns ?? []) if (schemaKeys.has(k) && !keys.includes(k)) keys.push(k);
+            return keys;
+        },
+        [visibleColumns, schemaKeys, viewPinnedColumns]);
+    const viewColumnKeysKey = viewColumnKeys.join(',');
+    useEffect(() => {
+        if (!source) return;
+        const [key, dir] = sortWireKey ? sortWireKey.split('|') : ['', ''];
+        source.update({
+            sort: { key, dir: dir === 'desc' ? 'desc' : dir === 'asc' ? 'asc' : '' },
+            columnFilters: JSON.parse(filtersWireKey),
+        });
+    }, [source, sortWireKey, filtersWireKey]);
+    useEffect(() => {
+        if (!source) return;
+        source.update({ search: searchTerm });
+    }, [source, searchTerm]);
+    useEffect(() => {
+        if (!source || viewColumnKeys.length === 0) return;
+        source.update({ columns: viewColumnKeys });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [source, viewColumnKeysKey]);
+
+    // Consumers that asked for the filtered uids get them over the refs stream, lazily.
+    useEffect(() => {
+        if (!source || !onFilteredUidsChange) return;
+        // A 'transitions' feed from the backend can replace this refetch later; for now the set is
+        // re-read after the counts settle.
+        const timer = setTimeout(() => {
+            void source.selectAllRefs().then(refs => onFilteredUidsChange(new Set(refs.map(r => r.uid)))).catch(() => {});
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [source, onFilteredUidsChange, viewFiltered, viewTotal, viewEpoch]);
+
+    const handleFilterButtonClick = useCallback((e: React.MouseEvent<HTMLButtonElement>, colKey: string) => {
+        e.stopPropagation();
+        const opening = openColumnFilter !== colKey;
+        setOpenColumnFilter(opening ? colKey : null);
+        setColumnFilterSearch('');
+        if (opening) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const dropdownWidth = 224; // w-56 = 14rem = 224px
+            const left = Math.max(8, Math.min(rect.left, window.innerWidth - dropdownWidth - 8));
+            // Place below the button initially; useLayoutEffect will correct if it overflows
+            setColumnFilterPos({ top: rect.bottom + 4, left, anchorTop: rect.top, anchorBottom: rect.bottom });
+            if (columnFilterTypes[colKey] === 'regex') {
+                setRegexDraft('');
+            } else if (columnFilterTypes[colKey] === 'numeric') {
+                setNumericDraft({ operator: '>', value: '', unit: 'h' });
+            }
+        }
+    }, [openColumnFilter, columnFilterTypes]);
+
+    const headerProps = useMemo(() => ({
+        columns, visibleColumns, columnWidths, sortConfig, onSort: handleSort,
+        columnFilters, columnFilterTypes, selectFilterColumns, openColumnFilter, columnFilterRef,
+        onFilterButtonClick: handleFilterButtonClick,
+        selectionState: selectionState as 'none' | 'some' | 'all',
+        onHeaderCheckboxClick: handleHeaderCheckboxClick,
+        hiddenColumns, defaultHiddenColumns,
+        onToggleColumn: toggleColumn, onShowAllColumns: showAllColumns, onResetColumnDefaults: resetColumnDefaults,
+        onColumnOrderChange: setColumnOrder,
+        onResizeStart: handleResizeStart, onResizeDoubleClick: handleResizeDoubleClick,
+    }), [
+        columns, visibleColumns, columnWidths, sortConfig, handleSort,
+        columnFilters, columnFilterTypes, selectFilterColumns, openColumnFilter,
+        handleFilterButtonClick, selectionState, handleHeaderCheckboxClick,
+        hiddenColumns, defaultHiddenColumns, toggleColumn, showAllColumns, resetColumnDefaults,
+        handleResizeStart, handleResizeDoubleClick,
+    ]);
+
+    const fixedHeaderContent = useCallback(() => <ResourceListHeader {...headerProps} />, [headerProps]);
+
+    // Rows read the live click handler through a ref so a parent that recreates its callback
+    // each render does not invalidate the table context (and with it every visible row).
+    const onRowClickRef = useRef(onRowClick);
+    onRowClickRef.current = onRowClick;
+    const hasRowClick = !!onRowClick;
+    const rowClick = useMemo(
+        () => (hasRowClick ? (item: any) => onRowClickRef.current?.(item) : null),
+        [hasRowClick],
     );
-
-    // Sortable IDs = data column keys only (no selection, no column-selector)
-    const sortableColumnIds = useMemo(() =>
-        visibleColumns
-            .filter((c: any) => !c.isSelectionColumn && !c.isColumnSelector)
-            .map((c: any) => c.key),
-    [visibleColumns]);
-
-    // Handle column drag end — compute new order
-    const handleColumnDragEnd = useCallback((event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-
-        const oldIndex = sortableColumnIds.indexOf(active.id as string);
-        const newIndex = sortableColumnIds.indexOf(over.id as string);
-        if (oldIndex === -1 || newIndex === -1) return;
-
-        const newOrder = arrayMove(sortableColumnIds, oldIndex, newIndex);
-        setColumnOrder(newOrder);
-    }, [sortableColumnIds]);
-
+    const rowAt = useMemo(() => (source ? (index: number) => source.rowAt(index) : null), [source]);
+    // Virtuoso only re-renders rows when its context changes, so a window update (viewEpoch)
+    // has to travel through it for rows to leave the skeleton state.
     const tableContext = useMemo(() => ({
-        highlightedUid, selectable, selection, onRowClick,
-    }), [highlightedUid, selectable, selection, onRowClick]);
+        highlightedUid, selectable, selection, onRowClick: rowClick, rowAt, epoch: viewEpoch,
+    }), [highlightedUid, selectable, selection, rowClick, rowAt, viewEpoch]);
+
+    // Age cells format "now - creationTimestamp", so memoised rows need a heartbeat to keep
+    // them current. It only runs while this list is actually on screen.
+    const rootRef = useRef<HTMLDivElement>(null);
+    const [clock, setClock] = useState(0);
+    useEffect(() => {
+        const id = setInterval(() => {
+            const el = rootRef.current;
+            if (document.hidden || !el || el.getClientRects().length === 0) return;
+            setClock(c => c + 1);
+        }, ROW_CLOCK_MS);
+        return () => clearInterval(id);
+    }, []);
+
+    const itemContent = useCallback((index: number, item: any) => (
+        <RowCells
+            item={item}
+            index={index}
+            columns={visibleColumns}
+            columnWidths={columnWidths}
+            selected={selectable && selection ? !!selection.isSelected(item?.metadata?.uid) : false}
+            onToggleSelect={handleRowCheckboxClick}
+            onNamespaceChange={onNamespaceChange}
+            clock={clock}
+        />
+    ), [visibleColumns, columnWidths, selectable, selection, handleRowCheckboxClick, onNamespaceChange, clock]);
+
+    // Windowed rows: an index whose row has not arrived yet renders as a skeleton.
+    const viewItemContent = useCallback((index: number) => {
+        const item = source?.rowAt(index);
+        if (!item) return <SkeletonCells columns={visibleColumns} columnWidths={columnWidths} />;
+        return (
+            <RowCells
+                item={item}
+                index={index}
+                columns={visibleColumns}
+                columnWidths={columnWidths}
+                selected={selectable && selection ? !!selection.isSelected(item.metadata.uid) : false}
+                onToggleSelect={handleRowCheckboxClick}
+                onNamespaceChange={onNamespaceChange}
+                clock={clock}
+            />
+        );
+        // viewEpoch is a deliberate dependency: it re-renders the visible rows when the window changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [source, viewEpoch, visibleColumns, columnWidths, selectable, selection, handleRowCheckboxClick, onNamespaceChange, clock]);
+    const viewRowKey = useCallback((index: number) => source?.rowAt(index)?.metadata.uid ?? `pending-${index}`, [source, viewEpoch]); // eslint-disable-line react-hooks/exhaustive-deps
+    const handleRangeChanged = useCallback((range: { startIndex: number; endIndex: number }) => {
+        sourceRef.current?.setRange(range.startIndex, range.endIndex + 1);
+    }, []);
 
     return (
-        <div className="flex flex-col h-full bg-background relative">
+        <div ref={rootRef} className="flex flex-col h-full bg-background relative">
             {/* Header - split into draggable and non-draggable regions as siblings */}
             <div className="h-14 border-b border-border flex items-center bg-surface shrink-0">
                 {/* Left side - draggable titlebar region */}
@@ -1138,7 +1346,7 @@ export default function ResourceList({
                                             <div className="border-t border-border pt-2 mt-2">
                                                 <span className="text-gray-300">Available fields:</span>
                                                 <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-1">
-                                                    {getFieldsMetadata(resourceType).map((f: any) => (
+                                                    {getFieldsMetadata(resourceType, viewMode).map((f: any) => (
                                                         <span key={f.name} className="bg-background px-1.5 py-0.5 rounded">
                                                             {f.name}
                                                         </span>
@@ -1235,21 +1443,21 @@ export default function ResourceList({
             <LargeDatasetBanner
                 isLoading={isLoading}
                 progress={loadState ? null : loadingProgress}
-                dataCount={data.length}
+                dataCount={viewMode ? 0 : data.length}
                 threshold={largeDatasetThreshold}
             />
 
             {/* Table Content — loading feedback floats above rows and the bulk action bar. */}
             <div className="relative min-h-0 flex-1 overflow-hidden">
-                {customBody ? customBody : (isLoading || loadState?.phase === 'incomplete') && data.length === 0 ? (
+                {customBody ? customBody : (isLoading || viewPending || loadState?.phase === 'incomplete') && knownCount === 0 ? (
                     <div className="flex items-center justify-center h-full text-gray-500">
                         {loadState?.phase === 'incomplete' ? 'Resource list unavailable' : 'Loading…'}
                     </div>
-                ) : sortedData.length === 0 && loadState && loadState.phase !== 'complete' ? (
+                ) : shownCount === 0 && loadState && loadState.phase !== 'complete' ? (
                     <div className="flex items-center justify-center h-full text-gray-500">
                         No matching resources loaded yet. The resource list is not complete.
                     </div>
-                ) : sortedData.length === 0 ? (
+                ) : shownCount === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
                         {(() => {
                             const namespaceArray = namespaceSelection(currentNamespace);
@@ -1285,206 +1493,33 @@ export default function ResourceList({
                             );
                         })()}
                     </div>
+                ) : viewMode ? (
+                    <TableVirtuoso
+                        style={VIEW_SCROLLER_STYLE}
+                        totalCount={viewFiltered}
+                        overscan={VIRTUOSO_OVERSCAN_PX}
+                        computeItemKey={viewRowKey}
+                        components={virtuosoComponents}
+                        context={tableContext}
+                        fixedHeaderContent={fixedHeaderContent}
+                        itemContent={viewItemContent}
+                        rangeChanged={handleRangeChanged}
+                    />
                 ) : (
                     <TableVirtuoso
                         style={{ height: '100%' }}
                         data={sortedData}
-                        overscan={50}
+                        // A few rows beyond the viewport: enough that fast scrolling in WKWebView does not
+                        // flash blank rows, small enough that memoised rows keep the extra DOM cheap.
+                        overscan={VIRTUOSO_OVERSCAN_PX}
+                        computeItemKey={computeRowKey}
                         components={virtuosoComponents}
                         context={tableContext}
-                        fixedHeaderContent={() => (
-                            <DndContext sensors={dndSensors} onDragEnd={handleColumnDragEnd}>
-                                <SortableContext items={sortableColumnIds} strategy={horizontalListSortingStrategy}>
-                                    <tr>
-                                        {visibleColumns.map((col: any) => {
-                                            const isResizable = !col.isColumnSelector && !col.isSelectionColumn;
-                                            const isDraggable = isResizable;
-                                            // All columns get a width for table-layout: fixed
-                                            const width = col.isSelectionColumn
-                                                ? col.width
-                                                : (columnWidths[col.key] || MIN_COLUMN_WIDTHS[col.key] || 100);
-
-                                            // Selection column header (not sortable/draggable)
-                                            if (col.isSelectionColumn) {
-                                                return (
-                                                    <th
-                                                        key={col.key}
-                                                        className="p-3 text-xs font-medium text-gray-400 border-b border-border select-none whitespace-nowrap"
-                                                        style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
-                                                    >
-                                                        <div className="flex items-center justify-center">
-                                                            <TriStateCheckbox
-                                                                state={selectionState}
-                                                                label="Select all displayed resources"
-                                                                onChange={handleHeaderCheckboxClick}
-                                                            />
-                                                        </div>
-                                                    </th>
-                                                );
-                                            }
-
-                                            // Column-selector header (not sortable/draggable)
-                                            if (col.isColumnSelector) {
-                                                return (
-                                                    <th
-                                                        key={col.key}
-                                                        className="p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap group sticky right-0 bg-surface z-20"
-                                                        style={{ width: `${width}px`, minWidth: `${width}px` }}
-                                                    >
-                                                        <div className="flex justify-center">
-                                                            <ColumnConfigurator
-                                                                columns={columns}
-                                                                hiddenColumns={hiddenColumns}
-                                                                onToggleColumn={toggleColumn}
-                                                                onShowAll={showAllColumns}
-                                                                onResetDefaults={resetColumnDefaults}
-                                                                defaultHiddenColumns={defaultHiddenColumns}
-                                                            />
-                                                        </div>
-                                                    </th>
-                                                );
-                                            }
-
-                                            // Data column — sortable + draggable
-                                            return (
-                                                <SortableHeader
-                                                    key={col.key}
-                                                    id={col.key}
-                                                    disabled={!isDraggable}
-                                                    className="p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap group cursor-pointer hover:text-text"
-                                                    style={{ width: `${width}px`, minWidth: `${width}px` }}
-                                                >
-                                                    <div
-                                                        className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}
-                                                        onClick={() => handleSort(col.key)}
-                                                    >
-                                                        {col.label}
-                                                        {sortConfig.key === col.key && (
-                                                            <span className="text-primary">
-                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                            </span>
-                                                        )}
-                                                        {/* Column filter button */}
-                                                        {(columnFilterTypes[col.key] === 'regex' || columnFilterTypes[col.key] === 'numeric' || (columnFilterTypes[col.key] === 'select' && columnUniqueValues[col.key])) && (
-                                                            <div className="relative" ref={openColumnFilter === col.key ? columnFilterRef : undefined}>
-                                                                <button
-                                                                    onPointerDown={(e) => e.stopPropagation()}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        const opening = openColumnFilter !== col.key;
-                                                                        setOpenColumnFilter(opening ? col.key : null);
-                                                                        setColumnFilterSearch('');
-                                                                        if (opening) {
-                                                                            const rect = e.currentTarget.getBoundingClientRect();
-                                                                            const dropdownWidth = 224; // w-56 = 14rem = 224px
-                                                                            const left = Math.max(8, Math.min(rect.left, window.innerWidth - dropdownWidth - 8));
-                                                                            // Place below the button initially; useLayoutEffect will correct if it overflows
-                                                                            setColumnFilterPos({ top: rect.bottom + 4, left, anchorTop: rect.top, anchorBottom: rect.bottom });
-                                                                            if (columnFilterTypes[col.key] === 'regex') {
-                                                                                setRegexDraft('');
-                                                                            } else if (columnFilterTypes[col.key] === 'numeric') {
-                                                                                setNumericDraft({ operator: '>', value: '', unit: 'h' });
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                    className={`p-0.5 rounded transition-colors ${
-                                                                        columnFilters[col.key]
-                                                                            ? 'text-primary'
-                                                                            : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-gray-400'
-                                                                    }`}
-                                                                    title={columnFilters[col.key]
-                                                                        ? columnFilters[col.key].type === 'regex'
-                                                                            ? `Filtering: ${(columnFilters[col.key].conditions || []).map((p: any) => `/${p}/`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
-                                                                            : columnFilters[col.key].type === 'numeric'
-                                                                                ? `Filtering: ${(columnFilters[col.key].conditions || []).map((c: any) => `${c.operator} ${c.value}`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
-                                                                                : `Filtering: ${columnFilters[col.key].values?.size} value(s)`
-                                                                        : `Filter by ${col.label}`
-                                                                    }
-                                                                >
-                                                                    <FunnelIcon className="w-3 h-3" />
-                                                                </button>
-                                                                {/* Column filter dropdown rendered via portal below */}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {/* Resize handle */}
-                                                    {isResizable && (
-                                                        <div
-                                                            className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary group"
-                                                            onPointerDown={(e) => e.stopPropagation()}
-                                                            onMouseDown={(e) => handleResizeStart(e, col.key)}
-                                                            onDoubleClick={(e) => handleResizeDoubleClick(e, col.key)}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-600 group-hover:bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                        </div>
-                                                    )}
-                                                </SortableHeader>
-                                            );
-                                        })}
-                                    </tr>
-                                </SortableContext>
-                            </DndContext>
-                        )}
-                        itemContent={(index, item) => (
-                            <>
-                                {visibleColumns.map((col: any) => {
-                                    // Selection column cell
-                                    if (col.isSelectionColumn) {
-                                        const isSelected = selection?.isSelected(item?.metadata?.uid);
-                                        return (
-                                            <td
-                                                key={col.key}
-                                                className="p-3 text-sm whitespace-nowrap cursor-pointer"
-                                                style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
-                                                onClick={(e: any) => {
-                                                    e.stopPropagation();
-                                                    handleRowCheckboxClick(e, item, index);
-                                                }}
-                                            >
-                                                <div className="flex items-center justify-center pointer-events-none">
-                                                    <RowCheckbox
-                                                        checked={!!isSelected}
-                                                        onChange={() => {}}
-                                                    />
-                                                </div>
-                                            </td>
-                                        );
-                                    }
-
-                                    const content = col.render ? col.render(item) : item[col.key];
-                                    const isNamespaceColumn = col.key === 'namespace' && onNamespaceChange;
-                                    const namespaceValue = item.metadata?.namespace;
-                                    // All columns get a width for table-layout: fixed
-                                    const width = columnWidths[col.key] || MIN_COLUMN_WIDTHS[col.key] || 100;
-
-                                    return (
-                                        <td
-                                            key={col.key}
-                                            className={`p-3 text-sm text-text whitespace-nowrap ${col.isColumnSelector ? 'sticky right-0 bg-background overflow-visible' : 'overflow-hidden text-ellipsis'} ${col.align === 'center' ? 'text-center' : ''}`}
-                                            style={{ width: `${width}px`, minWidth: `${width}px` }}
-                                            title={typeof content === 'string' ? content : undefined}
-                                        >
-                                            {isNamespaceColumn && namespaceValue ? (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onNamespaceChange([namespaceValue]);
-                                                    }}
-                                                    className="text-primary hover:text-primary/80 hover:underline transition-colors"
-                                                    title={`Filter to namespace: ${namespaceValue}`}
-                                                >
-                                                    {content}
-                                                </button>
-                                            ) : content}
-                                        </td>
-                                    );
-                                })}
-                            </>
-                        )}
+                        fixedHeaderContent={fixedHeaderContent}
+                        itemContent={itemContent}
                     />
                 )}
-                <ResourceLoadingStatus state={loadState} displayed={sortedData.length} />
+                <ResourceLoadingStatus state={loadState} displayed={shownCount} />
             </div>
 
             {/* Bulk Action Bar - Bottom */}
@@ -1496,7 +1531,7 @@ export default function ResourceList({
                     onRestart={onBulkRestart ? handleBulkRestart : undefined}
                     onExportYaml={onBulkExportYaml ? handleBulkExportYaml : undefined}
                     customActions={bulkCustomActions}
-                    resourceType={resourceType || title.toLowerCase()}
+                    resourceType={selectionLabel || bulkResourceLabel(resourceType, title)}
                     position="bottom"
                 />
             )}
@@ -1656,11 +1691,17 @@ export default function ResourceList({
                                     />
                                 </div>
                                 <div className="max-h-48 overflow-auto py-1">
-                                    {columnUniqueValues[col.key]?.values
+                                    {viewMode && facetLoading && !openUniqueValues && (
+                                        <div className="px-3 py-2 text-xs text-gray-500 flex items-center gap-2">
+                                            <span className="inline-block h-3 w-3 rounded-full border-2 border-gray-500 border-t-transparent animate-spin" />
+                                            Loading values...
+                                        </div>
+                                    )}
+                                    {openUniqueValues?.values
                                         ?.filter((v: string) => !columnFilterSearch || v.toLowerCase().includes(columnFilterSearch.toLowerCase()))
                                         .map((value: string) => {
                                             const isChecked = columnFilters[col.key]?.values?.has(value);
-                                            const count = columnUniqueValues[col.key]?.counts?.[value] ?? 0;
+                                            const count = openUniqueValues?.counts?.[value] ?? 0;
                                             const isZero = count === 0;
                                             return (
                                                 <label

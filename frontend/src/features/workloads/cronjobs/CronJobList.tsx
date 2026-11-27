@@ -2,6 +2,8 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { CronExpressionParser } from 'cron-parser';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import CronJobActionsMenu from './CronJobActionsMenu';
 import { useCronJobs } from '~/hooks/resources';
@@ -12,11 +14,9 @@ import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteCronJob, GetCronJobYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function CronJobList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     const {
@@ -32,7 +32,7 @@ export default function CronJobList({ isVisible }: { isVisible: boolean }) {
 
     });
     const { cronJobs, loading, loadState } = useCronJobs(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleShowDetails, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend } = useCronJobActions();
+    const { handleShowDetails, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend } = useStableCallbacks(useCronJobActions());
 
     // Format duration for future time (reverse of formatAge)
     const formatDuration = (milliseconds: number) => {
@@ -186,11 +186,10 @@ export default function CronJobList({ isVisible }: { isVisible: boolean }) {
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <CronJobActionsMenu
+                <MenuBound
+                    as={CronJobActionsMenu}
+                    menuId={`cronjob-${item.metadata.uid}`}
                     cronJob={item}
-                    isOpen={activeMenuId === `cronjob-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `cronjob-${item.metadata.uid}`, buttonElement)}
                     onViewLogs={() => handleViewLogs(item)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
@@ -202,7 +201,7 @@ export default function CronJobList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, openBulkDelete]);
+    ], [handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, openBulkDelete]);
 
     return (
         <>
@@ -216,7 +215,6 @@ export default function CronJobList({ isVisible }: { isVisible: boolean }) {
                 onNamespaceChange={setSelectedNamespaces}
                 showNamespaceSelector={true}
                 multiSelectNamespaces={true}
-                highlightedUid={activeMenuId}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType="cronjobs"
                 onRowClick={handleShowDetails}

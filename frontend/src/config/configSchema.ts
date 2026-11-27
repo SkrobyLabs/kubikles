@@ -179,6 +179,41 @@ export const configSchema: Record<string, any> = {
             subtext: 'Opens multiple TCP connections for parallel requests, avoiding HTTP/2 flow control bottlenecks. Requires context switch.',
             default: false
         },
+        bulkTransport: {
+            type: 'enum',
+            label: 'Bulk Transport',
+            description: 'Fetch large read results over a same-origin HTTP route instead of the bridge',
+            options: [
+                { value: 'auto', label: 'Auto (where supported)' },
+                { value: 'off', label: 'Off (always use the bridge)' }
+            ],
+            default: 'auto'
+        },
+        viewStore: {
+            type: 'boolean',
+            label: 'Windowed Lists (experimental)',
+            description: 'Render supported lists (including custom resources) from backend row views',
+            subtext: 'The backend sorts, filters and windows the list, so memory stays flat on very large clusters. Ignored when the backend disables views (KUBIKLES_VIEWS=0).',
+            default: false
+        },
+        viewWorker: {
+            type: 'enum',
+            label: 'List Worker',
+            description: 'Run windowed-list fetching and decoding in a Web Worker',
+            subtext: 'Auto uses a worker only where the in-app probe shows it works on this machine, and steps down automatically if it stops responding. Applies to lists opened after the change.',
+            options: [
+                { value: 'auto', label: 'Auto (where supported)' },
+                { value: 'off', label: 'Off (main thread)' }
+            ],
+            default: 'auto'
+        },
+        legacyEventDedupe: {
+            type: 'boolean',
+            label: 'Skip No-op Watch Updates',
+            description: 'Drop watch updates that change nothing but the resource version (lists not yet on windowed views)',
+            subtext: 'Saves list re-renders on busy clusters. Objects whose content changes on every update (node heartbeats, leases) are unaffected.',
+            default: false
+        },
         clientPoolSize: {
             type: 'number',
             label: 'Additional Connections',

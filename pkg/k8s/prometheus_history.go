@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"kubikles/pkg/debug"
@@ -35,22 +36,89 @@ func (c *Client) GetPodMetricsHistoryWithContext(ctx context.Context, contextNam
 		namespace, pod, containerFilter,
 	)
 
-	cpuResult, err := c.QueryPrometheusRangeWithContext(ctx, contextName, info, cpuQuery, start, end, step)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query CPU metrics: %w", err)
-	}
-
 	// Query Memory usage (working set bytes)
 	memQuery := fmt.Sprintf(
 		`sum by (container) (container_memory_working_set_bytes{namespace="%s", pod="%s"%s, container!="", container!="POD"})`,
 		namespace, pod, containerFilter,
 	)
 
-	memResult, err := c.QueryPrometheusRangeWithContext(ctx, contextName, info, memQuery, start, end, step)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query memory metrics: %w", err)
-	}
+	// Network series are best-effort and independent of CPU/memory; they run
+	// alongside the two required queries. If a required query fails the call
+	// returns an error, so cancel the network work instead of waiting for it.
+	netCtx, cancelNet := context.WithCancel(ctx)
+	defer cancelNet()
+	batch := c.newRangeQueryBatch(netCtx, contextName, info, start, end, step)
+	var cpuResult, memResult *PrometheusQueryResult
+	var cpuErr, memErr error
+	var required sync.WaitGroup
+	required.Add(2)
+	go func() {
+		defer required.Done()
+		cpuResult, cpuErr = c.QueryPrometheusRangeWithContext(ctx, contextName, info, cpuQuery, start, end, step)
+		if cpuErr != nil {
+			cancelNet()
+		}
+	}()
+	go func() {
+		defer required.Done()
+		memResult, memErr = c.QueryPrometheusRangeWithContext(ctx, contextName, info, memQuery, start, end, step)
+		if memErr != nil {
+			cancelNet()
+		}
+	}()
 
+	// --- Network Metrics (pod-level) ---
+	// Receive bytes/s
+	rxBytesQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_bytes_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	batch.points(&result.Network.ReceiveBytes, rxBytesQuery)
+
+	// Transmit bytes/s
+	txBytesQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_bytes_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	batch.points(&result.Network.TransmitBytes, txBytesQuery)
+
+	// Receive packets/s
+	rxPacketsQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_packets_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	batch.points(&result.Network.ReceivePackets, rxPacketsQuery)
+
+	// Transmit packets/s
+	txPacketsQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_packets_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	batch.points(&result.Network.TransmitPackets, txPacketsQuery)
+
+	// Dropped packets (receive)
+	rxDroppedQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_packets_dropped_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	batch.points(&result.Network.ReceiveDropped, rxDroppedQuery)
+
+	// Dropped packets (transmit)
+	txDroppedQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_packets_dropped_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	batch.points(&result.Network.TransmitDropped, txDroppedQuery)
+
+	required.Wait()
+	if cpuErr != nil {
+		batch.wait()
+		return nil, fmt.Errorf("failed to query CPU metrics: %w", cpuErr)
+	}
+	if memErr != nil {
+		batch.wait()
+		return nil, fmt.Errorf("failed to query memory metrics: %w", memErr)
+	}
 	// Collect containers from results
 	containers := make(map[string]*ContainerMetricsHistory)
 
@@ -119,48 +187,7 @@ func (c *Client) GetPodMetricsHistoryWithContext(ctx context.Context, contextNam
 		result.Containers = append(result.Containers, *ch)
 	}
 
-	// --- Network Metrics (pod-level) ---
-	// Receive bytes/s
-	rxBytesQuery := fmt.Sprintf(
-		`sum(rate(container_network_receive_bytes_total{namespace="%s", pod="%s"}[5m]))`,
-		namespace, pod,
-	)
-	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
-
-	// Transmit bytes/s
-	txBytesQuery := fmt.Sprintf(
-		`sum(rate(container_network_transmit_bytes_total{namespace="%s", pod="%s"}[5m]))`,
-		namespace, pod,
-	)
-	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
-
-	// Receive packets/s
-	rxPacketsQuery := fmt.Sprintf(
-		`sum(rate(container_network_receive_packets_total{namespace="%s", pod="%s"}[5m]))`,
-		namespace, pod,
-	)
-	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
-
-	// Transmit packets/s
-	txPacketsQuery := fmt.Sprintf(
-		`sum(rate(container_network_transmit_packets_total{namespace="%s", pod="%s"}[5m]))`,
-		namespace, pod,
-	)
-	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
-
-	// Dropped packets (receive)
-	rxDroppedQuery := fmt.Sprintf(
-		`sum(rate(container_network_receive_packets_dropped_total{namespace="%s", pod="%s"}[5m]))`,
-		namespace, pod,
-	)
-	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
-
-	// Dropped packets (transmit)
-	txDroppedQuery := fmt.Sprintf(
-		`sum(rate(container_network_transmit_packets_dropped_total{namespace="%s", pod="%s"}[5m]))`,
-		namespace, pod,
-	)
-	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
+	batch.wait()
 
 	return result, nil
 }
@@ -239,6 +266,7 @@ type NetworkMetrics struct {
 // GetControllerMetricsHistoryWithContext retrieves historical metrics with cancellation support
 func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace, name, controllerType string, start, end time.Time, maxDataPoints int) (*ControllerMetricsHistory, error) {
 	step := calculateMetricsStep(start, end, maxDataPoints)
+	batch := c.newRangeQueryBatch(ctx, contextName, info, start, end, step)
 
 	result := &ControllerMetricsHistory{
 		Namespace:      namespace,
@@ -273,35 +301,35 @@ func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, con
 		`sum(rate(container_cpu_usage_seconds_total{namespace="%s", pod=~"%s", container!="", container!="POD"}[5m])) * 1000`,
 		namespace, podRegex,
 	)
-	result.CPU.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUsageQuery, start, end, step)
+	batch.points(&result.CPU.Usage, cpuUsageQuery)
 
 	// CPU Request (from kube-state-metrics, convert cores to millicores)
 	cpuRequestQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_requests{namespace="%s", pod=~"%s", resource="cpu"}) * 1000`,
 		namespace, podRegex,
 	)
-	result.CPU.Request = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuRequestQuery, start, end, step)
+	batch.points(&result.CPU.Request, cpuRequestQuery)
 
 	// CPU Limit
 	cpuLimitQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_limits{namespace="%s", pod=~"%s", resource="cpu"}) * 1000`,
 		namespace, podRegex,
 	)
-	result.CPU.Limit = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuLimitQuery, start, end, step)
+	batch.points(&result.CPU.Limit, cpuLimitQuery)
 
 	// Node Allocatable CPU (for nodes where controller pods run)
 	cpuAllocatableQuery := fmt.Sprintf(
 		`sum(kube_node_status_allocatable{resource="cpu"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)) * 1000`,
 		namespace, podRegex,
 	)
-	result.CPU.NodeAllocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuAllocatableQuery, start, end, step)
+	batch.points(&result.CPU.NodeAllocatable, cpuAllocatableQuery)
 
 	// Node Uncommitted CPU (allocatable - committed requests on those nodes)
 	cpuUncommittedQuery := fmt.Sprintf(
 		`(sum(kube_node_status_allocatable{resource="cpu"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)) - sum(kube_pod_container_resource_requests{resource="cpu"} * on(pod, namespace) group_left(node) (kube_pod_info{node=~".+"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)))) * 1000`,
 		namespace, podRegex, namespace, podRegex,
 	)
-	result.CPU.NodeUncommitted = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUncommittedQuery, start, end, step)
+	batch.points(&result.CPU.NodeUncommitted, cpuUncommittedQuery)
 
 	// --- Memory Metrics ---
 	// Memory Usage (bytes)
@@ -309,35 +337,35 @@ func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, con
 		`sum(container_memory_working_set_bytes{namespace="%s", pod=~"%s", container!="", container!="POD"})`,
 		namespace, podRegex,
 	)
-	result.Memory.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
+	batch.points(&result.Memory.Usage, memUsageQuery)
 
 	// Memory Request
 	memRequestQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_requests{namespace="%s", pod=~"%s", resource="memory"})`,
 		namespace, podRegex,
 	)
-	result.Memory.Request = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memRequestQuery, start, end, step)
+	batch.points(&result.Memory.Request, memRequestQuery)
 
 	// Memory Limit
 	memLimitQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_limits{namespace="%s", pod=~"%s", resource="memory"})`,
 		namespace, podRegex,
 	)
-	result.Memory.Limit = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memLimitQuery, start, end, step)
+	batch.points(&result.Memory.Limit, memLimitQuery)
 
 	// Node Allocatable Memory
 	memAllocatableQuery := fmt.Sprintf(
 		`sum(kube_node_status_allocatable{resource="memory"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0))`,
 		namespace, podRegex,
 	)
-	result.Memory.NodeAllocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAllocatableQuery, start, end, step)
+	batch.points(&result.Memory.NodeAllocatable, memAllocatableQuery)
 
 	// Node Uncommitted Memory
 	memUncommittedQuery := fmt.Sprintf(
 		`sum(kube_node_status_allocatable{resource="memory"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)) - sum(kube_pod_container_resource_requests{resource="memory"} * on(pod, namespace) group_left(node) (kube_pod_info{node=~".+"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)))`,
 		namespace, podRegex, namespace, podRegex,
 	)
-	result.Memory.NodeUncommitted = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUncommittedQuery, start, end, step)
+	batch.points(&result.Memory.NodeUncommitted, memUncommittedQuery)
 
 	// --- Pod Count Metrics ---
 	// Running pods
@@ -345,14 +373,14 @@ func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, con
 		`count(kube_pod_status_phase{namespace="%s", pod=~"%s", phase="Running"})`,
 		namespace, podRegex,
 	)
-	result.Pods.Running = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podsRunningQuery, start, end, step)
+	batch.points(&result.Pods.Running, podsRunningQuery)
 
 	// Ready pods
 	podsReadyQuery := fmt.Sprintf(
 		`sum(kube_pod_status_ready{namespace="%s", pod=~"%s", condition="true"})`,
 		namespace, podRegex,
 	)
-	result.Pods.Ready = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podsReadyQuery, start, end, step)
+	batch.points(&result.Pods.Ready, podsReadyQuery)
 
 	// Desired replicas (depends on controller type)
 	var desiredQuery string
@@ -367,7 +395,7 @@ func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, con
 		desiredQuery = fmt.Sprintf(`kube_daemonset_status_desired_number_scheduled{namespace="%s", daemonset="%s"}`, namespace, name)
 	}
 	if desiredQuery != "" {
-		result.Pods.Desired = c.queryRangeToDataPointsWithContext(ctx, contextName, info, desiredQuery, start, end, step)
+		batch.points(&result.Pods.Desired, desiredQuery)
 	}
 
 	// --- Network Metrics ---
@@ -376,56 +404,58 @@ func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, con
 		`sum(rate(container_network_receive_bytes_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
+	batch.points(&result.Network.ReceiveBytes, rxBytesQuery)
 
 	// Transmit bytes/s
 	txBytesQuery := fmt.Sprintf(
 		`sum(rate(container_network_transmit_bytes_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
+	batch.points(&result.Network.TransmitBytes, txBytesQuery)
 
 	// Receive packets/s
 	rxPacketsQuery := fmt.Sprintf(
 		`sum(rate(container_network_receive_packets_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
+	batch.points(&result.Network.ReceivePackets, rxPacketsQuery)
 
 	// Transmit packets/s
 	txPacketsQuery := fmt.Sprintf(
 		`sum(rate(container_network_transmit_packets_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
+	batch.points(&result.Network.TransmitPackets, txPacketsQuery)
 
 	// Dropped packets (receive)
 	rxDroppedQuery := fmt.Sprintf(
 		`sum(rate(container_network_receive_packets_dropped_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
+	batch.points(&result.Network.ReceiveDropped, rxDroppedQuery)
 
 	// Dropped packets (transmit)
 	txDroppedQuery := fmt.Sprintf(
 		`sum(rate(container_network_transmit_packets_dropped_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
+	batch.points(&result.Network.TransmitDropped, txDroppedQuery)
 
 	// --- Restarts ---
 	restartsQuery := fmt.Sprintf(
 		`sum(kube_pod_container_status_restarts_total{namespace="%s", pod=~"%s"})`,
 		namespace, podRegex,
 	)
-	result.Restarts = c.queryRangeToDataPointsWithContext(ctx, contextName, info, restartsQuery, start, end, step)
+	batch.points(&result.Restarts, restartsQuery)
 
+	batch.wait()
 	return result, nil
 }
 
 // GetNamespaceMetricsHistoryWithContext retrieves historical metrics for a namespace with cancellation support
 func (c *Client) GetNamespaceMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace string, start, end time.Time, maxDataPoints int) (*NamespaceMetricsHistory, error) {
 	step := calculateMetricsStep(start, end, maxDataPoints)
+	batch := c.newRangeQueryBatch(ctx, contextName, info, start, end, step)
 
 	result := &NamespaceMetricsHistory{
 		Namespace: namespace,
@@ -438,7 +468,7 @@ func (c *Client) GetNamespaceMetricsHistoryWithContext(ctx context.Context, cont
 		`sum(rate(container_cpu_usage_seconds_total{namespace="%s", container!="", container!="POD"}[5m])) * 1000`,
 		namespace,
 	)
-	result.CPU = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUsageQuery, start, end, step)
+	batch.points(&result.CPU, cpuUsageQuery)
 
 	// --- Memory Metrics ---
 	// Memory Usage (bytes) - sum of all containers in the namespace
@@ -446,14 +476,14 @@ func (c *Client) GetNamespaceMetricsHistoryWithContext(ctx context.Context, cont
 		`sum(container_memory_working_set_bytes{namespace="%s", container!="", container!="POD"})`,
 		namespace,
 	)
-	result.Memory = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
+	batch.points(&result.Memory, memUsageQuery)
 
 	// --- Pod Count ---
 	podCountQuery := fmt.Sprintf(
 		`count(kube_pod_info{namespace="%s"})`,
 		namespace,
 	)
-	result.PodCount = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podCountQuery, start, end, step)
+	batch.points(&result.PodCount, podCountQuery)
 
 	// --- Network Metrics ---
 	// Receive bytes/s
@@ -461,43 +491,44 @@ func (c *Client) GetNamespaceMetricsHistoryWithContext(ctx context.Context, cont
 		`sum(rate(container_network_receive_bytes_total{namespace="%s"}[5m]))`,
 		namespace,
 	)
-	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
+	batch.points(&result.Network.ReceiveBytes, rxBytesQuery)
 
 	// Transmit bytes/s
 	txBytesQuery := fmt.Sprintf(
 		`sum(rate(container_network_transmit_bytes_total{namespace="%s"}[5m]))`,
 		namespace,
 	)
-	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
+	batch.points(&result.Network.TransmitBytes, txBytesQuery)
 
 	// Receive packets/s
 	rxPacketsQuery := fmt.Sprintf(
 		`sum(rate(container_network_receive_packets_total{namespace="%s"}[5m]))`,
 		namespace,
 	)
-	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
+	batch.points(&result.Network.ReceivePackets, rxPacketsQuery)
 
 	// Transmit packets/s
 	txPacketsQuery := fmt.Sprintf(
 		`sum(rate(container_network_transmit_packets_total{namespace="%s"}[5m]))`,
 		namespace,
 	)
-	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
+	batch.points(&result.Network.TransmitPackets, txPacketsQuery)
 
 	// Dropped packets (receive)
 	rxDroppedQuery := fmt.Sprintf(
 		`sum(rate(container_network_receive_packets_dropped_total{namespace="%s"}[5m]))`,
 		namespace,
 	)
-	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
+	batch.points(&result.Network.ReceiveDropped, rxDroppedQuery)
 
 	// Dropped packets (transmit)
 	txDroppedQuery := fmt.Sprintf(
 		`sum(rate(container_network_transmit_packets_dropped_total{namespace="%s"}[5m]))`,
 		namespace,
 	)
-	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
+	batch.points(&result.Network.TransmitDropped, txDroppedQuery)
 
+	batch.wait()
 	return result, nil
 }
 
@@ -684,6 +715,7 @@ type NodePodMetrics struct {
 // GetNodeMetricsHistoryWithContext retrieves historical metrics with cancellation support
 func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, nodeName string, start, end time.Time, maxDataPoints int) (*NodeMetricsHistory, error) {
 	step := calculateMetricsStep(start, end, maxDataPoints)
+	batch := c.newRangeQueryBatch(ctx, contextName, info, start, end, step)
 
 	result := &NodeMetricsHistory{
 		NodeName:     nodeName,
@@ -707,21 +739,21 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		`sum((1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(container_cpu_usage_seconds_total{node="%s", container!="", container!="POD"}[5m]))`,
 		unameNodeMatcher, nodeName,
 	)
-	result.CPU.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUsageQuery, start, end, step)
+	batch.points(&result.CPU.Usage, cpuUsageQuery)
 
 	// CPU Allocatable (node capacity for pods, in cores)
 	cpuAllocatableQuery := fmt.Sprintf(
 		`kube_node_status_allocatable{node="%s", resource="cpu"}`,
 		nodeName,
 	)
-	result.CPU.Allocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuAllocatableQuery, start, end, step)
+	batch.points(&result.CPU.Allocatable, cpuAllocatableQuery)
 
 	// CPU Reserved = sum of requests for pods on this node
 	cpuReservedQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_requests{resource="cpu"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0))`,
 		nodeName,
 	)
-	result.CPU.Reserved = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuReservedQuery, start, end, step)
+	batch.points(&result.CPU.Reserved, cpuReservedQuery)
 
 	// CPU Committed = sum of max(usage, request) per container
 	// First get requests for pods on this node, then join with usage and compute max
@@ -729,7 +761,7 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		`sum(max by(namespace, pod, container) (label_replace(rate(container_cpu_usage_seconds_total{node="%s", container!="", container!="POD"}[5m]), "src", "usage", "", "") or label_replace(kube_pod_container_resource_requests{resource="cpu"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0), "src", "request", "", "")))`,
 		nodeName, nodeName,
 	)
-	result.CPU.Committed = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuCommittedQuery, start, end, step)
+	batch.points(&result.CPU.Committed, cpuCommittedQuery)
 
 	// --- Memory Metrics ---
 	// Memory Usage (node-level when node-exporter is available, fallback to all pods on this node)
@@ -737,21 +769,21 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		`sum((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`,
 		unameNodeMatcher, nodeName,
 	)
-	result.Memory.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
+	batch.points(&result.Memory.Usage, memUsageQuery)
 
 	// Memory Allocatable
 	memAllocatableQuery := fmt.Sprintf(
 		`kube_node_status_allocatable{node="%s", resource="memory"}`,
 		nodeName,
 	)
-	result.Memory.Allocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAllocatableQuery, start, end, step)
+	batch.points(&result.Memory.Allocatable, memAllocatableQuery)
 
 	// Memory Reserved = sum of requests for pods on this node
 	memReservedQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_requests{resource="memory"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0))`,
 		nodeName,
 	)
-	result.Memory.Reserved = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memReservedQuery, start, end, step)
+	batch.points(&result.Memory.Reserved, memReservedQuery)
 
 	// Memory Committed = sum of max(usage, request) per container
 	// First get requests for pods on this node, then join with usage and compute max
@@ -759,7 +791,7 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		`sum(max by(namespace, pod, container) (label_replace(container_memory_working_set_bytes{node="%s", container!="", container!="POD"}, "src", "usage", "", "") or label_replace(kube_pod_container_resource_requests{resource="memory"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0), "src", "request", "", "")))`,
 		nodeName, nodeName,
 	)
-	result.Memory.Committed = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memCommittedQuery, start, end, step)
+	batch.points(&result.Memory.Committed, memCommittedQuery)
 
 	// --- Pod Count Metrics ---
 	// Running pods on node
@@ -767,14 +799,14 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		`count(kube_pod_info{node="%s"})`,
 		nodeName,
 	)
-	result.Pods.Running = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podRunningQuery, start, end, step)
+	batch.points(&result.Pods.Running, podRunningQuery)
 
 	// Pod capacity
 	podCapacityQuery := fmt.Sprintf(
 		`kube_node_status_capacity{node="%s", resource="pods"}`,
 		nodeName,
 	)
-	result.Pods.Capacity = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podCapacityQuery, start, end, step)
+	batch.points(&result.Pods.Capacity, podCapacityQuery)
 
 	// --- Network Metrics ---
 	// Network receive bytes/s - join with node_uname_info to match by node name
@@ -784,43 +816,44 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		`sum(rate(node_network_receive_bytes_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_receive_bytes_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_bytes_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
 		unameNodeMatcher, nodeName, nodeName,
 	)
-	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
+	batch.points(&result.Network.ReceiveBytes, rxBytesQuery)
 
 	// Network transmit bytes/s
 	txBytesQuery := fmt.Sprintf(
 		`sum(rate(node_network_transmit_bytes_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_transmit_bytes_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_bytes_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
 		unameNodeMatcher, nodeName, nodeName,
 	)
-	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
+	batch.points(&result.Network.TransmitBytes, txBytesQuery)
 
 	// Network receive packets/s
 	rxPacketsQuery := fmt.Sprintf(
 		`sum(rate(node_network_receive_packets_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_receive_packets_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_packets_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
 		unameNodeMatcher, nodeName, nodeName,
 	)
-	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
+	batch.points(&result.Network.ReceivePackets, rxPacketsQuery)
 
 	// Network transmit packets/s
 	txPacketsQuery := fmt.Sprintf(
 		`sum(rate(node_network_transmit_packets_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_transmit_packets_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_packets_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
 		unameNodeMatcher, nodeName, nodeName,
 	)
-	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
+	batch.points(&result.Network.TransmitPackets, txPacketsQuery)
 
 	// Network receive dropped packets/s
 	rxDroppedQuery := fmt.Sprintf(
 		`sum(rate(node_network_receive_drop_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_receive_drop_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_drop_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
 		unameNodeMatcher, nodeName, nodeName,
 	)
-	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
+	batch.points(&result.Network.ReceiveDropped, rxDroppedQuery)
 
 	// Network transmit dropped packets/s
 	txDroppedQuery := fmt.Sprintf(
 		`sum(rate(node_network_transmit_drop_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_transmit_drop_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_drop_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
 		unameNodeMatcher, nodeName, nodeName,
 	)
-	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
+	batch.points(&result.Network.TransmitDropped, txDroppedQuery)
 
+	batch.wait()
 	return result, nil
 }
 
@@ -829,6 +862,7 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 // absent on a cluster, so every source remains independently optional.
 func (c *Client) GetNodeMemoryDiagnosticsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, nodeName string, start, end time.Time, maxDataPoints int) (*NodeMemoryDiagnosticsHistory, error) {
 	step := calculateMetricsStep(start, end, maxDataPoints)
+	batch := c.newRangeQueryBatch(ctx, contextName, info, start, end, step)
 	result := &NodeMemoryDiagnosticsHistory{
 		NodeName:           nodeName,
 		Memory:             &NodeResourceMetrics{},
@@ -845,48 +879,49 @@ func (c *Client) GetNodeMemoryDiagnosticsHistoryWithContext(ctx context.Context,
 		`sum(node_memory_MemAvailable_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
 		unameNodeMatcher,
 	), step)
-	result.Memory.Available = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAvailableQuery, start, end, step)
+	batch.points(&result.Memory.Available, memAvailableQuery)
 
 	rootWorkingSetQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})`,
 		nodeName, nodeName,
 	), step)
-	result.Memory.WorkingSet = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rootWorkingSetQuery, start, end, step)
-	result.Memory.KubeletAvailable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, nodeMemoryAllocatableHeadroomQuery(nodeName, step), start, end, step)
+	batch.points(&result.Memory.WorkingSet, rootWorkingSetQuery)
+	batch.points(&result.Memory.KubeletAvailable, nodeMemoryAllocatableHeadroomQuery(nodeName, step))
 
 	pageCacheQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`sum((node_memory_Cached_bytes + node_memory_Buffers_bytes) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
 		unameNodeMatcher,
 	), step)
-	result.Memory.PageCache = c.queryRangeToDataPointsWithContext(ctx, contextName, info, pageCacheQuery, start, end, step)
+	batch.points(&result.Memory.PageCache, pageCacheQuery)
 	slabQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`sum(node_memory_Slab_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
 		unameNodeMatcher,
 	), step)
-	result.Memory.Slab = c.queryRangeToDataPointsWithContext(ctx, contextName, info, slabQuery, start, end, step)
+	batch.points(&result.Memory.Slab, slabQuery)
 	sharedMemoryQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`sum(node_memory_Shmem_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
 		unameNodeMatcher,
 	), step)
-	result.Memory.SharedMemory = c.queryRangeToDataPointsWithContext(ctx, contextName, info, sharedMemoryQuery, start, end, step)
+	batch.points(&result.Memory.SharedMemory, sharedMemoryQuery)
 
 	capacityQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(`kube_node_status_capacity{node="%s", resource="memory"}`, nodeName), step)
-	result.Memory.Capacity = c.queryRangeToDataPointsWithContext(ctx, contextName, info, capacityQuery, start, end, step)
+	batch.points(&result.Memory.Capacity, capacityQuery)
 	podWorkingSetExpr := fmt.Sprintf(`sum(container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`, nodeName)
-	result.Memory.PodWorkingSet = c.queryRangeToDataPointsWithContext(ctx, contextName, info, nodeMemoryBucketQuery("max", podWorkingSetExpr, step), start, end, step)
+	batch.points(&result.Memory.PodWorkingSet, nodeMemoryBucketQuery("max", podWorkingSetExpr, step))
 	unexplainedExpr := fmt.Sprintf(`clamp_min((max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})) - (%s), 0)`, nodeName, nodeName, podWorkingSetExpr)
-	result.Memory.Unexplained = c.queryRangeToDataPointsWithContext(ctx, contextName, info, nodeMemoryBucketQuery("max", unexplainedExpr, step), start, end, step)
+	batch.points(&result.Memory.Unexplained, nodeMemoryBucketQuery("max", unexplainedExpr, step))
 	pressureQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(`max(kube_node_status_condition{node="%s", condition="MemoryPressure", status="true"})`, nodeName), step)
-	result.Memory.MemoryPressure = c.queryRangeToDataPointsWithContext(ctx, contextName, info, pressureQuery, start, end, step)
-	result.MemoryContributors = c.queryNodeMemoryContributorsWithContext(ctx, contextName, info, nodeMemoryContributorQuery(nodeName, step), start, end, step)
+	batch.points(&result.Memory.MemoryPressure, pressureQuery)
+	batch.contributors(&result.MemoryContributors, nodeMemoryContributorQuery(nodeName, step))
 
 	// Allocation diagnostics retain the same scheduling series as the overview
 	// chart, but only load when the Diagnostics tab is selected.
 	memAllocatableQuery := fmt.Sprintf(`kube_node_status_allocatable{node="%s", resource="memory"}`, nodeName)
-	result.Memory.Allocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAllocatableQuery, start, end, step)
+	batch.points(&result.Memory.Allocatable, memAllocatableQuery)
 	memReservedQuery := fmt.Sprintf(`sum(kube_pod_container_resource_requests{resource="memory"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0))`, nodeName)
-	result.Memory.Reserved = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memReservedQuery, start, end, step)
+	batch.points(&result.Memory.Reserved, memReservedQuery)
 
+	batch.wait()
 	return result, nil
 }
 

@@ -42,6 +42,7 @@ func (c *Client) queryPrometheusRawWithContext(ctx context.Context, contextName 
 			Name(svcName).
 			SubResource("proxy").
 			Suffix(path).
+			SetHeader("Accept", rawJSONAccept). // proxied Prometheus speaks JSON, not the typed clientset's protobuf
 			SetHeader("Content-Type", "application/x-www-form-urlencoded").
 			Body([]byte(formData.Encode()))
 
@@ -78,7 +79,8 @@ func (c *Client) queryPrometheusRawWithContext(ctx context.Context, contextName 
 		Resource("services").
 		Name(svcName).
 		SubResource("proxy").
-		Suffix(path)
+		Suffix(path).
+		SetHeader("Accept", rawJSONAccept)
 
 	result, err := req.DoRaw(ctx)
 	if err != nil {

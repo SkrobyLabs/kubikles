@@ -14,6 +14,10 @@ export function ApplyYAML(arg1) {
   return window['go']['main']['App']['ApplyYAML'](arg1);
 }
 
+export function BulkBenchIPC(arg1) {
+  return window['go']['main']['App']['BulkBenchIPC'](arg1);
+}
+
 export function CancelAIRequest(arg1) {
   return window['go']['main']['App']['CancelAIRequest'](arg1);
 }
@@ -56,6 +60,10 @@ export function CloseAISession(arg1) {
 
 export function CloseTerminalSession(arg1) {
   return window['go']['main']['App']['CloseTerminalSession'](arg1);
+}
+
+export function CloseView(arg1) {
+  return window['go']['main']['App']['CloseView'](arg1);
 }
 
 export function CollectIngressHostnames(arg1) {
@@ -350,6 +358,14 @@ export function GetAvailablePort(arg1) {
   return window['go']['main']['App']['GetAvailablePort'](arg1);
 }
 
+export function GetBulkInfo() {
+  return window['go']['main']['App']['GetBulkInfo']();
+}
+
+export function GetBulkProbeReport() {
+  return window['go']['main']['App']['GetBulkProbeReport']();
+}
+
 export function GetCRDPrinterColumns(arg1) {
   return window['go']['main']['App']['GetCRDPrinterColumns'](arg1);
 }
@@ -522,6 +538,10 @@ export function GetLimitRangeYaml(arg1, arg2) {
   return window['go']['main']['App']['GetLimitRangeYaml'](arg1, arg2);
 }
 
+export function GetListOutcome(arg1) {
+  return window['go']['main']['App']['GetListOutcome'](arg1);
+}
+
 export function GetListRequestStats() {
   return window['go']['main']['App']['GetListRequestStats']();
 }
@@ -678,6 +698,14 @@ export function GetResourceDependencies(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetResourceDependencies'](arg1, arg2, arg3);
 }
 
+export function GetResourceObject(arg1) {
+  return window['go']['main']['App']['GetResourceObject'](arg1);
+}
+
+export function GetResourceObjects(arg1) {
+  return window['go']['main']['App']['GetResourceObjects'](arg1);
+}
+
 export function GetResourceQuotaYaml(arg1, arg2) {
   return window['go']['main']['App']['GetResourceQuotaYaml'](arg1, arg2);
 }
@@ -740,6 +768,22 @@ export function GetValidatingWebhookConfigurationYaml(arg1) {
 
 export function GetVersionInfo() {
   return window['go']['main']['App']['GetVersionInfo']();
+}
+
+export function GetViewFacet(arg1, arg2) {
+  return window['go']['main']['App']['GetViewFacet'](arg1, arg2);
+}
+
+export function GetViewRefs(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetViewRefs'](arg1, arg2, arg3, arg4);
+}
+
+export function GetViewWindow(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetViewWindow'](arg1, arg2, arg3, arg4);
+}
+
+export function GetViewsInfo() {
+  return window['go']['main']['App']['GetViewsInfo']();
 }
 
 export function HelmDryRunUpgrade(arg1, arg2, arg3) {
@@ -1006,6 +1050,10 @@ export function OpenThemesDir() {
   return window['go']['main']['App']['OpenThemesDir']();
 }
 
+export function OpenView(arg1) {
+  return window['go']['main']['App']['OpenView'](arg1);
+}
+
 export function PrepareResourceAction(arg1, arg2, arg3) {
   return window['go']['main']['App']['PrepareResourceAction'](arg1, arg2, arg3);
 }
@@ -1032,6 +1080,10 @@ export function RemoveOCIRegistry(arg1) {
 
 export function RenameContext(arg1, arg2) {
   return window['go']['main']['App']['RenameContext'](arg1, arg2);
+}
+
+export function ReportBulkProbe(arg1) {
+  return window['go']['main']['App']['ReportBulkProbe'](arg1);
 }
 
 export function ResetDebugCluster() {
@@ -1138,6 +1190,10 @@ export function SetAnthropicAPIKey(arg1) {
   return window['go']['main']['App']['SetAnthropicAPIKey'](arg1);
 }
 
+export function SetBulkTransport(arg1) {
+  return window['go']['main']['App']['SetBulkTransport'](arg1);
+}
+
 export function SetClientPoolSize(arg1) {
   return window['go']['main']['App']['SetClientPoolSize'](arg1);
 }
@@ -1174,6 +1230,14 @@ export function SetK8sAPITimeout(arg1) {
   return window['go']['main']['App']['SetK8sAPITimeout'](arg1);
 }
 
+export function SetLegacyEventDedupe(arg1) {
+  return window['go']['main']['App']['SetLegacyEventDedupe'](arg1);
+}
+
+export function SetMetricsOverlayConfig(arg1, arg2) {
+  return window['go']['main']['App']['SetMetricsOverlayConfig'](arg1, arg2);
+}
+
 export function SetNodeSchedulable(arg1, arg2) {
   return window['go']['main']['App']['SetNodeSchedulable'](arg1, arg2);
 }
@@ -1188,6 +1252,18 @@ export function SetRequestCancellationEnabled(arg1) {
 
 export function SetTheme(arg1) {
   return window['go']['main']['App']['SetTheme'](arg1);
+}
+
+export function SetViewActive(arg1, arg2) {
+  return window['go']['main']['App']['SetViewActive'](arg1, arg2);
+}
+
+export function SetViewSelection(arg1, arg2) {
+  return window['go']['main']['App']['SetViewSelection'](arg1, arg2);
+}
+
+export function SetWindowVisible(arg1) {
+  return window['go']['main']['App']['SetWindowVisible'](arg1);
 }
 
 export function StartAISession(arg1) {
@@ -1254,8 +1330,16 @@ export function SubscribeCRDWatcher(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SubscribeCRDWatcher'](arg1, arg2, arg3, arg4);
 }
 
+export function SubscribeCRDWatcherFrom(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SubscribeCRDWatcherFrom'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function SubscribeResourceWatcher(arg1, arg2) {
   return window['go']['main']['App']['SubscribeResourceWatcher'](arg1, arg2);
+}
+
+export function SubscribeResourceWatcherFrom(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SubscribeResourceWatcherFrom'](arg1, arg2, arg3);
 }
 
 export function SuspendCronJob(arg1, arg2, arg3) {
@@ -1468,6 +1552,10 @@ export function UpdateStorageClassYaml(arg1, arg2) {
 
 export function UpdateValidatingWebhookConfigurationYaml(arg1, arg2) {
   return window['go']['main']['App']['UpdateValidatingWebhookConfigurationYaml'](arg1, arg2);
+}
+
+export function UpdateView(arg1, arg2) {
+  return window['go']['main']['App']['UpdateView'](arg1, arg2);
 }
 
 export function UpgradeHelmRelease(arg1, arg2, arg3) {

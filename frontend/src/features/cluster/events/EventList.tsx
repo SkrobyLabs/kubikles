@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import EventActionsMenu from './EventActionsMenu';
 import { useEventsList } from '~/hooks/resources';
@@ -13,18 +15,14 @@ import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteEvent, GetEventYAML } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { getOwnerViewId } from '~/utils/owner-navigation';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { defaultViewColumns } from '~/lib/views/viewColumns';
+import { buildEventViewColumns, getEventTypeColor } from './viewColumns';
+import { useWithFullObject } from '~/hooks/useViewObject';
+import { eventSemantics } from './semantics';
 
-function getEventTypeColor(type: any) {
-    switch (type) {
-        case 'Normal':
-            return 'text-green-400';
-        case 'Warning':
-            return 'text-yellow-400';
-        default:
-            return 'text-gray-400';
-    }
-}
+const EVENT_INITIAL_SORT = { key: 'last', direction: 'desc' };
+const EVENT_VIEW_OPTIONS = { sort: EVENT_INITIAL_SORT, columns: defaultViewColumns('events', ['reason', 'source', 'objectKind']) };
+const NO_DATA: any[] = [];
 
 export default function EventList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
@@ -36,7 +34,6 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
             ensureCRDsLoaded();
         }
     }, [isVisible, ensureCRDsLoaded]);
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -52,8 +49,11 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetEventYAML,
 
     });
-    const { events, loading, loadState } = useEventsList(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleShowDetails, handleEditYaml } = useEventActions();
+    const { events, loading, loadState, view } = useEventsList(currentContext, selectedNamespaces, isVisible, EVENT_VIEW_OPTIONS) as any;
+    const { handleShowDetails, handleEditYaml } = useStableCallbacks(useEventActions());
+    const withObject = useWithFullObject(view ?? null);
+    // Details tabs read the whole event; rows of a windowed list fetch it at click time.
+    const showDetails = useMemo(() => withObject(handleShowDetails), [withObject, handleShowDetails]);
 
     const columns = useMemo(() => [
         {
@@ -63,13 +63,13 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
                 const type = item.type || 'Unknown';
                 return <span className={getEventTypeColor(type)}>{type}</span>;
             },
-            getValue: (item: any) => item.type || ''
+            getValue: eventSemantics.type.getValue
         },
         {
             key: 'namespace',
             label: 'Namespace',
             render: (item: any) => item.metadata?.namespace,
-            getValue: (item: any) => item.metadata?.namespace
+            getValue: eventSemantics.namespace.getValue
         },
         {
             key: 'involvedObject',
@@ -104,31 +104,31 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
                     </span>
                 );
             },
-            getValue: (item: any) => item.involvedObject ? `${item.involvedObject.kind}/${item.involvedObject.name}` : ''
+            getValue: eventSemantics.involvedObject.getValue
         },
         {
             key: 'message',
             label: 'Message',
             render: (item: any) => item.message || '-',
-            getValue: (item: any) => item.message || ''
+            getValue: eventSemantics.message.getValue
         },
         {
             key: 'count',
             label: 'Count',
             render: (item: any) => item.count || 1,
-            getValue: (item: any) => item.count || 1
+            getValue: eventSemantics.count.getValue
         },
         {
             key: 'age',
             label: 'Age',
             render: (item: any) => formatAge(item.firstTimestamp || item.metadata?.creationTimestamp),
-            getValue: (item: any) => item.firstTimestamp || item.metadata?.creationTimestamp
+            getValue: eventSemantics.age.getValue
         },
         {
             key: 'last',
             label: 'Last',
             render: (item: any) => formatAge(item.lastTimestamp || item.metadata?.creationTimestamp),
-            getValue: (item: any) => item.lastTimestamp || item.metadata?.creationTimestamp
+            getValue: eventSemantics.last.getValue
         },
         // Hidden by default columns
         {
@@ -136,7 +136,7 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
             label: 'Reason',
             defaultHidden: true,
             render: (item: any) => item.reason || '-',
-            getValue: (item: any) => item.reason || '',
+            getValue: eventSemantics.reason.getValue,
         },
         {
             key: 'source',
@@ -149,25 +149,24 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
                 const host = source.host;
                 return host ? `${component} (${host})` : component;
             },
-            getValue: (item: any) => item.source?.component || item.reportingController || '',
+            getValue: eventSemantics.source.getValue,
         },
         {
             key: 'objectKind',
             label: 'Object Kind',
             defaultHidden: true,
             render: (item: any) => item.involvedObject?.kind || '-',
-            getValue: (item: any) => item.involvedObject?.kind || '',
+            getValue: eventSemantics.objectKind.getValue,
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <EventActionsMenu
+                <MenuBound
+                    as={EventActionsMenu}
+                    menuId={`event-${item.metadata.uid}`}
                     event={item}
-                    isOpen={activeMenuId === `event-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `event-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onDelete={() => openBulkDelete([item])}
                 />
@@ -175,23 +174,34 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete, navigateWithSearch, crds]);
+    ], [handleEditYaml, openBulkDelete, navigateWithSearch, crds]);
+
+    const viewColumns = useMemo(
+        () => buildEventViewColumns({
+            view,
+            crds,
+            navigateWithSearch,
+            onEditYaml: handleEditYaml,
+            onDelete: item => openBulkDelete([item]),
+        }),
+        [view, crds, navigateWithSearch, handleEditYaml, openBulkDelete]);
 
     return (
         <>
             <ResourceList loadState={loadState}
                 title="Events"
-                columns={columns}
-                data={events}
+                columns={view ? viewColumns : columns}
+                source={view ?? null}
+                data={view ? NO_DATA : events}
                 isLoading={loading}
                 showNamespaceSelector={true}
                 namespaces={namespaces}
                 currentNamespace={selectedNamespaces}
                 onNamespaceChange={setSelectedNamespaces}
                 multiSelectNamespaces={true}
-                initialSort={{ key: 'last', direction: 'desc' }}
+                initialSort={EVENT_INITIAL_SORT}
                 resourceType="events"
-                onRowClick={handleShowDetails}
+                onRowClick={view ? showDetails : handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

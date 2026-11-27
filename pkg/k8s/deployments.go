@@ -32,6 +32,7 @@ func (c *Client) ListDeploymentsWithContext(ctx context.Context, namespace strin
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -56,6 +57,7 @@ func (c *Client) ListDeploymentsForContext(contextName, namespace string) ([]app
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {

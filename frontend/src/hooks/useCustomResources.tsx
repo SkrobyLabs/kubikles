@@ -25,7 +25,8 @@ export const useCustomResources = (
         `crd:${group}/${version}/${resource}`,
         (id, namespace) => ListCustomResources(id, group, version, resource, namespace),
         'resources',
-        (_type, namespaces, onEvent, enabled, onError) => useCRDWatcher(group, version, resource, namespaces, onEvent, enabled, onError),
+        // options carries resourceVersionFor so the CRD watch starts from the list's version.
+        (_type, namespaces, onEvent, enabled, onError, options) => useCRDWatcher(group, version, resource, namespaces, onEvent, enabled, onError, options),
     ), [group, version, resource]);
     const result = useResources(currentContext, isNamespaced ? selectedNamespaces : ['*'],
         Boolean(isVisible && group && version && resource));

@@ -1,13 +1,17 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -18,29 +22,26 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// wsClient wraps a WebSocket connection with a write mutex for thread-safe writes
-type wsClient struct {
-	id      string // unique client ID for session tracking
-	conn    *websocket.Conn
-	writeMu sync.Mutex
-}
-
-func (c *wsClient) WriteJSON(v interface{}) error {
-	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
-	return c.conn.WriteJSON(v)
-}
-
-func (c *wsClient) Close() error {
-	return c.conn.Close()
-}
-
 // DisconnectListener is notified when a WebSocket client disconnects.
 // Components that manage per-client resources (AI sessions, terminals, watchers)
 // can implement this to clean up when clients disconnect.
 type DisconnectListener interface {
 	OnClientDisconnect(clientID string)
 }
+
+// IdleListener is an optional extension of DisconnectListener for resources
+// that are shared by all clients rather than owned by one (log streams). It is
+// called once no client has been connected for idleGrace, so a page reload or a
+// brief network drop does not tear them down. OnNoClients runs while the server
+// holds its client lock, so a client cannot connect between the check and the
+// call; it must be quick and must not call back into the server.
+type IdleListener interface {
+	OnNoClients()
+}
+
+// idleGrace is how long the server waits with no clients before telling
+// IdleListeners. A variable so tests can shorten it.
+var idleGrace = 30 * time.Second
 
 // Server handles HTTP and WebSocket connections for server mode
 type Server struct {
@@ -49,12 +50,18 @@ type Server struct {
 	port                int
 	clients             map[*wsClient]bool
 	clientsMu           sync.RWMutex
-	broadcast           chan Event
-	done                chan struct{} // closed when server is shutting down
+	fanoutMu            sync.Mutex
+	closeOnce           sync.Once
+	wg                  sync.WaitGroup // client reader and writer goroutines
+	closing             bool           // guarded by clientsMu
+	done                chan struct{}  // closed when server is shutting down
 	upgrader            websocket.Upgrader
 	disconnectListeners []DisconnectListener
 	listenersMu         sync.RWMutex
-	clientCounter       uint64 // for generating unique client IDs
+	clientCounter       uint64       // for generating unique client IDs
+	bulk                http.Handler // optional /_kubikles/ bulk transport
+	idleTimer           *time.Timer  // guarded by clientsMu; pending IdleListener call
+	idleGen             uint64       // guarded by clientsMu; bumped on every arm, connect and close
 }
 
 // Event represents a WebSocket event to send to clients
@@ -68,18 +75,24 @@ type Event struct {
 // The caller parameter implements MethodCaller for dispatching API calls.
 func New(caller MethodCaller, assets embed.FS, port int) *Server {
 	return &Server{
-		caller:    caller,
-		assets:    assets,
-		port:      port,
-		clients:   make(map[*wsClient]bool),
-		broadcast: make(chan Event, 100),
-		done:      make(chan struct{}),
+		caller:  caller,
+		assets:  assets,
+		port:    port,
+		clients: make(map[*wsClient]bool),
+		done:    make(chan struct{}),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // Allow all origins in server mode
 			},
 		},
 	}
+}
+
+// WithBulk mounts the bulk transport handler under /_kubikles/. The handler
+// owns its own guards, gzip and per-chunk write deadlines.
+func (s *Server) WithBulk(h http.Handler) *Server {
+	s.bulk = h
+	return s
 }
 
 // Run starts the HTTP server
@@ -92,6 +105,11 @@ func (s *Server) Run(ctx context.Context) error {
 	// Serve API endpoints
 	mux.HandleFunc("/api/", s.handleAPI)
 
+	// Bulk read transport (GET only, token guarded, streams past WriteTimeout).
+	if s.bulk != nil {
+		mux.Handle("/_kubikles/", s.bulk)
+	}
+
 	// Serve static files from embedded assets (pre-compressed with gzip)
 	subFS, err := fs.Sub(s.assets, "frontend/dist")
 	if err != nil {
@@ -101,20 +119,19 @@ func (s *Server) Run(ctx context.Context) error {
 	mux.Handle("/", fileServer)
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", s.port),
+		// KUBIKLES_BIND_ADDR restricts the listener to one interface (for
+		// example 127.0.0.1); empty keeps the default of all interfaces.
+		Addr:         net.JoinHostPort(os.Getenv("KUBIKLES_BIND_ADDR"), strconv.Itoa(s.port)),
 		Handler:      mux,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Start broadcast handler
-	go s.handleBroadcast()
-
 	// Start server in goroutine
 	go func() {
-		log.Printf("Server mode: listening on http://localhost:%d", s.port)
-		log.Printf("Open in your browser: http://localhost:%d", s.port)
+		log.Printf("Server mode: listening on %s", server.Addr)
+		log.Printf("Open in your browser: http://%s", browserAddr(server.Addr))
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Printf("HTTP server error: %v", err)
 		}
@@ -127,21 +144,52 @@ func (s *Server) Run(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Signal shutdown to prevent new events being queued
-	close(s.done)
+	s.closeClients()
 
-	// Close broadcast channel to stop the handleBroadcast goroutine
-	close(s.broadcast)
-
-	return server.Shutdown(shutdownCtx)
+	err = server.Shutdown(shutdownCtx)
+	s.wg.Wait()
+	return err
 }
 
-// EmitEvent sends an event to all connected WebSocket clients
+// EmitEvent sends an event to all connected WebSocket clients. The event is
+// encoded once and queued per client without blocking: a client that cannot
+// keep up is disconnected, never allowed to stall the caller.
 func (s *Server) EmitEvent(name string, data interface{}) {
 	select {
-	case s.broadcast <- Event{Type: "event", Name: name, Data: data}:
 	case <-s.done:
-		// Server is shutting down, drop the event
+		return
+	default:
+	}
+	s.clientsMu.RLock()
+	n := len(s.clients)
+	s.clientsMu.RUnlock()
+	if n == 0 {
+		return
+	}
+
+	payload, err := json.Marshal(Event{Type: "event", Name: name, Data: data})
+	if err != nil {
+		log.Printf("WebSocket event %q encode error: %v", name, err)
+		return
+	}
+	pm, err := websocket.NewPreparedMessage(websocket.TextMessage, payload)
+	if err != nil {
+		return
+	}
+	s.fanout(queuedMessage{msg: pm, size: int64(len(payload))})
+}
+
+// fanout holds the read lock only for non-blocking enqueues. fanoutMu keeps
+// the per-client order identical to the global emit order.
+func (s *Server) fanout(m queuedMessage) {
+	s.fanoutMu.Lock()
+	defer s.fanoutMu.Unlock()
+	s.clientsMu.RLock()
+	defer s.clientsMu.RUnlock()
+	for c := range s.clients {
+		if !c.enqueue(m) {
+			log.Printf("WebSocket client %s dropped: send queue full or closed", c.id)
+		}
 	}
 }
 
@@ -165,76 +213,98 @@ func (s *Server) notifyDisconnect(clientID string) {
 	}
 }
 
-func (s *Server) handleBroadcast() {
-	for event := range s.broadcast {
-		// Collect failed clients while holding read lock
-		var failed []*wsClient
-		s.clientsMu.RLock()
-		for client := range s.clients {
-			if err := client.WriteJSON(event); err != nil {
-				log.Printf("WebSocket write error: %v", err)
-				failed = append(failed, client)
-			}
-		}
-		s.clientsMu.RUnlock()
+// notifyIdle runs when the idle grace period ends. gen is the generation the
+// timer was armed with: a callback of a timer that was replaced or cancelled
+// (it may already have fired when Stop ran) sees a newer generation and does
+// nothing, so it cannot clear a newer timer or fire without its grace period.
+// The check and the listener calls share one critical section, so a client that
+// connects cannot slip in between and have its new streams cancelled.
+func (s *Server) notifyIdle(gen uint64) {
+	s.listenersMu.RLock()
+	listeners := make([]DisconnectListener, len(s.disconnectListeners))
+	copy(listeners, s.disconnectListeners)
+	s.listenersMu.RUnlock()
 
-		// Remove failed clients with write lock
-		if len(failed) > 0 {
-			s.clientsMu.Lock()
-			for _, client := range failed {
-				client.Close()
-				delete(s.clients, client)
-			}
-			s.clientsMu.Unlock()
+	s.clientsMu.Lock()
+	defer s.clientsMu.Unlock()
+	if gen != s.idleGen || len(s.clients) != 0 || s.closing {
+		return
+	}
+	s.idleTimer = nil
+	for _, listener := range listeners {
+		if il, ok := listener.(IdleListener); ok {
+			il.OnNoClients()
 		}
 	}
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	select {
+	case <-s.done:
+		http.Error(w, "shutting down", http.StatusServiceUnavailable)
+		return
+	default:
+	}
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade error: %v", err)
 		return
 	}
 
-	// Generate unique client ID
-	clientNum := atomic.AddUint64(&s.clientCounter, 1)
-	clientID := fmt.Sprintf("ws-%d", clientNum)
+	clientID := fmt.Sprintf("ws-%d", atomic.AddUint64(&s.clientCounter, 1))
+	client := newWSClient(clientID, conn)
 
-	client := &wsClient{id: clientID, conn: conn}
-
-	s.clientsMu.Lock()
-	s.clients[client] = true
-	s.clientsMu.Unlock()
-
-	log.Printf("WebSocket client %s connected (total: %d)", clientID, len(s.clients))
-
-	// Send initial connection event with client ID
-	_ = client.WriteJSON(Event{Type: "event", Name: "connected", Data: map[string]interface{}{
+	// Queue the hello before registering so it is always the first message.
+	if payload, err := json.Marshal(Event{Type: "event", Name: "connected", Data: map[string]interface{}{
 		"serverMode": true,
 		"clientId":   clientID,
-	}})
-
-	// Handle incoming messages (for future bidirectional communication)
-	go func() {
-		defer func() {
-			s.clientsMu.Lock()
-			delete(s.clients, client)
-			clientCount := len(s.clients)
-			s.clientsMu.Unlock()
-			client.Close()
-			log.Printf("WebSocket client %s disconnected (total: %d)", clientID, clientCount)
-
-			// Notify listeners so they can clean up per-client resources
-			s.notifyDisconnect(clientID)
-		}()
-
-		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				break
-			}
+	}}); err == nil {
+		if pm, err := websocket.NewPreparedMessage(websocket.TextMessage, payload); err == nil {
+			client.enqueue(queuedMessage{msg: pm, size: int64(len(payload))})
 		}
+	}
+
+	s.clientsMu.Lock()
+	if s.closing {
+		s.clientsMu.Unlock()
+		_ = conn.Close()
+		return
+	}
+	s.clients[client] = true
+	s.idleGen++
+	if s.idleTimer != nil {
+		s.idleTimer.Stop()
+		s.idleTimer = nil
+	}
+	total := len(s.clients)
+	s.wg.Add(2)
+	s.clientsMu.Unlock()
+
+	log.Printf("WebSocket client %s connected (total: %d)", clientID, total)
+
+	go func() {
+		defer s.wg.Done()
+		client.writeLoop()
+	}()
+	go func() {
+		defer s.wg.Done()
+		client.readLoop()
+		client.kill(nil)
+		s.clientsMu.Lock()
+		delete(s.clients, client)
+		count := len(s.clients)
+		if count == 0 && !s.closing {
+			if s.idleTimer != nil {
+				s.idleTimer.Stop()
+			}
+			s.idleGen++
+			gen := s.idleGen
+			s.idleTimer = time.AfterFunc(idleGrace, func() { s.notifyIdle(gen) })
+		}
+		s.clientsMu.Unlock()
+		log.Printf("WebSocket client %s disconnected (total: %d)", clientID, count)
+		// Notify listeners so they can clean up per-client resources
+		s.notifyDisconnect(clientID)
 	}()
 }
 
@@ -269,7 +339,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	if path == "call" && r.Method == "POST" {
 		var req APIRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			s.writeError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request body: %v", err))
+			s.writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid request body: %v", err))
 			return
 		}
 		methodName = req.Method
@@ -279,14 +349,14 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 		methodName = strings.Split(path, "/")[0]
 		if r.Method == "POST" && r.Body != nil {
 			if err := json.NewDecoder(r.Body).Decode(&args); err != nil && err.Error() != "EOF" {
-				s.writeError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request body: %v", err))
+				s.writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid request body: %v", err))
 				return
 			}
 		}
 	}
 
 	if methodName == "" {
-		s.writeError(w, http.StatusBadRequest, "Method name required")
+		s.writeError(w, r, http.StatusBadRequest, "Method name required")
 		return
 	}
 
@@ -295,22 +365,69 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Check if it's a "not found" error for proper HTTP status
 		if strings.Contains(err.Error(), "not found") {
-			s.writeError(w, http.StatusNotFound, err.Error())
+			s.writeError(w, r, http.StatusNotFound, err.Error())
 		} else {
-			s.writeError(w, http.StatusInternalServerError, err.Error())
+			s.writeError(w, r, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
 	// Return result in format expected by frontend adapter
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"data": result,
-	})
+	s.writeJSON(w, r, http.StatusOK, map[string]interface{}{"data": result})
 }
 
-func (s *Server) writeError(w http.ResponseWriter, status int, message string) {
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"error": message,
-	})
+// writeJSON encodes into a pooled buffer so the body can be sized, and
+// gzipped when large (lists can reach tens of MB).
+func (s *Server) writeJSON(w http.ResponseWriter, r *http.Request, status int, v interface{}) {
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer func() {
+		if buf.Cap() <= 8<<20 {
+			bufPool.Put(buf)
+		}
+	}()
+	if err := json.NewEncoder(buf).Encode(v); err != nil {
+		buf.Reset()
+		_ = json.NewEncoder(buf).Encode(map[string]interface{}{"error": fmt.Sprintf("encode response: %v", err)})
+		status = http.StatusInternalServerError
+	}
+	writeBody(w, r, status, buf.Bytes())
+}
+
+func (s *Server) writeError(w http.ResponseWriter, r *http.Request, status int, message string) {
+	s.writeJSON(w, r, status, map[string]interface{}{"error": message})
+}
+
+// closeClients stops accepting events and sockets and closes every client
+// with a going-away frame. Idempotent.
+func (s *Server) closeClients() {
+	s.closeOnce.Do(func() { close(s.done) })
+	s.clientsMu.Lock()
+	s.closing = true
+	s.idleGen++
+	if s.idleTimer != nil {
+		s.idleTimer.Stop()
+		s.idleTimer = nil
+	}
+	clients := make([]*wsClient, 0, len(s.clients))
+	for c := range s.clients {
+		clients = append(clients, c)
+	}
+	s.clientsMu.Unlock()
+	for _, c := range clients {
+		c.kill(websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"))
+	}
+}
+
+// browserAddr turns a listen address into one a browser can open: an empty or
+// unspecified host (all interfaces) becomes localhost.
+func browserAddr(addr string) string {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+	if ip := net.ParseIP(host); host == "" || (ip != nil && ip.IsUnspecified()) {
+		host = "localhost"
+	}
+	return net.JoinHostPort(host, port)
 }

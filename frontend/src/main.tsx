@@ -2,7 +2,11 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import loader from '@monaco-editor/loader'
 import { WindowToggleMaximise } from 'wailsjs/runtime/runtime'
+import './fonts/core.css'
 import './index.css'
+import { startFontLoading } from './utils/fontLoader'
+import { startDefaultBackendVisibilitySync } from './utils/backendVisibility'
+import { scheduleBulkProbe } from './lib/bulk/probe'
 import App from './App'
 import ErrorBoundary from './components/shared/ErrorBoundary'
 
@@ -36,6 +40,9 @@ document.addEventListener('dblclick', (e) => {
     }
 })
 
+startFontLoading()
+startDefaultBackendVisibilitySync()
+
 const container = document.getElementById('root')
 
 const root = createRoot(container!)
@@ -47,3 +54,6 @@ root.render(
         </ErrorBoundary>
     </React.StrictMode>
 )
+
+// Measure the bulk transport once the first frame is out.
+scheduleBulkProbe()

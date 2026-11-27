@@ -312,6 +312,9 @@ func (rc *ResourceCache) ClusterRoleBindings() []rbacv1.ClusterRoleBinding {
 // ---- Internal fetch dispatching ----
 
 func (rc *ResourceCache) fetchKind(ctx context.Context, kind string) error {
+	if rc.fetchWarm(ctx, kind) {
+		return nil
+	}
 	switch kind {
 	case "pods":
 		return rc.fetchNamespaced(ctx, kind, func(ctx context.Context, ns string) (interface{}, error) {
@@ -545,4 +548,75 @@ func (rc *ResourceCache) fetchClusterScoped(
 	rc.data[kind] = result
 	rc.mu.Unlock()
 	return nil
+}
+
+// fetchWarm fills a kind from warm store shards when every namespace in scope has one, producing
+// the same typed slices the live fetch does. It returns false (and leaves the cache untouched)
+// when any shard is cold, so the caller lists live. The scan itself never starts a shard.
+func (rc *ResourceCache) fetchWarm(ctx context.Context, kind string) bool {
+	ctx = k8s.WithStoreRead(ctx)
+	switch kind {
+	case "pods":
+		return warmKind[v1.Pod](ctx, rc, kind, "pods", true)
+	case "services":
+		return warmKind[v1.Service](ctx, rc, kind, "services", true)
+	case "ingresses":
+		return warmKind[networkingv1.Ingress](ctx, rc, kind, "ingresses", true)
+	case "ingressclasses":
+		return warmKind[networkingv1.IngressClass](ctx, rc, kind, "ingressclasses", false)
+	case "endpoints":
+		return warmKind[v1.Endpoints](ctx, rc, kind, "endpoints", true)
+	case "configmaps":
+		return warmKind[v1.ConfigMap](ctx, rc, kind, "configmaps", true)
+	case "deployments":
+		return warmKind[appsv1.Deployment](ctx, rc, kind, "deployments", true)
+	case "statefulsets":
+		return warmKind[appsv1.StatefulSet](ctx, rc, kind, "statefulsets", true)
+	case "daemonsets":
+		return warmKind[appsv1.DaemonSet](ctx, rc, kind, "daemonsets", true)
+	case "pvcs":
+		return warmKind[v1.PersistentVolumeClaim](ctx, rc, kind, "persistentvolumeclaims", true)
+	case "pvs":
+		return warmKind[v1.PersistentVolume](ctx, rc, kind, "persistentvolumes", false)
+	case "nodes":
+		return warmKind[v1.Node](ctx, rc, kind, "nodes", false)
+	case "serviceaccounts":
+		return warmKind[v1.ServiceAccount](ctx, rc, kind, "serviceaccounts", true)
+	case "hpas":
+		return warmKind[autoscalingv2.HorizontalPodAutoscaler](ctx, rc, kind, "hpas", true)
+	case "jobs":
+		return warmKind[batchv1.Job](ctx, rc, kind, "jobs", true)
+	case "cronjobs":
+		return warmKind[batchv1.CronJob](ctx, rc, kind, "cronjobs", true)
+	case "roles":
+		return warmKind[rbacv1.Role](ctx, rc, kind, "roles", true)
+	case "clusterroles":
+		return warmKind[rbacv1.ClusterRole](ctx, rc, kind, "clusterroles", false)
+	case "rolebindings":
+		return warmKind[rbacv1.RoleBinding](ctx, rc, kind, "rolebindings", true)
+	case "clusterrolebindings":
+		return warmKind[rbacv1.ClusterRoleBinding](ctx, rc, kind, "clusterrolebindings", false)
+	}
+	// secrets stay live: their store shards hold Tables (no data), which rules may read.
+	return false
+}
+
+func warmKind[T any](ctx context.Context, rc *ResourceCache, kind, storeType string, namespaced bool) bool {
+	contextName := rc.client.GetCurrentContext()
+	scopes := []string{""}
+	if namespaced && len(rc.namespaces) > 0 {
+		scopes = rc.namespaces
+	}
+	all := make([]T, 0)
+	for _, ns := range scopes {
+		items, ok := k8s.StoreList[T](ctx, rc.client, contextName, storeType, ns)
+		if !ok {
+			return false
+		}
+		all = append(all, items...)
+	}
+	rc.mu.Lock()
+	rc.data[kind] = all
+	rc.mu.Unlock()
+	return true
 }

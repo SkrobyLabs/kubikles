@@ -4,6 +4,7 @@ import {main} from '../models';
 import {k8s} from '../models';
 import {resourceactions} from '../models';
 import {helm} from '../models';
+import {rows} from '../models';
 import {v1} from '../models';
 import {tools} from '../models';
 import {v2} from '../models';
@@ -16,6 +17,8 @@ export function AddHelmRepository(arg1:string,arg2:string,arg3:number):Promise<v
 export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.PortForwardConfig>;
 
 export function ApplyYAML(arg1:string):Promise<void>;
+
+export function BulkBenchIPC(arg1:number):Promise<Array<Record<string, any>>>;
 
 export function CancelAIRequest(arg1:string):Promise<void>;
 
@@ -38,6 +41,8 @@ export function ClearPrometheusConfig():Promise<void>;
 export function CloseAISession(arg1:string):Promise<void>;
 
 export function CloseTerminalSession(arg1:string):Promise<void>;
+
+export function CloseView(arg1:string):Promise<void>;
 
 export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string>>;
 
@@ -185,6 +190,10 @@ export function GetAnthropicAPIKeyStatus():Promise<string>;
 
 export function GetAvailablePort(arg1:number):Promise<number>;
 
+export function GetBulkInfo():Promise<main.BulkInfo>;
+
+export function GetBulkProbeReport():Promise<Record<string, any>>;
+
 export function GetCRDPrinterColumns(arg1:string):Promise<Array<k8s.PrinterColumn>>;
 
 export function GetCRDYaml(arg1:string):Promise<string>;
@@ -271,6 +280,8 @@ export function GetLeaseYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetLimitRangeYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetListOutcome(arg1:string):Promise<main.ListOutcomeResult>;
+
 export function GetListRequestStats():Promise<main.ListRequestStats>;
 
 export function GetManagedHosts():Promise<Array<string>>;
@@ -349,6 +360,10 @@ export function GetResourceActions(arg1:string,arg2:string):Promise<Array<resour
 
 export function GetResourceDependencies(arg1:string,arg2:string,arg3:string):Promise<k8s.DependencyGraph>;
 
+export function GetResourceObject(arg1:rows.ObjectRef):Promise<Record<string, any>>;
+
+export function GetResourceObjects(arg1:Array<rows.ObjectRef>):Promise<Array<Record<string, any>>>;
+
 export function GetResourceQuotaYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetRoleBindingYaml(arg1:string,arg2:string):Promise<string>;
@@ -380,6 +395,14 @@ export function GetToolDiscovery():Promise<tools.ToolDiscoveryResponse>;
 export function GetValidatingWebhookConfigurationYaml(arg1:string):Promise<string>;
 
 export function GetVersionInfo():Promise<main.VersionInfo>;
+
+export function GetViewFacet(arg1:string,arg2:string):Promise<rows.Facet>;
+
+export function GetViewRefs(arg1:string,arg2:number,arg3:number,arg4:number):Promise<Array<rows.RowRef>>;
+
+export function GetViewWindow(arg1:string,arg2:number,arg3:number,arg4:number):Promise<rows.ViewWindow>;
+
+export function GetViewsInfo():Promise<main.ViewsInfo>;
 
 export function HelmDryRunUpgrade(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<helm.DryRunResult>;
 
@@ -513,6 +536,8 @@ export function OpenIssueRulesDir():Promise<void>;
 
 export function OpenThemesDir():Promise<void>;
 
+export function OpenView(arg1:rows.ViewSpec):Promise<rows.ViewOpenResult>;
+
 export function PrepareResourceAction(arg1:resourceactions.ResourceRef,arg2:string,arg3:string):Promise<resourceactions.Plan>;
 
 export function RefreshIngressHostnames(arg1:Array<string>):Promise<void>;
@@ -526,6 +551,8 @@ export function RemoveHelmRepository(arg1:string):Promise<void>;
 export function RemoveOCIRegistry(arg1:string):Promise<void>;
 
 export function RenameContext(arg1:string,arg2:string):Promise<void>;
+
+export function ReportBulkProbe(arg1:Record<string, any>):Promise<void>;
 
 export function ResetDebugCluster():Promise<void>;
 
@@ -579,6 +606,8 @@ export function SendTextToEmbeddedBrowser(arg1:string):Promise<void>;
 
 export function SetAnthropicAPIKey(arg1:string):Promise<void>;
 
+export function SetBulkTransport(arg1:string):Promise<void>;
+
 export function SetClientPoolSize(arg1:number):Promise<void>;
 
 export function SetDebugClusterConfig(arg1:k8s.DebugClusterConfig):Promise<void>;
@@ -597,6 +626,9 @@ export function SetHelmRepositoryPriority(arg1:string,arg2:number):Promise<void>
 
 export function SetK8sAPITimeout(arg1:number):Promise<void>;
 
+export function SetLegacyEventDedupe(arg1:boolean):Promise<void>;
+
+export function SetMetricsOverlayConfig(arg1:string,arg2:number):Promise<void>;
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
 export function SetOCIRegistryPriority(arg1:string,arg2:number):Promise<void>;
@@ -604,6 +636,12 @@ export function SetOCIRegistryPriority(arg1:string,arg2:number):Promise<void>;
 export function SetRequestCancellationEnabled(arg1:boolean):Promise<void>;
 
 export function SetTheme(arg1:string):Promise<void>;
+
+export function SetViewActive(arg1:string,arg2:boolean):Promise<void>;
+
+export function SetViewSelection(arg1:string,arg2:Array<string>):Promise<rows.SelectionAck>;
+
+export function SetWindowVisible(arg1:boolean):Promise<void>;
 
 export function StartAISession(arg1:string):Promise<string>;
 
@@ -637,7 +675,11 @@ export function StopPortForward(arg1:string):Promise<void>;
 
 export function SubscribeCRDWatcher(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
+export function SubscribeCRDWatcherFrom(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
+
 export function SubscribeResourceWatcher(arg1:string,arg2:string):Promise<string>;
+
+export function SubscribeResourceWatcherFrom(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function SuspendCronJob(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 
@@ -744,6 +786,8 @@ export function UpdateStatefulSetYaml(arg1:string,arg2:string,arg3:string):Promi
 export function UpdateStorageClassYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateValidatingWebhookConfigurationYaml(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateView(arg1:string,arg2:rows.ViewPatch):Promise<rows.ViewState>;
 
 export function UpgradeHelmRelease(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<void>;
 

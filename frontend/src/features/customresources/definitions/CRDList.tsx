@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
+import { useStableCallbacks } from '~/hooks/useStableCallbacks';
+import MenuBound from '~/components/shared/MenuBound';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useCRDs } from '~/hooks/useCRDs';
 import { useK8s } from '~/context';
@@ -10,13 +12,11 @@ import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import CRDActionsMenu from './CRDActionsMenu';
 import { useCRDActions } from './useCRDActions';
-import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function CRDList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { crds, loading } = useCRDs(currentContext, isVisible) as any;
-    const { handleEditYaml } = useCRDActions();
+    const { handleEditYaml } = useStableCallbacks(useCRDActions());
     const selection = useSelection();
 
     // Wrap APIs to match useBulkActions signature (context, name) for cluster-scoped
@@ -125,11 +125,10 @@ export default function CRDList({ isVisible }: { isVisible: boolean }) {
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             render: (item: any) => (
-                <CRDActionsMenu
+                <MenuBound
+                    as={CRDActionsMenu}
+                    menuId={`crd-${item.metadata.uid}`}
                     crd={item}
-                    isOpen={activeMenuId === `crd-${item.metadata.uid}`}
-                    menuPosition={menuPosition}
-                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `crd-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onDelete={(crd: any) => openBulkDelete([crd])}
                 />
@@ -138,7 +137,7 @@ export default function CRDList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete]);
+    ], [handleEditYaml, openBulkDelete]);
 
     return (
         <>

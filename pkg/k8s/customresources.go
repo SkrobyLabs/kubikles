@@ -58,6 +58,7 @@ func (c *Client) ListCRDsWithContext(ctx context.Context, contextName string, on
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -160,6 +161,53 @@ func (c *Client) GetCRDPrinterColumns(contextName, crdName string) ([]PrinterCol
 	return columns, nil
 }
 
+// CRDViewInfo is what a custom resource view needs to know about a CRD: its scope and the
+// printer columns of the requested version.
+type CRDViewInfo struct {
+	Namespaced bool
+	Columns    []PrinterColumn
+}
+
+// ResolveCRDView reads the CRD that defines group/resource and returns its scope and the
+// additionalPrinterColumns of version (the first served version when version is not served).
+func (c *Client) ResolveCRDView(contextName, group, version, resource string) (CRDViewInfo, error) {
+	cs, err := c.getApiExtensionsClientForContext(contextName)
+	if err != nil {
+		return CRDViewInfo{}, fmt.Errorf("failed to get apiextensions client: %w", err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	name := resource
+	if group != "" {
+		name = resource + "." + group
+	}
+	crd, err := cs.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return CRDViewInfo{}, fmt.Errorf("failed to get CRD %s: %w", name, err)
+	}
+	info := CRDViewInfo{Namespaced: crd.Spec.Scope == apiextensionsv1.NamespaceScoped}
+	pick := -1
+	for i, v := range crd.Spec.Versions {
+		if !v.Served {
+			continue
+		}
+		if v.Name == version {
+			pick = i
+			break
+		}
+		if pick < 0 {
+			pick = i
+		}
+	}
+	if pick >= 0 {
+		for _, col := range crd.Spec.Versions[pick].AdditionalPrinterColumns {
+			info.Columns = append(info.Columns, PrinterColumn{Name: col.Name, Type: col.Type, JSONPath: col.JSONPath,
+				Description: col.Description, Priority: col.Priority})
+		}
+	}
+	return info, nil
+}
+
 // getDynamicClientForContext returns a dynamic client for a given context
 func (c *Client) getDynamicClientForContext(contextName string) (dynamic.Interface, error) {
 	// If context is empty, use the client's current context (not kubeconfig's default)
@@ -213,10 +261,17 @@ func (c *Client) ListCustomResourcesWithContext(ctx context.Context, contextName
 	if len(onProgress) > 0 {
 		progressFn = onProgress[0]
 	}
+	return listCustomResourcesFrom(ctx, dc, gvr, namespace, progressFn)
+}
 
+// listCustomResourcesFrom lists one custom resource type through dc. It records
+// the list resourceVersion and outcome like every other list, so a watcher can
+// start from the version this list returned.
+func listCustomResourcesFrom(ctx context.Context, dc dynamic.Interface, gvr schema.GroupVersionResource, namespace string, progressFn func(loaded, total int)) ([]map[string]interface{}, error) {
 	// Paginate unstructured items, then convert to maps
 	result, err := paginatedList(ctx, "customresources", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]map[string]interface{}, string, *int64, error) {
 		var list *unstructured.UnstructuredList
+		var err error
 		if namespace != "" {
 			list, err = dc.Resource(gvr).Namespace(namespace).List(ctx, opts)
 		} else {
@@ -229,6 +284,7 @@ func (c *Client) ListCustomResourcesWithContext(ctx context.Context, contextName
 		for i, item := range list.Items {
 			items[i] = item.Object
 		}
+		noteListResourceVersion(ctx, list.GetResourceVersion())
 		return items, list.GetContinue(), list.GetRemainingItemCount(), nil
 	}, progressFn)
 	if err != nil {

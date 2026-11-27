@@ -34,6 +34,9 @@ export default function YamlEditor({
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
     const [content, setContent] = useState('');
+    // Last YAML received from the cluster (load, reload, post-save). Owner detection
+    // reads this, not the live buffer, so typing never re-parses the document.
+    const [loadedYaml, setLoadedYaml] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -51,8 +54,8 @@ export default function YamlEditor({
         return getResource(resourceType);
     }, [resourceType, getYamlFn, updateYamlFn]);
 
-    // Extract controller owner from content
-    const controllerOwner = useMemo(() => extractControllerOwnerFromYaml(content), [content]);
+    // Extract controller owner from the loaded YAML (not per keystroke)
+    const controllerOwner = useMemo(() => extractControllerOwnerFromYaml(loadedYaml), [loadedYaml]);
 
     // Resolve top-level owner (e.g., ReplicaSet → Deployment)
     const [topLevelOwner, setTopLevelOwner] = useState<{ kind: string; name: string } | null>(null);
@@ -162,6 +165,7 @@ export default function YamlEditor({
         try {
             const yaml = await getYaml();
             setContent(yaml);
+            setLoadedYaml(yaml);
             Logger.info("YAML fetched successfully", { resourceType, namespace, name: resourceName }, 'k8s');
         } catch (err: any) {
             Logger.error("Failed to load YAML", err, 'k8s');
@@ -176,6 +180,7 @@ export default function YamlEditor({
         try {
             const yaml = await getYaml();
             setContent(yaml);
+            setLoadedYaml(yaml);
             setHasConflict(false);
             Logger.info("YAML reloaded", { resourceType, namespace, name: resourceName }, 'k8s');
         } catch (err: any) {
@@ -209,6 +214,7 @@ export default function YamlEditor({
             try {
                 const yaml = await getYaml();
                 setContent(yaml);
+                setLoadedYaml(yaml);
                 setHasConflict(false);
 
                 // Restore cursor position after content update

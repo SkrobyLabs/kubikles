@@ -31,6 +31,7 @@ func (c *Client) ListRolesWithContext(ctx context.Context, namespace string, onP
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -55,6 +56,7 @@ func (c *Client) ListRolesForContext(contextName, namespace string) ([]rbacv1.Ro
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -128,6 +130,7 @@ func (c *Client) ListClusterRolesForContext(contextName string) ([]rbacv1.Cluste
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -151,6 +154,7 @@ func (c *Client) ListClusterRolesWithContext(ctx context.Context, onProgress ...
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -229,6 +233,7 @@ func (c *Client) ListRoleBindingsWithContext(ctx context.Context, namespace stri
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
@@ -253,6 +258,7 @@ func (c *Client) ListRoleBindingsForContext(contextName, namespace string) ([]rb
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -326,6 +332,7 @@ func (c *Client) ListClusterRoleBindingsForContext(contextName string) ([]rbacv1
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, nil)
 	if err != nil {
@@ -349,6 +356,7 @@ func (c *Client) ListClusterRoleBindingsWithContext(ctx context.Context, onProgr
 		if err != nil {
 			return nil, "", nil, err
 		}
+		noteListResourceVersion(ctx, list.ResourceVersion)
 		return list.Items, list.Continue, list.RemainingItemCount, nil
 	}, progressFn)
 	if err != nil {
