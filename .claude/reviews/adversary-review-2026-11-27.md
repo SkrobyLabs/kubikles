@@ -287,8 +287,19 @@ STABLE with five problems, all since addressed:
 | Stream ids of streams that ended by themselves stayed in the ledger. | FIXED: forgotten on done and error |
 | The "opened by a link" check for view reuse was read on the first render only and could miss a pending search consumed before the hook opened. | FIXED: latched across renders |
 
-No further pass was run after these five fixes. They are small and each is covered by the gates
-below, but they have not themselves been independently reviewed.
+### Pass 3
+
+A third pass reviewed those five fixes. Three were clean. It asked for two refinements to the relist
+pacing, both made:
+
+- The stale-relist counter was reset only by object events, so a quiet resource whose watch simply
+  expires after minutes would have been paced more and more over the life of the shard. A watch that
+  stayed open past the premature-close window now resets it too, with a test that fails without it.
+- An "unsupported format" error event counted as healthy traffic and kept the retry delay at its
+  first step. It no longer resets the failure count.
+
+One accepted limitation from this pass: a list opened by a link disables view reuse for every list
+mounted at that moment, for the life of those list instances. That costs speed, never correctness.
 
 ### Verification after all fixes
 
